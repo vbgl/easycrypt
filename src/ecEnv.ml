@@ -1427,7 +1427,7 @@ module Mod = struct
   let unsuspend_r f istop (i, args) (spi, params) o =
     if i <> spi || List.length args > List.length params then
       assert false;
-    if (not istop && List.length args <> List.length params) then
+    if (not istop && List.length args <> List.length params && args <> []) then
       assert false;
 
     let params = List.take (List.length args) params in
