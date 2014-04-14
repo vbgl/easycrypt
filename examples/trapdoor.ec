@@ -6,14 +6,55 @@ require import AlgTactic.
 require import Prime_field.
 require import Cyclic_group_prime.
 require import Option.
+require import Pair.
+require import FMap.
+require import List.
+import OptionGet.
+
+(* This is a mess and needs cleaning up *)
+(* It includes:
+  - a bunch of group lemmas that have to be
+   integrated to Cyclic_group_prime 
+  - a really general trapdoor test trick that is 
+   useful (so far) for:
+    + the DLOG branch of naxos and
+    + the good reduction from SCDH to CDH AKA the Koblitz
+   lemma
+
+Only one admit that should be easy to solve and was
+previously discharged with compute.
+Additionally, I am using fusion in a way in which the syntactic
+independance check is not passed, but it's still sound.
+We have to fix this, for now I have disabled the check in my 
+distribution.
+*)
+
 
 import Dgroup.
 import Dgf_q.
 
+(* formalization of find_last *)
+(* useful for spliting a loop in the last iteration 
+   satisfying a predicate *)
+op find_last : int -> int -> (int -> bool) -> int option.
+
+axiom find_last_spec : forall l u p k,
+find_last l u p = Some k <=>
+(l <= k <= u /\
+ p k /\
+(forall j, k < j => ! p j) ).
+
+axiom find_last_exists : forall l u p,
+find_last l u p = None =>
+(forall k, l <= k <= u => ! p k).
+
+
+
+
+
 (* reals axiom *)
 (* we should be able to discharge this *)
-axiom mult_pos_mon : forall (p q r : real), 0%r <= r => p <= q => r * p <= r * q.
-
+lemma mult_pos_mon : forall (p q r : real), 0%r <= r => p <= q => r * p <= r * q by smt.
 
 (* group stuff *)
 type zq = gf_q.
@@ -315,78 +356,97 @@ proof.
  by rewrite -(group_log_pow X) H group_log_pow.
 save.
  
+theory Trapdoor.
 
 const qO : int. (* bound on calls *)
 axiom qO_pos : 0 < qO.
+lemma qO_posR : 0%r <= qO%r by smt.
+
+type adv_ret. (* return type of adversary *)
+op win : group -> group -> adv_ret -> bool. (* winning condition *)
+
+
+const n : int. (* number of X_2's used. In the twin dh problem n = 1 *)
+axiom n_pos : 0 < n.
+
 
 module type O = {
- fun check (Z1 Z2 Y : group) : bool
+ fun check (X_i : group, Z1 Z2 Y : group) : bool
 }.
 
 module type Adv (O : O) = {
- fun run (X1 : group, X2 : group) : bool {* O.check}
+ fun run (X : group, X_i : group list, Y : group) : adv_ret {* O.check}
 }.
 
+
 module M = {
- var r, s : gf_q
- var gx1, gx2 : group
+ var gx_i_rs : (group, (gf_q * gf_q)) map
  var bad : bool
  var cO : int
  var bad_query : int option
  var bad_guess : int
  var gz1, gz2, gy : group
+ var r, s : gf_q
+ var gx : group
+ var gx_bad : group
+ var gy_bad : group
 }.
 
 
-module Trapdoor1( A : Adv) ={
+module TDDH_Win( A : Adv) ={
   module TD : O ={
-   fun check (Z1 Z2 Y : group) : bool ={
-   var r : bool = false;
-   if (M.cO < qO){
-    r = (Z1 = Y ^(log M.gx1) /\ Z2 = Y ^(log M.gx2));
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs){
+    ret = (Z1 = Y ^(log M.gx) /\ Z2 = Y ^ (log X_i) );
     M.cO = M.cO + 1;
    }
-   return r;
+   return ret;
    }
  }
  module AT = A(TD)
  fun main () : bool = {
-  var b : bool;
-  M.gx1 = $dgroup;
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  M.gx2 = (g ^ M.s) / (M.gx1 ^ M.r);
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gx : group;
+  var gy : group;
+  var gxs : group list = [];
+  M.gx = $dgroup;
+  M.gy = $dgroup;
+  M.gx_i_rs = FMap.Core.empty;
+  while (i <= n) {
+    gx = $dgroup;
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+  }
   M.cO = 0;
   M.bad_query = None;
-  b = AT.run(M.gx1, M.gx2);
-  return b;
+  a = AT.run(M.gx, gxs, M.gy);
+  return (win M.gx M.gy a);
  }
 }.
 
-module Trapdoor2( A : Adv) ={
- module TD : O = {
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO){
-   r = ((Z1 ^ M.r) * Z2 = Y ^ M.s);
-   M.cO = M.cO + 1;
-   }
-  return r ;
-  }
- }
- module AT = A(TD)
+
+module type Adv' = {
+ fun run (gx gy : group) : adv_ret {*}
+}.
+
+module Win(A : Adv') ={
  fun main () : bool = {
-  var b : bool;
-  M.gx1 = $dgroup;
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  M.gx2 = (g ^ M.s) / (M.gx1 ^ M.r);
-  M.cO = 0;
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gy, gx : group;
+  gx = $dgroup;
+  gy = $dgroup;
   M.bad_query = None;
-  b = AT.run(M.gx1, M.gx2);
-  return b;
+  a = A.run(gx, gy);
+  return (win gx gy a);
  }
 }.
+
 
 section.
 
@@ -394,89 +454,219 @@ declare module A : Adv {M}.
 
 axiom run_ll : forall (O <: O{A}), islossless O.check => islossless A(O).run.
 
-module G1( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO ){
-    r = (Z1 / (Y^ (log M.gx1))) ^ M.r = (Y^(log M.gx2)) / Z2;
+
+local module G0( A : Adv) ={
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs){
+    (* r = (Z1 = Y ^(log M.ga) /\ Z2 = Y ^ (log X_i) ); *)
+    (r, s) = proj (M.gx_i_rs.[X_i]);
+    ret = ((Z1 ^ r) * Z2 = Y ^ s);
     M.cO = M.cO + 1;
-    if (Z1 <> (Y^ (log M.gx1)) /\ ((Z1 / (Y^ (log M.gx1))) ^ M.r = (Y^(log M.gx2)) / Z2)) {
-     M.bad = true;
-    }
    }
-     return r;
-  }
+   return ret;
+   }
  }
  module AT = A(TD)
  fun main () : bool = {
-  var b : bool;
-  M.gx1 = $dgroup;
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  M.gx2 = (g ^ M.s) / (M.gx1 ^ M.r);
-  M.bad = false;
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gx : group;
+  var gxs : group list = [];
+  M.gx = $dgroup;
+  M.gy = $dgroup;
+  M.gx_i_rs = FMap.Core.empty;
+  while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = (g ^ s) / (M.gx ^ r);
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+  }
   M.cO = 0;
   M.bad_query = None;
-  b = AT.run(M.gx1, M.gx2);
-  return b;
+  a = AT.run(M.gx, gxs, M.gy);
+  return (win M.gx M.gy a);
  }
 }.
 
+
+local module G1( A : Adv) ={
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs){
+    (r, s) = proj (M.gx_i_rs.[X_i]);
+    ret = (Z1 / (Y^ (log M.gx))) ^ r = (Y^(log X_i)) / Z2;
+    M.cO = M.cO + 1;
+    if (Z1 <> (Y ^ (log M.gx)) /\
+         ((Z1 / (Y ^ (log M.gx))) ^ r = (Y^(log X_i)) / Z2)) {
+     M.bad = true;
+    }
+
+   }
+   return ret;
+   }
+ }
+ module AT = A(TD)
+ fun main () : bool = {
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gx : group;
+  var gxs = [];
+  M.gx = $dgroup;
+  M.gy = $dgroup;
+  M.gx_i_rs = FMap.Core.empty;
+  while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = (g ^ s) / (M.gx ^ r);
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+  }
+  M.cO = 0;
+  M.bad_query = None;
+  M.bad = false;
+  a = AT.run(M.gx, gxs, M.gy);
+  return (win M.gx M.gy a);
+ }
+}.
+
+lemma stpd_get : forall x (m : ('a,'b) map), m.[x] = FMap.Core.get m x by smt.
+
 local equiv Eq1 : 
-Trapdoor2(A).main ~ G1(A).main : true ==> ={res}.
+G0(A).main ~ G1(A).main : true ==> ={res}.
 proof.
  fun.
- call (_ : ={M.gx1, M.gx2, M.r, M.s, M.cO} /\ (M.gx2 = g ^ M.s / M.gx1 ^ M.r){2}).
- fun; wp; skip; progress.
- cut ->:= test_rewrite Z1{2} Z2{2} Y{2} M.r{2} M.s{2} (log M.gx1{2}) (log (g ^ M.s{2} / M.gx1{2} ^ M.r{2})) _ => //. 
+ call (_ : ={M.gx,M.gy, M.gx_i_rs, M.cO} /\ 
+(forall X, in_dom X M.gx_i_rs => 
+let (r,s) = proj M.gx_i_rs.[X] in
+(X = g ^ s / M.gx ^ r)){2}).
+fun; sp 1 1; if => //; sp 3 3; wp; skip; progress.
+
+cut : r{1} = r{2} by smt.
+cut : s{1} = s{2} by smt.
+progress.
+ cut ->:= test_rewrite Z1{2} Z2{2} Y{2} r{2} s{2} (log M.gx{2}) 
+  (log (g ^ s{2} / M.gx{2} ^ r{2})) _ => //. 
  rewrite log_div_minus.
  rewrite group_pow_log.
  by rewrite log_pow_mult /Prime_field.(-) gf_q_add_comm -gf_q_add_assoc 
- -(gf_q_add_comm (M.r{2} * log M.gx1{2}))  gf_q_add_minus gf_q_add_comm gf_q_add_unit.
- wp; do 3! rnd; skip; progress => //.
+ -(gf_q_add_comm (r{2} * log M.gx{2}))  gf_q_add_minus gf_q_add_comm gf_q_add_unit.
+
+cut := H1 X_i{2} _ => //;rewrite  -H /=.
+by intros => ->.
+
+wp.
+while (={i, M.gx_i_rs, M.gx, M.gy, gxs} /\ (forall X, in_dom X M.gx_i_rs =>  let (r,s) = proj M.gx_i_rs.[X] in (X = g ^ s / M.gx ^ r)){2}).
+wp; do 2! rnd; skip; progress.
+
+case (X = g ^ sL / M.gx{2} ^ rL) => heq.
+ generalize H9; rewrite -heq stpd_get get_setE proj_some => h.
+ cut <-: rL = x1 by smt.
+ rewrite heq (_ : sL = x2) //; smt.
+ generalize H8 H9; rewrite /in_dom dom_set mem_add stpd_get get_setN; first smt.
+ intros => [|] h;[|smt].
+ cut:= H X _; first smt. 
+ by intros => h1 h2; generalize h1; rewrite stpd_get h2 /=.
+wp; do!rnd; wp; skip; progress; smt.
 save.
 
 local lemma Pr1 &m : 
-Pr [Trapdoor2(A).main() @ &m : res] =
+Pr [G0(A).main() @ &m : res] =
 Pr [G1(A).main() @ &m : res]. 
 proof.
  equiv_deno Eq1 => //.
 save.
 
 local equiv Eq2 :
-Trapdoor1(A).main ~ G1(A).main : true ==> ! M.bad{2} => ={res}.
+TDDH_Win(A).main ~ G1(A).main : true ==> ! M.bad{2} => ={res}.
 proof.
  fun.
  call (_ : M.bad, 
-          ={M.gx1, M.gx2, M.r, M.s, M.cO} /\ (M.gx2 = g ^ M.s / M.gx1 ^ M.r){2}) => //.
+          ={M.gx, M.gy, M.cO} /\ 
+          (dom M.gx_i_rs{1} = dom M.gx_i_rs{2}) /\
+          (forall X, in_dom X M.gx_i_rs => 
+           let (r,s) = proj M.gx_i_rs.[X] in
+           (X = g ^ s / M.gx ^ r)){2}) => //.
  apply run_ll. 
- fun; wp; skip; progress => //.
- cut: (Z1{2} = Y{2} ^ log M.gx1{2} /\ Z2{2} = Y{2} ^ log (g ^ M.s{2} / M.gx1{2} ^ M.r{2}) <=>
-((Z1{2} / Y{2} ^ log M.gx1{2}) ^ M.r{2} = Y{2} ^ log (g ^ M.s{2} / M.gx1{2} ^ M.r{2}) / Z2{2})); last by smt.
+ fun; sp 1 1; if => //.
+ by progress; generalize H3; rewrite /in_dom H0.
+  sp 0 1; wp; skip; progress.
+ cut: (Z1{2} = Y{2} ^ log M.gx{2} /\ Z2{2} = Y{2} ^ log (g ^ s{2} / M.gx{2} ^ r{2}) <=>
+((Z1{2} / Y{2} ^ log M.gx{2}) ^ r{2} = Y{2} ^ log (g ^ s{2} / M.gx{2} ^ r{2}) / Z2{2})); last by smt.
  split.
  intros => [heq1 heq2].
  rewrite heq1 heq2 -!Cyclic_group_prime.div_def !gf_q_minus group_pow_mult.
  by rewrite gf_q_mult_comm gf_q_mult_zero.
  intros heq.
- cut :( Z1{2} = Y{2} ^ log M.gx1{2} \/
-       ! (Z1{2} / Y{2} ^ log M.gx1{2}) ^ M.r{2} = Y{2} ^ log (g ^ M.s{2} / M.gx1{2} ^ M.r{2}) / Z2{2}) by smt.
- intros H8.
- elim H8 => heq'.
+ cut :(Z1{2} = Y{2} ^ log M.gx{2} \/
+       (Z1{2} / Y{2} ^ log M.gx{2}) ^ r{2} <> Y{2} ^ log X_i{2} / Z2{2}) by smt.
+ intros => [|] heq'.
  split => //.
- cut:  (! Z2{2} = Y{2} ^ log (g ^ M.s{2} / M.gx1{2} ^ M.r{2}) => false); last by smt.
+ cut:  (! Z2{2} = Y{2} ^ log (g ^ s{2} / M.gx{2} ^ r{2}) => false); last by smt.
  intros => hneq; generalize heq => /=.
   rewrite heq' mult_div_I I_pow_n.
   rewrite div_eq_I.
  smt.
+ cut:= H2 X_i{2} _ => //.
+  rewrite /in_dom -H1; smt.
+ 
+ rewrite -H /=.
  smt.
  by intros => ? h; fun; wp.
  by intros => ?; fun; wp; skip.
- wp; do 3! rnd; skip; progress; smt.
+ wp.
+  while (={i, M.gx, M.gy, gxs} /\ 
+        (dom M.gx_i_rs{1} = dom M.gx_i_rs{2}) /\
+        (forall X, in_dom X M.gx_i_rs => 
+         let (r,s) = proj M.gx_i_rs.[X] in 
+         (X = g ^ s / M.gx ^ r)){2}).
+ wp.
+ rnd (lambda (u : group), log u + r{2} * log M.gx{2}) 
+     (lambda (v : gf_q) , g ^ (v - log M.gx{2} * r{2})).
+ rnd{2}.
+ skip; progress => //.
+ apply lossless. 
+ by rewrite mu_x_def_in Dgroup.mu_x_def_in.
+ by rewrite Dgroup.supp_def.
+ cut -> : (log gxL + r0 * log M.gx{2} - log M.gx{2} * r0) = 
+           log gxL by fieldeq.
+ by rewrite group_log_pow.
+ 
+ by rewrite group_pow_log; fieldeq.
+ cut: gxL = (g ^ (log gxL + r0 * log M.gx{2}) / M.gx{2} ^ r0); last smt.
+ rewrite -{1}H9.
+ rewrite (_ : M.gx{2}^ r0 = g ^ ((log M.gx{2}) * r0)); first smt.
+ by rewrite -{1}Cyclic_group_prime.div_def !group_pow_log.
+ rewrite !dom_set H.
+ cut: gxL = (g ^ (log gxL + r0 * log M.gx{2}) / M.gx{2} ^ r0); last smt.
+ rewrite -{1}H9.
+ rewrite (_ : M.gx{2}^ r0 = g ^ ((log M.gx{2}) * r0)); first smt.
+ by rewrite -{1}Cyclic_group_prime.div_def !group_pow_log.
+case (X = g ^ (log gxL + r0 * log M.gx{2}) / M.gx{2} ^ r0) => heq //.
+generalize H12; rewrite heq stpd_get get_setE proj_some => h.
+cut <- :  r0 = x1 by smt.
+cut <- :  log gxL + r0 * log M.gx{2} = x2 by smt.
+smt.
+ generalize H11 H12; rewrite /in_dom dom_set mem_add stpd_get get_setN.
+smt.
+intros => [|] hmem heq'.
+cut:= H0 X _; first smt.
+by rewrite stpd_get heq' /=.
+smt.
+wp; do! rnd; wp; skip; progress; smt.
 save.
 
 local lemma Pr2_aux &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
+Pr [TDDH_Win(A).main() @ &m : res] <=
 Pr [G1(A).main() @ &m : res] + Pr[G1(A).main() @ &m : M.bad]. 
 proof.
  apply (Real.Trans _ (Pr [G1(A).main() @ &m : res \/ M.bad]) _).
@@ -485,39 +675,60 @@ proof.
 save.
 
 local lemma Pr2 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + Pr[G1(A).main() @ &m : M.bad]. 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + Pr[G1(A).main() @ &m : M.bad]. 
 proof.
  rewrite (Pr1 &m).
  by apply (Pr2_aux &m).
 save.
 
-module G2( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO /\ ! M.bad){
-   if (Z1 <> (Y^ (log M.gx1)) /\ ((Z1 / (Y^ (log M.gx1))) ^ M.r = (Y^(log M.gx2)) / Z2)) {
+(* We introduce the following changes:
+ - we stop replying in the oracle after bad is triggered
+   the first time
+ - we sample all the X_i's at random insetead of computing
+   them as X_i = g ^ s / A ^ r
+*)
+
+local module G2( A : Adv) ={
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs /\ !M.bad){
+    (r, s) = proj (M.gx_i_rs.[X_i]);
+    if (Z1 <> (Y ^ (log M.gx)) /\
+         ((Z1 / (Y ^ (log M.gx))) ^ r = (Y^(log X_i)) / Z2)) {
      M.bad = true;
     }
+    ret = (Z1 / (Y^ (log M.gx))) ^ r = (Y^(log X_i)) / Z2;
     M.cO = M.cO + 1;
-    r = ((Z1 / (Y^ (log M.gx1))) ^ M.r = (Y^(log M.gx2)) / Z2);
    }
-   return r;
-  }
+   return ret;
+   }
  }
  module AT = A(TD)
  fun main () : bool = {
-  var b : bool;
-  M.gx1 = $dgroup;
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  M.gx2 = $dgroup;
-  M.bad = false; 
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gx : group;
+  var gxs = [];
+  M.gx = $dgroup;
+  M.gy = $dgroup;
+  M.gx_i_rs = FMap.Core.empty;
+  while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = $dgroup;
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+  }
   M.cO = 0;
   M.bad_query = None;
-  b = AT.run(M.gx1, M.gx2);
-  return b;
+  M.bad = false;
+  a = AT.run(M.gx, gxs, M.gy);
+  return (win M.gx M.gy a);
  }
 }.
 
@@ -527,29 +738,97 @@ G1(A).main ~ G2(A).main : true ==> M.bad{1} = M.bad{2}.
 proof.
  fun.
  wp; call (_ : M.bad, 
-              ={M.gx1, M.gx2, M.r, M.bad, M.cO}, 
+              ={M.gx, M.gy, M.bad, M.cO} /\
+          (dom M.gx_i_rs{1} = dom M.gx_i_rs{2}) /\
+          (forall X, in_dom X M.gx_i_rs{1} => fst (proj M.gx_i_rs.[X]){1} = fst (proj M.gx_i_rs.[X]){2}) /\
+          (forall X, in_dom X M.gx_i_rs => 
+           let (r,s) = proj M.gx_i_rs.[X] in
+           (X = g ^ s / M.gx ^ r)){1}, 
               ={M.bad}).
  apply run_ll.
- fun; wp; skip; progress; smt.
+ fun; sp 1 1; if => //.
+ by progress; generalize H4; rewrite /in_dom H0.
+ swap{2} 2 2;  sp 3 3; if => //.
+ progress. 
+ rewrite -(_: r{1} = r{2}); last smt.
+ rewrite (_ : r{1} = fst (proj M.gx_i_rs{1}.[X_i{2}])). 
+  by rewrite -H0.
+ rewrite (_ : r{2} = fst (proj M.gx_i_rs{2}.[X_i{2}])).
+  by rewrite -H.
+ by apply H3.
+ rewrite (_: r{1} = r{2}); last smt.
+ rewrite (_ : r{1} = fst (proj M.gx_i_rs{1}.[X_i{2}])). 
+  by rewrite -H0.
+ rewrite (_ : r{2} = fst (proj M.gx_i_rs{2}.[X_i{2}])).
+  by rewrite -H.
+ by apply H3.
+  
+ by wp; skip; progress.
+ wp; skip; progress.
+ rewrite -(_: r{1} = r{2}); last smt.
+ rewrite (_ : r{1} = fst (proj M.gx_i_rs{1}.[X_i{2}])). 
+  by rewrite -H0.
+ rewrite (_ : r{2} = fst (proj M.gx_i_rs{2}.[X_i{2}])).
+  by rewrite -H.
+ by apply H3.
  by intros => ? _; fun; wp; skip; progress; smt.
  by intros => ?; fun; wp; skip; progress; smt.
  wp.
- rnd (lambda v, g ^ (v - log M.gx1{2} * M.r{2}))
-     (lambda u, log u + M.r{2} * log M.gx1{2}).
- rnd{2}.
- rnd; rnd; wp; skip; progress => //.
+  while (={i, M.gx, M.gy, gxs} /\ 
+        (dom M.gx_i_rs{1} = dom M.gx_i_rs{2}) /\
+        (forall X, in_dom X M.gx_i_rs => 
+         let (r,s) = proj M.gx_i_rs.[X] in 
+         (X = g ^ s / M.gx ^ r)){1} /\
+        (forall X, in_dom X M.gx_i_rs{1} => 
+         fst (proj M.gx_i_rs.[X]){1} = 
+         fst (proj M.gx_i_rs.[X]){2})).
+ wp.
+ rnd (lambda (v : gf_q) , g ^ (v - log M.gx{2} * r{2}))
+     (lambda (u : group), log u + r{2} * log M.gx{2}).
+ rnd{2}; rnd.
+ skip; progress => //.
  apply lossless. 
  by rewrite mu_x_def_in Dgroup.mu_x_def_in.
- by rewrite supp_def.
- rewrite group_pow_log /Prime_field.(-).
- rewrite -gf_q_add_assoc.
- by rewrite gf_q_mult_comm -(gf_q_add_comm  (rL * log gx1L)) gf_q_add_minus
-            gf_q_add_comm gf_q_add_unit.
- by rewrite (gf_q_mult_comm rL) /Prime_field.(-) -gf_q_add_assoc gf_q_add_minus
-             gf_q_add_comm gf_q_add_unit group_log_pow.
- by rewrite -!Cyclic_group_prime.div_def group_pow_log log_pow_mult (gf_q_mult_comm rL).
- by rewrite -!Cyclic_group_prime.div_def group_pow_log log_pow_mult (gf_q_mult_comm rL).
- smt.
+ by rewrite Dgf_q.supp_def.
+ by rewrite group_pow_log; fieldeq.
+ cut -> : (log gxR + rL * log M.gx{2} - log M.gx{2} * rL) = 
+           log gxR by fieldeq.
+ by rewrite group_log_pow.
+ rewrite (_ : M.gx{2}^ rL = g ^ ((log M.gx{2}) * rL)); first smt.
+ by rewrite -{1}Cyclic_group_prime.div_def !group_pow_log.
+ rewrite !dom_set H.
+ rewrite (_ : M.gx{2}^ rL = g ^ ((log M.gx{2}) * rL)); first smt.
+ by rewrite -{1}Cyclic_group_prime.div_def !group_pow_log.
+case (X = g ^ sL / M.gx{2} ^ rL) => heq //.
+generalize H16; rewrite heq stpd_get get_setE proj_some => h.
+cut <- : rL = x1 by smt.
+cut <- : sL = x2 by smt.
+smt.
+ generalize H15 H16; rewrite /in_dom dom_set mem_add stpd_get get_setN.
+smt.
+intros => [|] hmem heq'.
+cut:= H0 X _; first smt.
+by rewrite stpd_get heq' /=.
+smt.
+case (X = g ^ sL / M.gx{2} ^ rL) => heq //.
+rewrite !stpd_get heq !get_setE proj_some {1}/fst /=.
+cut ->: g ^ (sL - log M.gx{2} * rL) = 
+        g ^ sL / M.gx{2} ^ rL.
+ rewrite (_ : M.gx{2}^ rL = g ^ ((log M.gx{2}) * rL)); first smt.
+ by rewrite -{1}Cyclic_group_prime.div_def !group_pow_log.
+ by rewrite !get_setE proj_some /fst /=.
+
+rewrite !stpd_get !get_setN.
+smt.
+generalize heq.
+ rewrite (_ : M.gx{2}^ rL = g ^ ((log M.gx{2}) * rL)); first smt.
+  rewrite -{1}Cyclic_group_prime.div_def !group_pow_log.
+smt.
+rewrite -!stpd_get H1 //.
+generalize H15; rewrite /in_dom dom_set mem_add => [|] //.
+smt.
+
+wp; do! rnd; wp; skip; progress; smt.
 save. 
 
 local lemma Pr3_aux &m :
@@ -560,42 +839,61 @@ proof.
 save.
 
 local lemma Pr3 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + Pr[G2(A).main() @ &m : M.bad]. 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + Pr[G2(A).main() @ &m : M.bad]. 
 proof.
  rewrite -(Pr3_aux &m).
  apply (Pr2 &m).
 save.
 
-module G3( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO /\ ! M.bad){
-   if (Z1 <> (Y^ (log M.gx1)) /\ ((Z1 / (Y^ (log M.gx1))) ^ M.r = (Y^(log M.gx2)) / Z2)) {
+(* Now we change the test to actually compute 
+   Z1 = Y ^ a /\ Z2 = Y ^ x_i instead of 
+   (Z / Y ^ a) ^ r  = Y ^ x_i / Z2
+*)
+ 
+
+local module G3( A : Adv) ={
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs /\ !M.bad){
+    (r, s) = proj (M.gx_i_rs.[X_i]);
+    if (Z1 <> (Y ^ (log M.gx)) /\
+         ((Z1 / (Y ^ (log M.gx))) ^ r = (Y^(log X_i)) / Z2)) {
      M.bad = true;
     }
-    r = (Z1 = Y ^ (log M.gx1) /\ Z2 = Y ^ (log M.gx2) );
+    ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
     M.cO = M.cO + 1;
    }
-   return r;
-  }
+   return ret;
+   }
  }
  module AT = A(TD)
  fun main () : bool = {
-  var b : bool;
-  M.gx1 = $dgroup;
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  M.gx2 = $dgroup;
-  M.bad = false; 
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gx : group;
+  var gxs =[];
+  M.gx = $dgroup;
+  M.gy = $dgroup;
+  M.gx_i_rs = FMap.Core.empty;
+  while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = $dgroup;
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+  }
   M.cO = 0;
   M.bad_query = None;
-  b = AT.run(M.gx1, M.gx2);
-  return b;
+  M.bad = false;
+  a = AT.run(M.gx, gxs, M.gy);
+  return (win M.gx M.gy a);
  }
 }.
-
 
 
 local equiv Eq4 : 
@@ -603,18 +901,21 @@ G2(A).main ~ G3(A).main : true ==> M.bad{1} = M.bad{2}.
 proof.
  fun.
  call (_ : M.bad, 
-         ={M.gx1, M.gx2, M.r, M.bad, M.cO}, 
+         ={M.gx, M.gy, M.gx_i_rs, M.bad, M.cO}, 
          ={M.bad}).
  apply run_ll.
  fun.
+ sp 1 1; if => //; sp 1 1; if => //.
+ intros => ? ?; rewrite /in_dom; progress; smt.
  wp; skip; progress.
- cut: ((Z1{2} / Y{2} ^ log M.gx1{2}) ^ M.r{2} = Y{2} ^ log M.gx2{2} / Z2{2}) <=>
-(Z1{2} = Y{2} ^ log M.gx1{2} /\ Z2{2} = Y{2} ^ log M.gx2{2}); last by smt.
+ wp; skip; progress.
+cut: ((Z1{2} / Y{2} ^ log M.gx{2}) ^ r{2} = Y{2} ^ log X_i{2} / Z2{2}) <=>
+(Z1{2} = Y{2} ^ log M.gx{2} /\ Z2{2} = Y{2} ^ log X_i{2}); last by smt.
  split; last first.
  by intros [-> ->]; rewrite !mult_div_I I_pow_n.
   intros => H'.
-  cut :  Z1{2} = Y{2} ^ log M.gx1{2} \/
-       (Z1{2} / Y{2} ^ log M.gx1{2}) ^ M.r{2} <> Y{2} ^ log M.gx2{2} / Z2{2}.
+  cut :  Z1{2} = Y{2} ^ log M.gx{2} \/
+       (Z1{2} / Y{2} ^ log M.gx{2}) ^ r{2} <> Y{2} ^ log X_i{2} / Z2{2}.
  smt.
  intros => {H2} [|] h.
  generalize H'; rewrite h.
@@ -625,7 +926,9 @@ proof.
  smt.
  by intros => ? _; fun; wp; skip; progress; smt.
  by intros => ?; fun; wp; skip; progress; smt.
- by wp; do! rnd; skip; progress => //; smt.
+ conseq (_ : _ ==> ={M.gx, M.gy, M.gx_i_rs, gxs, M.bad, M.cO}).
+ progress; smt.
+ by eqobs_in.
 save.
 
 
@@ -637,52 +940,74 @@ proof.
 save.
 
 local lemma Pr4 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + Pr[G3(A).main() @ &m : M.bad]. 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + Pr[G3(A).main() @ &m : M.bad]. 
 proof.
  rewrite -(Pr4_aux &m).
  apply (Pr3 &m).
 save.
 
-module G4( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO /\ ! M.bad){
-   if (Z1 <> (Y^ (log M.gx1)) /\ ((Z1 / (Y^ (log M.gx1))) ^ M.r = (Y^(log M.gx2)) / Z2)) {
-     M.bad = true;
+(* record the query that triggers bad, add
+   the fact that this value is between 0 and qO *)
+
+local module G4( A : Adv) ={
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs /\ !M.bad){
+    (r, s) = proj (M.gx_i_rs.[X_i]);
+    if (Z1 <> (Y ^ (log M.gx)) /\
+         ((Z1 / (Y ^ (log M.gx))) ^ r = (Y^(log X_i)) / Z2)) {
      M.bad_query = Some M.cO;
+     M.bad = true;
     }
-    r = (Z1 = Y ^ (log M.gx1) /\ Z2 = Y ^ (log M.gx2) );
+    ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
     M.cO = M.cO + 1;
    }
-   return r;
-  }
+   return ret;
+   }
  }
  module AT = A(TD)
  fun main () : bool = {
-  var b : bool;
-  M.gx1 = $dgroup;
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  M.gx2 = $dgroup;
-  M.bad = false; 
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gx : group;
+  var gxs = [];
+  M.gx = $dgroup;
+  M.gy = $dgroup;
+  M.gx_i_rs = FMap.Core.empty;
+  while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = $dgroup;
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+  }
   M.cO = 0;
   M.bad_query = None;
-  b = AT.run(M.gx1, M.gx2);
-  return b;
+  M.bad = false;
+  a = AT.run(M.gx, gxs, M.gy);
+  return (win M.gx M.gy a);
  }
 }.
 
 local equiv Eq5 : 
-G3(A).main ~ G4(A).main : true ==> M.bad{1} <=> M.bad{2} /\ 0 <= proj M.bad_query{2} < qO.
+G3(A).main ~ G4(A).main : true ==> M.bad{1} <=> 
+              M.bad{2} /\ 0 <= proj M.bad_query{2} < qO.
 proof.
  fun.
- call (_ : ={M.gx1, M.gx2, M.r, M.bad, M.cO} /\ 0 <= M.cO{2} <= qO /\ 
+ call (_ : ={M.gx, M.gy, M.gx_i_rs, M.bad, M.cO} /\
+              0 <= M.cO{2} <= qO /\ 
              (M.bad{2} => 0 <= proj M.bad_query{2} < M.cO{2} ) /\
              (! M.bad{2} =>  M.bad_query{2} = None ) ).
  fun; wp; skip; progress => //; smt.
+ wp.
+ while (={i, M.gx, M.gx_i_rs, gxs}). 
  wp; do! rnd; skip; progress => //; smt.
+  wp; do! rnd; wp; skip; progress => //; smt.
 save.
 
 local lemma Pr5_aux &m :
@@ -693,42 +1018,59 @@ proof.
 save.
 
 local lemma Pr5 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
 Pr [G4(A).main() @ &m : M.bad /\ 0 <= proj M.bad_query < qO]. 
 proof.
  rewrite -(Pr5_aux &m).
  apply (Pr4 &m).
 save.
 
-module G5( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO /\ ! M.bad){
-   if (Z1 <> (Y^ (log M.gx1)) /\ ((Z1 / (Y^ (log M.gx1))) ^ M.r = (Y^(log M.gx2)) / Z2)) {
-     M.bad = true;
+(* just sample a value to "guess" the query that triggers 
+   bad *)
+
+local module G5 (A : Adv) = {
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs /\ !M.bad){
+    (r, s) = proj (M.gx_i_rs.[X_i]);
+    if (Z1 <> (Y ^ (log M.gx)) /\
+         ((Z1 / (Y ^ (log M.gx))) ^ r = (Y^(log X_i)) / Z2)) {
      M.bad_query = Some M.cO;
+     M.bad = true;
     }
-    r = (Z1 = Y ^ (log M.gx1) /\ Z2 = Y ^ (log M.gx2) );
+    ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
     M.cO = M.cO + 1;
    }
-   return r;
-  }
+   return ret;
+   }
  }
  module AT = A(TD)
  fun main () : bool = {
-  var b : bool;
-  M.gx1 = $dgroup;
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  M.gx2 = $dgroup;
-  M.bad = false; 
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gx : group;
+  var gxs = [];
+  M.gx = $dgroup;
+  M.gy = $dgroup;
+  M.gx_i_rs = FMap.Core.empty;
+  while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = $dgroup;
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+  }
   M.cO = 0;
   M.bad_query = None;
-  b = AT.run(M.gx1, M.gx2);
+  M.bad = false;
+  a = AT.run(M.gx, gxs, M.gy);
   M.bad_guess = $[0 .. qO];
-  return b;
+  return (win M.gx M.gy a);
  }
 }.
 
@@ -737,7 +1079,7 @@ local equiv Eq6:
 G4(A).main ~ G5(A).main : true ==> ={M.bad,M.bad_query}.
 proof.
  fun.
- seq 8 8: (={M.bad,M.bad_query}).
+ seq 10 10: (={M.bad,M.bad_query, gxs}).
  eqobs_in.
  rnd{2}; skip; progress.
  smt.
@@ -759,12 +1101,12 @@ save.
 
 
 local lemma Pr6 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
 qO%r *Pr[G5(A).main() @ &m : M.bad /\ proj M.bad_query = M.bad_guess].  
 proof.
  apply (Real.Trans _ 
-     (Pr[Trapdoor2(A).main() @ &m : res] +
+     (Pr[G0(A).main() @ &m : res] +
       Pr[G5(A).main() @ &m : M.bad /\ 0 <= proj M.bad_query < qO]) _).   
  rewrite -(Pr6_aux1 &m).
  apply (Pr5 &m).
@@ -773,100 +1115,110 @@ proof.
  apply (Pr6_aux2 &m).
 save.
 
-module G6( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO /\ ! M.bad){
+(* we record the Z1 Z2 and Y values of the bad query and we move  the sampling to before the call to the adversary *)
+
+local module G6 (A : Adv) = {
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs /\ !M.bad){
    if (M.cO = M.bad_guess) {
-     M.gz1 = Z1;
-     M.gz2 = Z2; 
-     M.gy = Y;
-     if (M.gz1 <> (M.gy^ (log M.gx1)) /\ 
-        ((M.gz1 / (M.gy^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2) ) {
-         M.bad = true;
-         M.bad_query = Some M.cO;
+       M.gz1 = Z1;
+       M.gz2 = Z2; 
+       M.gy_bad = Y;
+       M.gx_bad = X_i;
+      (r, s) = proj (M.gx_i_rs.[X_i]);
+       M.r = r;
+       M.s = s;
+       if (Z1 <> (Y ^ (log M.gx)) /\
+       ((Z1 / (Y ^ (log M.gx))) ^ r = (Y^(log X_i)) / Z2)) {
+        M.bad_query = Some M.cO;
+        M.bad = true;
+      }
+     }
+     ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
+       M.cO = M.cO + 1;
     }
+      return ret;
    }
-    r = (Z1 = Y ^ (log M.gx1) /\ Z2 = Y ^ (log M.gx2) );
-    M.cO = M.cO + 1;
-   }
-   return r;
   }
- }
- module AT = A(TD)
- fun main () : bool = {
-  var b : bool;
-  M.gz1 = I;
-  M.gz2 = I; 
-  M.gy = I;
-  M.gx1 = $dgroup;
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  M.gx2 = $dgroup;
-  M.bad = false; 
-  M.cO = 0;
-  M.bad_query = None;
-  M.bad_guess = $[0 .. qO];
-  b = AT.run(M.gx1, M.gx2);
-  return b;
- }
-}.
+  module AT = A(TD)
+   fun main () : bool = {
+   var a : adv_ret;
+   var i : int = 0;
+   var r, s : gf_q;
+   var gx : group;
+   var gxs = [];
+   M.gx = $dgroup;
+   M.gy = $dgroup;
+   M.gx_i_rs = FMap.Core.empty;
+   while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = $dgroup;
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+   }
+     M.cO = 0;
+     M.bad_query = None;
+     M.bad = false;
+     M.bad_guess = $[0 .. qO];
+   a = AT.run(M.gx, gxs, M.gy);
+   return (win M.gx M.gy a);
+  }
+ }.
+
 
 local equiv Eq7: 
 G5(A).main ~ G6(A).main : true ==> (M.bad /\ proj M.bad_query = M.bad_guess){1} => 
                                    (M.bad /\ proj M.bad_query = M.bad_guess /\
- (M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-         ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2))){2}.
+ (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+         ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2)) /\
+  in_dom M.gx_bad M.gx_i_rs){2}.
 proof.
 symmetry.
 fun.
-swap{2} 9 -1.
+swap{2} 11 -1.
 call (_ : M.bad /\ M.bad_query <> None /\ proj M.bad_query <> M.bad_guess,
-          ={M.gx1, M.r, M.gx2, M.s, M.bad, M.bad_guess, M.bad_query, M.cO} /\ 
-        ( M.bad{1} => (M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-         ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2)){1}) /\
+          ={M.gx, M.gy, M.gx_i_rs, M.bad, M.bad_guess, M.bad_query, M.cO} /\ 
+        ( M.bad{1} => (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+         ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2)
+          /\ in_dom M.gx_bad M.gx_i_rs){1}) /\
        (M.bad_query{2} = None => M.bad_query{1} = None) /\ 
        ((M.bad_query{2} <> None /\ proj M.bad_query{2} = M.bad_guess{2}) => M.bad{1})).
 apply run_ll.
-fun.
-seq 1 1 :
-( ! (M.bad{2} /\ r{2} = false /\
-     ! M.bad_query{2} = None /\ ! proj M.bad_query{2} = M.bad_guess{2}) /\
-  ={Z1, Z2, Y, r} /\
-  ={M.gx1, M.r, M.gx2, M.s, M.bad, M.bad_guess, M.bad_query, M.cO} /\
-( M.bad{1} => (M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-         ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2)){1}) /\
-   (M.bad_query{2} = None => M.bad_query{1} = None) /\
-  ((M.bad_query{2} <> None /\ proj M.bad_query{2} = M.bad_guess{2}) => M.bad{1})).
-wp; skip; progress.
-if => //.
-wp; skip; progress => //; smt.
-intros => &2 h; fun; wp; skip; progress.
-intros => &2; fun; wp; skip; progress;smt.
-rnd; wp; do! rnd; wp; skip; progress; smt.
+fun; wp; skip; progress; smt.
+by intros => &2 h; fun; wp; skip; progress.
+by intros => &2; fun; wp; skip; progress;smt.
+wp; rnd; wp.
+while (={M.gx, M.gy, M.gx_i_rs, i, gxs}).
+by wp; do !rnd; skip; progress.
+wp; do! rnd; wp; skip; progress; smt.
 save.
 
 local lemma Pr7_aux &m :
 Pr[G5(A).main() @ &m : M.bad /\ proj M.bad_query = M.bad_guess] <=
 Pr[G6(A).main() @ &m : M.bad /\ proj M.bad_query = M.bad_guess /\
-(M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-         ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2))].  
-
+(M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+         ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2)) /\
+  in_dom M.gx_bad M.gx_i_rs].  
 proof.
  by equiv_deno Eq7.
 save.
 
 
 local lemma Pr7 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
 qO%r *Pr[G6(A).main() @ &m : M.bad /\ proj M.bad_query = M.bad_guess /\
-(M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-         ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2))].  
+(M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+         ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2)) /\
+  in_dom M.gx_bad M.gx_i_rs].  
 proof.
 apply (Real.Trans _ 
-(Pr [Trapdoor2(A).main() @ &m : res] + 
+(Pr [G0(A).main() @ &m : res] + 
 qO%r *Pr[G5(A).main() @ &m : M.bad /\ proj M.bad_query = M.bad_guess]) _ ).  
 apply (Pr6 &m).
  apply (_ : forall (p q r : real), p <= q => r + p <= r + q).
@@ -875,345 +1227,1096 @@ apply (Pr6 &m).
  by apply (Pr7_aux &m).
 save.
 
-module G7( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO){
+op def : 'a.
+
+(* return the event and remove ! bad from the guard of the oracle *)
+local module G7 (A : Adv) = {
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs){
    if (M.cO = M.bad_guess) {
-     M.gz1 = Z1;
-     M.gz2 = Z2; 
-     M.gy = Y;
+       M.gz1 = Z1;
+       M.gz2 = Z2; 
+       M.gy_bad = Y;
+       M.gx_bad = X_i;  
+    }
+     ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
+       M.cO = M.cO + 1;
+    }
+      return ret;
    }
-    r = (Z1 = Y ^ (log M.gx1) /\ Z2 = Y ^ (log M.gx2) );
-    M.cO = M.cO + 1;
-   }
-   return r;
   }
- }
- module AT = A(TD)
- fun main () : bool = {
-  var b : bool;
-  M.gz1 = I;
-  M.gz2 = I; 
-  M.gy = I;
-  M.gx1 = $dgroup;
-  M.gx2 = $dgroup;
-  M.bad = false; 
-  M.cO = 0;
-  M.bad_query = None;
-  M.bad_guess = $[0 .. qO];
-  b = AT.run(M.gx1, M.gx2);
-  M.r = $dgf_q;
-  M.s = $dgf_q;
-  return (M.gz1 <> (M.gy^ (log M.gx1)) /\ 
-        ((M.gz1 / (M.gy^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2) );
- }
-}.
+  module AT = A(TD)
+   fun main () : bool = {
+   var a : adv_ret;
+   var i : int = 0;
+   var r, s : gf_q;
+   var gx : group;
+   var gxs = [];
+   M.gx_bad = def;
+   M.gy_bad = def;
+   M.gz1 = def;
+   M.gz2 = def;
+   M.gx = $dgroup;
+   M.gy = $dgroup;
+   M.gx_i_rs = FMap.Core.empty;
+   while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = $dgroup;
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+   }
+     M.cO = 0;
+     M.bad_query = None;
+     M.bad = false;
+     M.bad_guess = $[0 .. qO];
+    a = AT.run(M.gx, gxs, M.gy);
+   (r, s) = proj (M.gx_i_rs.[M.gx_bad]);
+    M.r = r;
+    M.s = s;
+   return (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+        ((M.gz1 / (M.gy_bad^ (log M.gx))) ^ M.r = (M.gy_bad ^(log M.gx_bad)) / M.gz2) /\
+         in_dom M.gx_bad M.gx_i_rs);
+  }
+ }.
 
 local equiv Eq8: 
 G6(A).main ~ G7(A).main : true ==> 
            (M.bad /\ proj M.bad_query = M.bad_guess /\
-           (M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-           ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2))){1} =>
+           (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+           ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2)) /\ in_dom M.gx_bad M.gx_i_rs){1} =>
            res{2}.
 proof.
 symmetry.
 fun.
-swap{1} 11 -6.
-swap{1} 12 -6.
+wp.
 call (_ : M.bad,
-          ={M.gx1, M.r, M.gx2, M.s, M.cO, M.bad, M.bad_guess} /\
-           !M.bad{1} /\
-          (M.bad{2} => (M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-           ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2)){2} /\
-            ={M.gy, M.gz1, M.gz2}),
-          ={M.gx1, M.r, M.gx2, M.s, M.gy, M.gz1, M.gz2} /\
-           (M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-           ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2)){2} /\ 
-            M.bad_guess{1} < M.cO{1} ).
+ ! M.bad{1} /\
+ ={M.cO, M.gx_i_rs, M.gx, M.gy, M.bad_guess} /\
+(M.bad{2} => ={M.gx, M.gy, M.gx_bad, M.gy_bad, M.gz1, M.gz2} /\
+             (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+           ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2) /\
+            (M.r, M.s) = proj M.gx_i_rs.[M.gx_bad]){2} /\
+in_dom M.gx_bad{2} M.gx_i_rs{2}),
+ ={M.gx_i_rs, M.gx, M.gy, M.bad_guess} /\
+(={M.gx_bad, M.gy_bad, M.gz1, M.gz2}/\
+ (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+ ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2) /\
+ (M.r, M.s) = proj M.gx_i_rs.[M.gx_bad]){2}) /\
+  M.bad_guess{1} < M.cO{1} /\
+  in_dom M.gx_bad{2} M.gx_i_rs{2}).
 apply run_ll.
-fun.
-wp; skip; progress => //; smt.
-intros => &2 _; fun; wp; skip; progress => //; smt.
+fun. 
+sp 1 1; if => //; last by (skip; progress; smt).
+if => //; wp; skip; progress; smt.
+
+intros => &2 _; fun; sp 1; if => //.
+if => //; wp; skip; smt.
+
 intros => ?; fun; wp; skip; progress => //; smt.
-rnd; wp; do !rnd; wp; skip; progress => //; smt.
+rnd; wp.
+while (={M.gx_i_rs, i, gxs}).
+wp; do! rnd; wp; skip;  progress.
+wp; do! rnd; wp; skip; progress; smt.
 save.
 
 local lemma Pr8_aux &m :
 Pr[G6(A).main() @ &m : (M.bad /\ proj M.bad_query = M.bad_guess /\
-           (M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-           ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2)))] <=
+           (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+           ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2)) /\
+in_dom M.gx_bad M.gx_i_rs)] <=
 Pr[G7(A).main() @ &m : res].  
 proof.
  by equiv_deno Eq8.
 save.
 
-
 local lemma Pr8 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
 qO%r *Pr[G7(A).main() @ &m : res].  
 proof.
 apply (Real.Trans _ 
-(Pr [Trapdoor2(A).main() @ &m : res] + 
-qO%r * Pr[G6(A).main() @ &m : M.bad /\ proj M.bad_query = M.bad_guess /\
-(M.gz1 <> (M.gy ^ (log M.gx1)) /\ 
-         ((M.gz1 / (M.gy ^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2))]) _ ).  
+(Pr [G0(A).main() @ &m : res] + 
+qO%r * Pr[G6(A).main() @ &m : (M.bad /\ proj M.bad_query = M.bad_guess /\
+           (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+           ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2)) /\ in_dom M.gx_bad M.gx_i_rs)]) _ ).  
 apply (Pr7 &m).
  apply (_ : forall (p q r : real), p <= q => r + p <= r + q).
  smt.
- apply mult_pos_mon; first smt. 
+ apply mult_pos_mon.
+ smt.
  by apply (Pr8_aux &m).
 save.
 
-module G8( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO){
+(* we move the random sampling loop to after the adversary call *) 
+
+local module G8 (A : Adv) = {
+  var mXi : (int, group) map
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_rng X_i mXi){
    if (M.cO = M.bad_guess) {
-     M.gz1 = Z1;
-     M.gz2 = Z2; 
-     M.gy = Y;
+       M.gz1 = Z1;
+       M.gz2 = Z2; 
+       M.gy_bad = Y;
+       M.gx_bad = X_i;  
+     }
+     ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
+       M.cO = M.cO + 1;
+    }
+      return ret;
    }
-    r = (Z1 = Y ^ (log M.gx1) /\ Z2 = Y ^ (log M.gx2) );
-    M.cO = M.cO + 1;
+  }
+  module AT = A(TD)
+   fun main () : bool = {
+   var a : adv_ret;
+   var i : int = 0;
+   var r, s : gf_q;
+   var gx, gx' : group;
+   var gxs = [];
+   M.gx_bad = def;
+   M.gy_bad = def;
+   M.gz1 = def;
+   M.gz2 = def;
+   mXi = FMap.Core.empty;
+   M.gx = $dgroup;
+  M.gy = $dgroup;
+
+   M.gx_i_rs = FMap.Core.empty;
+   while (i <= n) {
+    gx = $dgroup;
+    mXi.[i] = gx;
+    gxs = gx :: gxs;
+    i = i + 1;
    }
-   return r;
+     M.cO = 0;
+     M.bad_query = None;
+     M.bad = false;
+     M.bad_guess = $[0 .. qO];
+   a = AT.run(M.gx, gxs, M.gy);
+   i = 0;
+   while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx' = proj (mXi.[i]);
+    M.gx_i_rs.[gx'] = (r,s);
+    i = i + 1;
+   }
+   (r, s) = proj (M.gx_i_rs.[M.gx_bad]);
+    M.r = r;
+    M.s = s;
+   return (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+        ((M.gz1 / (M.gy_bad^ (log M.gx))) ^ M.r = (M.gy_bad ^(log M.gx_bad)) / M.gz2) /\
+         in_dom M.gx_bad M.gx_i_rs);
   }
- }
- module AT = A(TD)
- fun main () : bool = {
-  var b : bool;
-  var ret : bool;
-  M.gz1 = I;
-  M.gz2 = I; 
-  M.gy = I;
-  M.gx1 = $dgroup;
-  M.gx2 = $dgroup;
-  M.bad = false; 
-  M.cO = 0;
-  M.bad_query = None;
-  M.bad_guess = $[0 .. qO];
-  b = AT.run(M.gx1, M.gx2);
-  ret = false;
-  if (M.gz1 <> (M.gy^ (log M.gx1))) {
-    M.r = $dgf_q;
-    ret = (M.gz1 / (M.gy^ (log M.gx1))) ^ M.r = (M.gy^(log M.gx2)) / M.gz2;
-  }
-  return (ret);
- }
-}.
+ }.
 
-
-local equiv Eq9: 
-G7(A).main ~ G8(A).main : true ==> res{1} = res{2}. 
+lemma rng_set : forall (m : ('a,'b) map) x y1,
+! in_dom x m => 
+rng m.[x <- y1] = FSet.add y1 (rng m).
 proof.
+ intros => m x y hndom; apply set_ext => y'.
+ rewrite mem_add mem_rng; progress.
+ case (x = x0) => heq.
+ right; generalize H0; rewrite heq  get_setE; smt.
+ generalize H H0; rewrite get_setN // /in_dom dom_set mem_add.
+intros => [hmem hgeteq|].
+left; rewrite mem_rng; exists x0; rewrite /in_dom; progress.
+smt.
+elim H => {H}.
+rewrite mem_rng => [x' [? ? ]]; exists x'.
+case (x' = x); [smt|]; intros => heq.
+rewrite /in_dom dom_set mem_add get_setN; smt.
+intros => heq.
+by exists x; rewrite /in_dom dom_set mem_add get_setE heq.
+save.
+
+local equiv Eq9 : G7(A).main ~ G8(A).main : true ==> ={res}.
+proof.
+ fun.
+ swap{2} 17 -5.
+ swap{2} 18 -5.
+ wp.
+ call (_ : ={M.gx, M.gy, M.bad_guess, M.gx_bad, M.gy_bad, 
+             M.gz1, M.gz2, M.cO} /\ dom M.gx_i_rs{1} = rng G8.mXi{2}).
 fun.
-seq 10 10: (={M.gx1, M.gx2, M.gy, M.gz1, M.gz2}).
-eqobs_in.
-sp.
-if{2}.
-wp.
-rnd{1}; rnd.
-skip; progress => //; smt.
-do! rnd{1}; skip; progress => //; smt.
+sp 1 1; if => //.
+intros => ? ?.
+rewrite /in_dom/in_rng; progress; smt.
+if => //.
+ wp; skip; progress.
+ wp; skip; progress.
+rnd; wp.
+swap{2} 1 9.
+fusion{2} 11!1 @ 3, 4. (* this fails the syntactic naive independence check and needs a stronger version *)
+while (={i, M.gx_i_rs, gxs} /\ dom M.gx_i_rs{2} = rng G8.mXi{2} /\
+      (forall j, in_dom j G8.mXi => j < i){2}).
+swap{2} 4 -3; swap{2} 5 -3; wp; do! rnd; skip; progress.
+by rewrite !stpd_get get_setE proj_some.
+apply set_ext => x.
+rewrite !stpd_get get_setE proj_some dom_set rng_set.
+rewrite -not_def => hdom.
+cut:= H0 i{2} _ => //.
+smt.
+
+generalize H12; rewrite /in_dom dom_set mem_add => [hdom| ->].
+cut := H0 j _ => //; smt.
+smt.
+wp; do! rnd; wp; skip; progress; smt.
+save.
+
+local lemma Pr9_aux &m :
+Pr[G7(A).main() @ &m : res] = 
+Pr[G8(A).main() @ &m : res].  
+proof.
+ by equiv_deno Eq9.
 save.
 
 local lemma Pr9 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
 qO%r *Pr[G8(A).main() @ &m : res].  
 proof.
- rewrite -(_ : Pr[G7(A).main() @ &m : res] = Pr[G8(A).main() @ &m : res]).
-  by equiv_deno Eq9.
-  by apply (Pr8 &m).
+ rewrite -(Pr9_aux &m). 
+ apply (Pr8 &m).
 save. 
 
-module G9( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO){
-   if (M.cO = M.bad_guess) {
-     M.gz1 = Z1;
-     M.gz2 = Z2; 
-     M.gy = Y;
-   }
-    r = (Z1 = Y ^ (log M.gx1) /\ Z2 = Y ^ (log M.gx2) );
-    M.cO = M.cO + 1;
-   }
-   return r;
-  }
- }
- module AT = A(TD)
- fun main () : bool = {
-  var b : bool;
-  var ret : bool;
-  var gw : group;
-  M.gz1 = I;
-  M.gz2 = I; 
-  M.gy = I;
-  M.gx1 = $dgroup;
-  M.gx2 = $dgroup;
-  M.bad = false; 
-  M.cO = 0;
-  M.bad_query = None;
-  M.bad_guess = $[0 .. qO];
-  b = AT.run(M.gx1, M.gx2);
-  ret = false;
-  if (M.gz1 <> (M.gy^ (log M.gx1))) {
-    gw = $dgroup;
-    ret = gw = (M.gy^(log M.gx2)) / M.gz2;
-  }
-  return (ret);
- }
-}.
 
-local equiv Eq10: 
-G8(A).main ~ G9(A).main : true ==> res{1} = res{2}. 
+(* Now we have to split the loop after the adversary where the value
+   M.gx_i_rs.[M.gx] is set for the LAST time. In order to do so we 
+   use an operator find_last l u p, where l and u are integers, and p
+   is a predicate. The operator returns either:
+   - some j, j is the last value for which p holds, i.e. 
+     l <= j <= u and p j holds and for every
+     k,  j < k => ! p k.
+   - None, when for all values in range p doesn't hold, i.e.
+     forall j, l <= j <= u => ! p j.
+
+*)  
+
+
+local module G9' (A : Adv) = {
+  var mXi : (int, group) map
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_rng X_i mXi){
+   if (M.cO = M.bad_guess) {
+       M.gz1 = Z1;
+       M.gz2 = Z2; 
+       M.gy_bad = Y;
+       M.gx_bad = X_i;  
+     }
+     ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
+       M.cO = M.cO + 1;
+    }
+      return ret;
+   }
+  }
+  module AT = A(TD)
+   fun main () : bool = {
+   var a : adv_ret;
+   var i : int = 0;
+   var r, s : gf_q;
+   var gx, gx' : group;
+   var gxs = [];
+   var k : int;
+   M.gx_bad = def;
+   M.gy_bad = def;
+   M.gz1 = def;
+   M.gz2 = def;
+   mXi = FMap.Core.empty;
+   M.gx = $dgroup;
+   M.gy = $dgroup;
+
+   M.gx_i_rs = FMap.Core.empty;
+   while (i <= n) {
+    gx = $dgroup;
+    mXi.[i] = gx;
+    gxs = gx :: gxs;
+    i = i + 1;
+   }
+     M.cO = 0;
+     M.bad_query = None;
+     M.bad = false;
+     M.bad_guess = $[0 .. qO];
+   a = AT.run(M.gx, gxs, M.gy);
+   k = proj (find_last 0 n (lambda k, proj mXi.[k] = M.gx_bad));
+   i = 0;
+   while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx' = proj (mXi.[i]);
+    M.gx_i_rs.[gx'] = (r,s);
+    i = i + 1;
+   }
+   (r, s) = proj (M.gx_i_rs.[M.gx_bad]);
+    M.r = r;
+    M.s = s;
+    return (M.gz1 <> (M.gy_bad ^ (log M.gx)) /\ 
+        ((M.gz1 / (M.gy_bad^ (log M.gx))) ^ M.r = (M.gy_bad ^(log M.gx_bad)) / M.gz2) /\
+         in_dom M.gx_bad M.gx_i_rs);
+  }
+ }.
+
+local equiv Eq10' : G8(A).main ~ G9'(A).main : true ==> ={res}.
 proof.
  fun.
- seq 11 11: (={M.gx1, M.gx2, M.gy, M.gz1, M.gz2, ret}).
-  by eqobs_in.
-  if => //.
+ swap{2} 17 5.
+ wp 21 21.
+ by eqobs_in.
+save.
+
+
+(* Now we can split the loop in 3:
+   - all iterations such that i < j
+   - the iteration where i = j
+   - the iterations where j < i 
+   (these do not modify M.gx_i_rs.[M.gx] 
+   so we can actually skip them 
+*)
+
+local module G9 (A : Adv) = {
+  var mXi : (int, group) map
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_rng X_i mXi){
+   if (M.cO = M.bad_guess) {
+       M.gz1 = Z1;
+       M.gz2 = Z2; 
+       M.gy_bad = Y;
+       M.gx_bad = X_i;  
+     }
+     ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
+       M.cO = M.cO + 1;
+    }
+      return ret;
+   }
+  }
+  module AT = A(TD)
+   fun main () : bool = {
+   var a : adv_ret;
+   var i : int = 0;
+   var r, s : gf_q;
+   var gx, gx' : group;
+   var gxs = [];
+   var k : int;
+   M.gx_bad = def;
+   M.gy_bad = def;
+   M.gz1 = def;
+   M.gz2 = def;
+   mXi = FMap.Core.empty;
+   M.gx = $dgroup;
+   M.gy = $dgroup;
+
+   M.gx_i_rs = FMap.Core.empty;
+   while (i <= n) {
+    gx = $dgroup;
+    mXi.[i] = gx;
+    gxs = gx :: gxs;
+    i = i + 1;
+   }
+     M.cO = 0;
+     M.bad_query = None;
+     M.bad = false;
+     M.bad_guess = $[0 .. qO];
+   a = AT.run(M.gx, gxs, M.gy);
+   k = proj (find_last 0 n (lambda k, proj mXi.[k] = M.gx_bad));
+   i = 0;
+   while (i <= n /\ i < k) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx' = proj (mXi.[i]);
+    M.gx_i_rs.[gx'] = (r,s);
+    i = i + 1;
+   }
+    r = $dgf_q;
+    s = $dgf_q;
+    M.gx_i_rs.[M.gx_bad] = (r,s);
+    i = i + 1;
+   (r, s) = proj (M.gx_i_rs.[M.gx_bad]);
+    M.r = r;
+    M.s = s;
+   return (M.gz1 <> (M.gy_bad^ (log M.gx)) /\ 
+        ((M.gz1 / (M.gy_bad^ (log M.gx))) ^ M.r = (M.gy_bad^(log M.gx_bad)) / M.gz2));
+  }
+ }.
+
+
+lemma some_proj : forall (x : 'a option),
+x <> None =>
+Some (proj x) = x.
+proof strict.
+ intros => x hnn.
+ elim /option_ind_eq x; first smt.
+  intros => [y] ->.
+  by rewrite proj_some.
+save.
+
+local equiv Eq10 : G9'(A).main ~ G9(A).main : true ==> res{1} => res{2}.
+proof.
+ fun.
+ seq 16 16: (={M.gx, M.gy, M.gz1, M.gz2, M.gx_bad, M.gy_bad, M.gx_i_rs} 
+            /\ G9'.mXi{1} = G9.mXi{2} /\ (forall j, 0 <= j <= n <=> in_dom j G9'.mXi{1}) /\
+            M.gx_i_rs{1} = FMap.Core.empty).
+ call (_ : ={M.gx, M.gy, M.cO, M.bad_guess, M.gx_bad, M.gz1, M.gz2, M.gy_bad} 
+            /\ G9'.mXi{1} = G9.mXi{2}).
+ by fun; eqobs_in.
+ rnd; wp.
+ while (={i, gxs} /\ G9'.mXi{1} = G9.mXi{2} /\ 
+           (forall j, 0 <= j < i{1} <=> in_dom j G9'.mXi{1}) /\ 
+            0 <= i{1} <= n + 1).
+ wp; rnd; skip; progress.
+ rewrite /in_dom dom_set mem_add.
+ case (j = i{2}) => //.
+ intros => ?; left.
+ generalize H; rewrite /in_dom => <-.
+ smt.
+ generalize H7; rewrite /in_dom dom_set mem_add => [|].
+ generalize H; rewrite /in_dom => <-.
+  smt.
+  intros => -> //.
+ generalize H7; rewrite /in_dom dom_set mem_add => [|].
+ generalize H; rewrite /in_dom => <-.
+  smt.
+  intros => -> //; smt.
+  smt.
+  smt.
+  wp; do! rnd; wp; skip; progress; smt.
+
+ case (in_rng M.gx_bad{1} G9'.mXi){1}; last first.
+ conseq(_:_==> !in_dom M.gx_bad{1} M.gx_i_rs{1}); first smt.
+ wp; do ! rnd{2}.
+ while{2} (true) ((max (n+1)  (k{2})) - i{2}).
+  intros => ? ? ; wp; do!rnd; skip; progress.
+smt.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ by apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ by apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=.
+
+ while{1} ((forall x, in_dom x M.gx_i_rs => in_rng x G9'.mXi) /\
+           (forall j, 0 <= j <= n => in_dom j G9'.mXi) /\
+           0 <= i){1} ((n+1) - i{1}).
+  intros => ? ?.
+ wp; do!rnd; skip; progress.
+ rewrite -{2}Dgf_q.lossless /Distr.weight.
+ apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=  => x'.
+ rewrite rw_eqT -Dgf_q.lossless /Distr.weight.
+ apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=  => y'.
+ rewrite rw_eqT; progress.
+ generalize H3; rewrite /in_dom dom_set mem_add => [hdom|heq].
+   by apply H; smt.
+   rewrite /in_rng mem_rng; exists i{hr}.
+   cut hdom := H0 i{hr} _; first smt.
+   split => //.
+   rewrite heq some_proj //.
+   by generalize hdom; rewrite stpd_get /in_dom mem_dom.
+ smt.
+ smt.
+wp; skip; progress.
+smt.
+smt.
+smt.
+generalize H5.
+rewrite /max.
+case ( n + 1 <
+    proj (find_last 0 n (lambda (k : int), proj G9.mXi{2}.[k] = M.gx_bad{2}))).
+smt.
+smt.
+smt.
+rewrite -not_def => ?; generalize H0 => /=; apply H2 => //.
+splitwhile (i < k): {1} 3.
+splitwhile (i = k): {1} 4.
+ seq 3 3: (={M.gx, M.gy, M.gz1, M.gz2, M.gy_bad, M.gx_bad, M.gx_i_rs, k, i} /\
+          i{1} = k{1} /\ G9'.mXi{1} = G9.mXi{2} /\  k{1} <= n /\ 
+          0 <= k{2} <= n /\
+          proj G9.mXi{2}.[k{2}] = M.gx_bad{2} /\
+         (forall (j : int), k{2} < j => ! proj G9.mXi{2}.[j] = M.gx_bad{2})
+          ).
  wp.
- rnd (lambda v, (M.gz1 / M.gy ^ log M.gx1){2} ^ v)
-     (lambda v, log v / ((log M.gz1 - log ( M.gy ^ log M.gx1))){2}).
- skip; progress => //.
+ while (={i, M.gx_i_rs, k} /\ G9'.mXi{1} = G9.mXi{2} 
+       /\ i{1} <= k{1} /\ k{1} <= n).
+ wp; do! rnd; skip; progress; smt.
+wp; skip.
+intros => ? ? h k1 k2.
+cut H: (find_last 0 n (lambda (k : int), proj G9'.mXi{1}.[k] = M.gx_bad{1})) <> None.
+generalize h; progress.
+rewrite -not_def => ?.
+cut:= find_last_exists 0 n (lambda (k : int), proj G9.mXi{2}.[k] = M.gx_bad{2}) _ => // {H1} H1.
+generalize H0 => /=; rewrite /in_rng mem_rng -not_def => [x][hdom] hget.
+generalize hdom.
+rewrite -H => ?.
+cut:=  H1 x _ => //=.
+by rewrite stpd_get hget proj_some.
+generalize h; progress.
+generalize H.
+rewrite /k1/k2 => {k1 k2}.
+elim /option_ind_eq (find_last 0 n (lambda (k : int), proj G9.mXi{2}.[k] = M.gx_bad{2})) => //.
+intros => ->; smt.
+intros => [x] h h' {h'}. 
+rewrite h; generalize h; rewrite find_last_spec proj_some /=; progress.
+cut: k1 <= n.
+rewrite /k1 =>  {k1}.
+generalize H.
+elim /option_ind_eq (find_last 0 n (lambda (k : int), proj G9.mXi{2}.[k] = M.gx_bad{2})).
+smt.
+intros => [x] heq; rewrite heq; generalize heq; rewrite find_last_spec; progress.
+ rewrite proj_some; smt.
+smt.
+smt.
+generalize H.
+rewrite /k1 => {k1 H2 H3 H4 H5}.
+elim /option_ind_eq (find_last 0 n (lambda (k : int), proj G9.mXi{2}.[k] = M.gx_bad{2})) => //.
+intros => ->; smt.
+intros => [x] h h' {h'}. 
+rewrite h; generalize h; rewrite find_last_spec proj_some /=; progress.
+
+generalize H.
+rewrite /k1 => {k1 H2 H3 H4 H5}.
+elim /option_ind_eq (find_last 0 n (lambda (k : int), proj G9.mXi{2}.[k] = M.gx_bad{2})) => //.
+intros => ->; smt.
+intros => [x] h h' {h'}. 
+rewrite h; generalize h.
+rewrite find_last_spec /= proj_some; progress.
+
+generalize H H2 H3 H4 H5 H6.
+rewrite /k1 => {k1}.
+elim /option_ind_eq (find_last 0 n (lambda (k : int), proj G9.mXi{2}.[k] = M.gx_bad{2})) => //.
+intros => ->; smt.
+intros => [x] h h' {h'}. 
+rewrite h; generalize h; rewrite find_last_spec proj_some /=; progress.
+apply H3 => //.
+
+rcondt{1} 1.
+intros => ?; wp; skip; progress.
+rcondf{1} 6.
+intros => ?; wp; do! rnd; wp; skip; progress.
+smt.
+conseq (_ : _ ==> ={M.gx, M.gy, M.gz1, M.gz2, M.gx_bad, M.gy_bad, M.r, M.s} /\
+ in_dom M.gx_bad{1} M.gx_i_rs{1} /\ in_dom M.gx_bad{2} M.gx_i_rs{2}).
+progress.
+ wp 6 4.
+while{1} 
+( M.gx_i_rs.[M.gx_bad]{1} = M.gx_i_rs.[M.gx_bad]{2} /\ 
+  G9'.mXi{1} = G9.mXi{2} /\ 
+  (forall (j : int), k < j => ! proj G9'.mXi.[j] = M.gx_bad){1} /\
+   k{1} < i{1} /\ in_dom M.gx_bad{1} M.gx_i_rs{1})
+  ((n+1 - i{1})).
+intros => ? ?; wp; do! rnd; skip; progress.
+ rewrite -{2}Dgf_q.lossless /Distr.weight.
+ apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=  => x'.
+ rewrite rw_eqT; progress.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=  => y'.
+ rewrite rw_eqT; progress.
+ rewrite {1}stpd_get get_setN ?H //.
+ apply H0 => //.
+ smt.
+ by generalize H2; rewrite /in_dom dom_set mem_add => ?; left.
+ smt.
+ wp; do!rnd; skip; progress => //.
+ smt.
+ by rewrite /in_dom dom_set mem_add; right.
+ smt.
+ smt.
+ smt.
+ by rewrite /in_dom dom_set mem_add; right.
+save.
+
+
+local lemma Pr10_aux &m :
+Pr[G8(A).main() @ &m : res] <=
+Pr[G9(A).main() @ &m : res].  
+proof.
+ rewrite (_ : Pr[G8(A).main() @ &m : res] = Pr[G9'(A).main() @ &m : res]).
+  by equiv_deno Eq10'.
+ by equiv_deno Eq10.
+save.
+
+local lemma Pr10 &m : 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
+qO%r *Pr[G9(A).main() @ &m : res].  
+proof.
+apply (Real.Trans _ 
+(Pr [G0(A).main() @ &m : res] + 
+qO%r * Pr[G8(A).main() @ &m : res]) _ ).  
+apply (Pr9 &m).
+ apply (_ : forall (p q r : real), p <= q => r + p <= r + q).
+ smt.
+ apply mult_pos_mon.
+ smt.
+ by apply (Pr10_aux &m).
+save.
+
+(* now we do manipulation, we will sample r only in case
+M.gz1 <> (M.gy^ (log M.gx)). Under this condition
+(M.gz1 / (M.gy^ (log M.gx))) ^ r is indistinguishable from random
+*)
+
+local module G10 (A : Adv) = {
+  var mXi : (int, group) map
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_rng X_i mXi){
+   if (M.cO = M.bad_guess) {
+       M.gz1 = Z1;
+       M.gz2 = Z2; 
+       M.gy_bad = Y;
+       M.gx_bad = X_i;  
+     }
+     ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
+       M.cO = M.cO + 1;
+    }
+      return ret;
+   }
+  }
+  module AT = A(TD)
+   fun main () : bool = {
+   var a : adv_ret;
+   var i : int = 0;
+   var r, s : gf_q;
+   var gx, gx' : group;
+   var gxs = [];
+   var b : bool = false;
+   var k : int;
+   M.gx_bad = def;
+   M.gy_bad = def;
+   M.gz1 = def;
+   M.gz2 = def;
+   mXi = FMap.Core.empty;
+   M.gx = $dgroup;
+   M.gy = $dgroup;
+   M.gx_i_rs = FMap.Core.empty;
+   while (i <= n) {
+    gx = $dgroup;
+    mXi.[i] = gx;
+    gxs = gx :: gxs;
+    i = i + 1;
+   }
+     M.cO = 0;
+     M.bad_query = None;
+     M.bad = false;
+     M.bad_guess = $[0 .. qO];
+   a = AT.run(M.gx, gxs, M.gy);
+   k = proj (find_last 0 n (lambda k, proj mXi.[k] = M.gx_bad));
+   if (M.gz1 <> (M.gy_bad ^ (log M.gx))) { 
+    r = $dgf_q;
+    b = ((M.gz1 / (M.gy_bad ^ (log M.gx))) ^ r = 
+         (M.gy_bad ^(log M.gx_bad)) / M.gz2);
+   }
+     return b;
+  }
+ }.
+
+local equiv Eq11 : G9(A).main ~ G10(A).main : true ==> res{1} => res{2}.
+proof.
+ fun.
+ seq 16 17: 
+(={M.gx, M.gy, M.gx_bad, M.gy_bad, M.gz1, M.gz2, M.gy, M.gx_i_rs, gxs} 
+/\ G9.mXi{1} = G10.mXi{2} ).
+eqobs_in.
+sp.
+if{2}.
+wp; rnd{1}; rnd.
+ while{1} (true) ((max (n+1)  (k{1})) - i{1}).
+ intros => ? ?; wp; do!rnd; skip; progress.
+ smt.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ by apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ by apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=.
+ skip; progress.
+ generalize H0; rewrite /max.
+case (n + 1 <
+    proj (find_last 0 n (lambda (k : int), proj G10.mXi{2}.[k] = M.gx_bad{2}))).
+smt.
+smt.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ by apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=.
+generalize H6; rewrite stpd_get get_setE proj_some.
+smt.
+wp; rnd{1}; rnd{1}.
+ while{1} (true) ((max (n+1)  (k{1})) - i{1}).
+ intros => ? ?; wp; do!rnd; skip; progress.
+ smt.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ by apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ by apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=.
+ skip; progress.
+ generalize H; rewrite /max.
+case (n + 1 <
+    proj (find_last 0 n (lambda (k : int), proj G10.mXi{2}.[k] = M.gx_bad{2}))).
+smt.
+smt.
+ rewrite -Dgf_q.lossless /Distr.weight.
+ by apply Distr.mu_eq; rewrite /Fun.(==) /Fun.cpTrue /=.
+save.
+
+local lemma Pr11_aux &m :
+Pr[G9(A).main() @ &m : res] <=
+Pr[G10(A).main() @ &m : res].  
+proof.
+ by equiv_deno Eq11.
+save.
+
+local lemma Pr11 &m : 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
+qO%r *Pr[G10(A).main() @ &m : res].  
+proof.
+apply (Real.Trans _ 
+(Pr [G0(A).main() @ &m : res] + 
+qO%r * Pr[G9(A).main() @ &m : res]) _ ).  
+apply (Pr10 &m).
+ apply (_ : forall (p q r : real), p <= q => r + p <= r + q).
+ smt.
+ apply mult_pos_mon.
+ smt.
+ by apply (Pr11_aux &m).
+save.
+
+   
+(* now instead of sampling r and setting
+gx' = (M.gz1 / (M.gy^ (log M.gx))) ^ r we
+sample gx' 
+*)
+
+local module G11 (A : Adv) = {
+  var mXi : (int, group) map
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_rng X_i mXi){
+   if (M.cO = M.bad_guess) {
+       M.gz1 = Z1;
+       M.gz2 = Z2; 
+       M.gy_bad = Y;
+       M.gx_bad = X_i;  
+     }
+     ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
+       M.cO = M.cO + 1;
+    }
+      return ret;
+   }
+  }
+  module AT = A(TD)
+   fun main () : bool = {
+   var a : adv_ret;
+   var i : int = 0;
+   var r, s : gf_q;
+   var gx, gx' : group;
+   var gxs = [];
+   var b : bool = false;
+   var k : int;
+   M.gx_bad = def;
+   M.gy_bad = def;
+   M.gz1 = def;
+   M.gz2 = def;
+   mXi = FMap.Core.empty;
+   M.gx = $dgroup;
+  M.gy = $dgroup;
+
+   M.gx_i_rs = FMap.Core.empty;
+   while (i <= n) {
+    gx = $dgroup;
+    mXi.[i] = gx;
+    gxs = gx :: gxs;
+    i = i + 1;
+   }
+     M.cO = 0;
+     M.bad_query = None;
+     M.bad = false;
+     M.bad_guess = $[0 .. qO];
+   a = AT.run(M.gx, gxs, M.gy);
+   k = proj (find_last 0 n (lambda k, proj mXi.[k] = M.gx_bad));
+   if (M.gz1 <> (M.gy_bad ^ (log M.gx))) { 
+    gx' = $dgroup;
+    b = gx' = (M.gy_bad^(log M.gx_bad)) / M.gz2;
+   }
+     return b;
+  }
+ }.
+
+local equiv Eq12 : G10(A).main ~ G11(A).main : true ==> ={res}.
+proof.
+ fun.
+  seq 18 18: 
+(={M.gx, M.gy, M.gz1, M.gz2, M.gx_bad, M.gy_bad, M.gx_i_rs, b, gxs} 
+/\ G10.mXi{1} = G11.mXi{2} ).
+eqobs_in.
+if => //.
+wp.
+ rnd (lambda v, (M.gz1 / M.gy_bad ^ log M.gx){2} ^ v)
+     (lambda (v : group), log v / ((log M.gz1 - log ( M.gy_bad ^ log M.gx))){2}).
+skip; progress.
  by rewrite mu_x_def_in Dgroup.mu_x_def_in.
  by apply supp_def.
- rewrite -!Cyclic_group_prime.div_def.
- rewrite log_pow_mult group_pow_log.
- rewrite /Prime_field.(/).
- rewrite -gf_q_mult_assoc.
- rewrite gf_q_mult_inv.
- cut: log M.gz1{2} - log (M.gy{2} ^ log M.gx1{2}) = gf_q0 => M.gz1{2} = M.gy{2} ^ log M.gx1{2}; last smt. 
+ rewrite -!Cyclic_group_prime.div_def log_pow_mult group_pow_log
+        /Prime_field.(/) -gf_q_mult_assoc gf_q_mult_inv.
+ cut: log M.gz1{2} - log (M.gy_bad{2} ^ log M.gx{2}) = gf_q0 => M.gz1{2} = M.gy_bad{2} ^ log M.gx{2}; 
+      last smt. 
  intros  => heq.
- cut := neg_zero (log M.gz1{2}) (log (M.gy{2} ^ log M.gx1{2})) _.
+ cut := neg_zero (log M.gz1{2}) (log (M.gy_bad{2} ^ log M.gx{2})) _.
   by rewrite heq.
  intros => {heq} heq.
- apply (_ : forall V W, log V = log W => V = W) => //.
+ apply (_ : forall (V W : group), log V = log W => V = W) => //.
   by intros => V W h; rewrite -group_log_pow -(group_log_pow W) h.
  by rewrite gf_q_mult_unit.
- rewrite -!Cyclic_group_prime.div_def group_pow_mult.
- rewrite /Prime_field.(/).
- rewrite gf_q_mult_assoc. 
- rewrite gf_q_mult_comm. 
- rewrite gf_q_mult_assoc.
- rewrite (gf_q_mult_comm (inv (log M.gz1{2} - log (M.gy{2} ^ log M.gx1{2})))).  
+ rewrite -!Cyclic_group_prime.div_def group_pow_mult 
+         /Prime_field.(/) gf_q_mult_assoc gf_q_mult_comm 
+         gf_q_mult_assoc.
+ rewrite (gf_q_mult_comm (inv (log M.gz1{2} - log (M.gy_bad{2} ^ log M.gx{2})))).  
  rewrite gf_q_mult_inv.
- cut: log M.gz1{2} - log (M.gy{2} ^ log M.gx1{2}) = gf_q0 =>
-       M.gz1{2} = M.gy{2} ^ log M.gx1{2}; last smt. 
+ cut: log M.gz1{2} - log (M.gy_bad{2} ^ log M.gx{2}) = gf_q0 =>
+       M.gz1{2} = M.gy_bad{2} ^ log M.gx{2}; last smt. 
  intros  => heq.
- cut := neg_zero (log M.gz1{2}) (log (M.gy{2} ^ log M.gx1{2})) _.
+ cut := neg_zero (log M.gz1{2}) (log (M.gy_bad{2} ^ log M.gx{2})) _.
   by rewrite heq.
  intros => {heq} heq.
- apply (_ : forall V W, log V = log W => V = W) => //.
+ apply (_ : forall (V W : group), log V = log W => V = W) => //.
   by intros => V W h; rewrite -group_log_pow -(group_log_pow W) h.
  rewrite gf_q_mult_comm gf_q_mult_unit.
  by rewrite group_log_pow.
+ save.
+ 
+local lemma Pr12 &m : 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
+qO%r *Pr[G11(A).main() @ &m : res].  
+proof.
+rewrite -(_ : Pr[G10(A).main() @ &m : res] =
+              Pr[G11(A).main() @ &m : res]).
+by equiv_deno Eq12.
+by apply (Pr11 &m).
 save.
 
-
-local lemma Pr10 &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + 
-qO%r *Pr[G9(A).main() @ &m : res].  
-proof.
- rewrite -(_ : Pr[G8(A).main() @ &m : res] = Pr[G9(A).main() @ &m : res]).
-  by equiv_deno Eq10.
-  by apply (Pr9 &m).
-save. 
-
-module G10( A : Adv) ={
- module TD : O ={
-  fun check (Z1 Z2 Y : group) : bool ={
-  var r : bool = false;
-  if (M.cO < qO){
+(* remove the if and ready to Rock & Roll *)
+local module G12 (A : Adv) = {
+  var mXi : (int, group) map
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_rng X_i mXi){
    if (M.cO = M.bad_guess) {
-     M.gz1 = Z1;
-     M.gz2 = Z2; 
-     M.gy = Y;
+       M.gz1 = Z1;
+       M.gz2 = Z2; 
+       M.gy_bad = Y;
+       M.gx_bad = X_i;  
+     }
+     ret = Z1 = Y ^ (log M.gx) /\ Z2 = Y ^ (log X_i);
+       M.cO = M.cO + 1;
+    }
+      return ret;
    }
-    r = (Z1 = Y ^ (log M.gx1) /\ Z2 = Y ^ (log M.gx2) );
-    M.cO = M.cO + 1;
-   }
-   return r;
   }
- }
- module AT = A(TD)
- fun main () : bool = {
-  var b : bool;
-  var ret : bool;
-  var gw : group;
-  M.gz1 = I;
-  M.gz2 = I; 
-  M.gy = I;
-  M.gx1 = $dgroup;
-  M.gx2 = $dgroup;
-  M.bad = false; 
-  M.cO = 0;
-  M.bad_query = None;
-  M.bad_guess = $[0 .. qO];
-  b = AT.run(M.gx1, M.gx2);
-  ret = false;
-  gw = $dgroup;
-  return ((gw = (M.gy^(log M.gx2)) / M.gz2));
- }
-}.
+  module AT = A(TD)
+   fun main () : bool = {
+   var a : adv_ret;
+   var i : int = 0;
+   var r, s : gf_q;
+   var gx, gx' : group;
+   var gxs = [];
+   var b : bool = false;
+   var k : int;
+   M.gx_bad = def;
+   M.gy_bad = def;
+   M.gz1 = def;
+   M.gz2 = def;
+   mXi = FMap.Core.empty;
+   M.gx = $dgroup;
+   M.gy = $dgroup;
+ 
+   M.gx_i_rs = FMap.Core.empty;
+   while (i <= n) {
+    gx = $dgroup;
+    mXi.[i] = gx;
+    gxs = gx :: gxs;
+    i = i + 1;
+   }
+     M.cO = 0;
+     M.bad_query = None;
+     M.bad = false;
+     M.bad_guess = $[0 .. qO];
+   a = AT.run(M.gx, gxs, M.gy);
+   k = proj (find_last 0 n (lambda k, proj mXi.[k] = M.gx_bad));
+   gx' = $dgroup;
+   return (gx' = (M.gy_bad^(log M.gx_bad)) / M.gz2);
+  }
+ }.
 
-local equiv Eq11: 
-G9(A).main ~ G10(A).main : true ==> res{1} => res{2}. 
+local equiv Eq13 : G11(A).main ~ G12(A).main : true ==> res{1} => res{2}.
 proof.
-fun.
-seq 10 10: (={M.gx1, M.gx2, M.gy, M.gz1, M.gz2}).
+ fun.
+ swap 3 15.
+ seq 17 17: 
+(={M.gx, M.gy, M.gz1, M.gz2, M.gx_bad , M.gy_bad, M.gx_i_rs, gxs} 
+/\ G11.mXi{1} = G12.mXi{2}).
 eqobs_in.
-sp.
-if{1}.
-wp.
-rnd.
-skip; progress => //; smt.
-do! rnd{2}; skip; progress => //; smt.
+sp; if{1}.
+wp; rnd; skip; smt.
+rnd{2}; wp; skip; smt.
 save.
 
+local lemma Pr13_aux1 &m :
+Pr[G11(A).main() @ &m : res] <=
+Pr[G12(A).main() @ &m : res].  
+proof.
+ by equiv_deno Eq13.
+save.
 
-local lemma Pr11_aux &m :
-Pr[G10(A).main() @ &m : res] = 1%r / q%r.
+local lemma Pr13_aux2 &m :
+Pr[G12(A).main() @ &m : res] = 1%r / q%r.
 proof.
  bdhoare_deno (_ : true ==> res) => //.
  fun; rnd; wp.
  call (_ : true) => //.
   by apply run_ll.
   by fun; wp.
- rnd; wp; do !rnd; wp; skip; progress.
- apply (_ :forall p, Fun.(==) p  Fun.cpTrue => mu dgroup p = 1%r).
- rewrite -Dgroup.lossless /Distr.weight => //=; smt.
- rewrite /Fun.(==) /Fun.cpTrue /= => x.
- apply (_ : forall p, p => p = true);first smt.
- split; last smt.
- intros => gz2 gy; generalize ( gy ^ log x / gz2) => y.
+ rnd; wp.
+ while (true) (n + 1 - i).
+ intros => ?; wp; rnd; skip; progress.
+ smt.
+by rewrite -Dgroup.lossless; apply Distr.mu_eq => x /=; rewrite /Fun.cpTrue.
+ wp; do! rnd; wp; skip; progress.
+ smt.
+ generalize ( gy_bad ^ log gx_bad / gz2) => y.
  rewrite -(Dgroup.mu_x_def_in y) /Distr.mu_x.
  apply Distr.mu_eq; rewrite /Fun.(==) /= => x'; smt.
- by rewrite -Dgroup.lossless /Distr.weight.
+ rewrite (_:  (lambda (x : int), true) = Fun.cpTrue).
+ smt.
+ smt.
+ rewrite -Dgroup.lossless /Distr.weight; apply Distr.mu_eq.
+ by rewrite /Fun.cpTrue  => ? /=.
+ smt.
 save.
 
-lemma Conclusion &m : 
-Pr [Trapdoor1(A).main() @ &m : res] <=
-Pr [Trapdoor2(A).main() @ &m : res] + 
+(* We are done bounding the probability of bad *)
+
+local lemma Pr13 &m : 
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [G0(A).main() @ &m : res] + 
 qO%r * (1%r / q%r).  
 proof.
- rewrite -(Pr11_aux &m).
- apply ( Real.Trans _ 
-       (Pr[Trapdoor2(A).main() @ &m : res] + qO%r * Pr[G9(A).main() @ &m : res]) _).
- apply (Pr10 &m).
+apply (Real.Trans _ 
+(Pr [G0(A).main() @ &m : res] + 
+qO%r * Pr[G11(A).main() @ &m : res]) _ ).  
+apply (Pr12 &m).
  apply (_ : forall (p q r : real), p <= q => r + p <= r + q).
  smt.
- apply mult_pos_mon; first smt. 
- by equiv_deno Eq11. 
-save. 
+ apply mult_pos_mon.
+ smt.
+ rewrite -(Pr13_aux2 &m).
+ by apply (Pr13_aux1 &m).
+save.
+
+(* the oracle in G0 is already public so we can constructwe construct an adversary agains Win *)
+
+local module B (A : Adv) : Adv' = {
+  module TD : O ={
+   fun check (X_i Z1 Z2 Y : group) : bool ={
+   var ret : bool = false;
+   var r, s : gf_q;
+   if (M.cO < qO /\ in_dom X_i M.gx_i_rs){
+    (r, s) = proj (M.gx_i_rs.[X_i]);
+    ret = ((Z1 ^ r) * Z2 = Y ^ s);
+    M.cO = M.cO + 1;
+   }
+   return ret;
+   }
+ }
+ module AT = A(TD)
+  fun run (gx : group, gy : group) : adv_ret ={
+  var a : adv_ret;
+  var i : int = 0;
+  var r, s : gf_q;
+  var gxs = [];
+  M.gx = gx;
+  M.gy = gy;
+  M.gx_i_rs = FMap.Core.empty;
+  while (i <= n) {
+    r = $dgf_q;
+    s = $dgf_q;
+    gx = (g ^ s) / (M.gx ^ r);
+    M.gx_i_rs.[gx] = (r,s);
+    gxs = gx :: gxs;
+    i = i + 1;
+  }
+  M.cO = 0;
+  M.bad_query = None;
+  a = AT.run(M.gx, gxs, M.gy);
+  return (a);
+ }
+}.
+
+(* reduction step *)
+
+local equiv Eq14 : G0(A).main ~ Win(B(A)).main : true ==> ={res}.
+proof.
+ fun.
+ inline B(A).run.
+ wp.
+ call (_ : ={M.gx_i_rs, M.cO}).
+fun.
+eqobs_in.
+wp.
+while (={M.gx_i_rs, M.gx, gxs} /\ i{1} = i0{2}).
+wp; do!rnd; skip; progress.
+wp; do! rnd; wp; skip; progress.
+save.
+
+(* nice tidy conclusion *)
+lemma Conclusion &m :
+exists (B <: Adv'),
+Pr [TDDH_Win(A).main() @ &m : res] <=
+Pr [Win(B).main() @ &m : res] + 
+qO%r * (1%r / q%r).  
+proof.
+exists (B(A)).
+rewrite -(_ : Pr [G0(A).main() @ &m : res] =
+              Pr [Win(B(A)).main() @ &m : res]).
+by equiv_deno Eq14.
+by apply (Pr13 &m).
+save.
+
 
 end section.
 
-print axiom Conclusion.
+end Trapdoor.
+
+(* now we can instantiate to DLog and to DDH *)
+
+op win_dlog (x y : group) (z : gf_q) = (x = (g ^ z)).
+
+clone Trapdoor as DLog_2DDH with
+type adv_ret = gf_q,
+op win = win_dlog.
+
+print module DLog_2DDH.Win.
+
+
+op win_ddh (x y : group) (z : group) = (x ^ log y = y).
+
+clone Trapdoor as DDH_2DDH with
+type adv_ret = group,
+op n = 0,
+op win = win_ddh.
+
+print module DLog_2DDH.Win.
+print module DDH_2DDH.Win. (* used in the SCDH to CDH cool reduction *)
+
