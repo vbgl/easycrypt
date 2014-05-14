@@ -126,28 +126,33 @@ let rn_hl_prfalse =
 
 (* -------------------------------------------------------------------- *)
 let t_prfalse g = 
-  let env,_, concl = get_goal_e g in
+  let (env, _, concl) = get_goal_e g in
+
   let f,ev,bd =
     match concl.f_node with
-      | Fapp ({f_node = Fop(op,_)}, [f;bd]) when is_pr f &&
-          EcPath.p_equal op EcCoreLib.p_real_le
-          || EcPath.p_equal op EcCoreLib.p_eq->
-        let (_m,f,_args,ev) = destr_pr f in
-        f,ev,bd
-      | Fapp ({f_node = Fop(op,_)}, [bd;f]) when is_pr f &&
+    | Fapp ({f_node = Fop (op, _)}, [f; bd]) when is_pr f &&
+             EcPath.p_equal op EcCoreLib.p_real_le
+          || EcPath.p_equal op EcCoreLib.p_eq ->
+
+        let (_m, f, _args, ev) = destr_pr f in (f, ev, bd)
+
+      | Fapp ({f_node = Fop (op, _)}, [bd; f]) when is_pr f &&
           EcPath.p_equal op EcCoreLib.p_eq->
-        let (_m,f,_args,ev) = destr_pr f in
-        f,ev,bd
+
+        let (_m, f, _args, ev) = destr_pr f in (f, ev, bd)
+
       | _ ->
         cannot_apply "pr_false" "Pr[..] expression was expected"
   in
+
   (* the bound is zero *)
   let is_zero = f_real_le bd f_r0 in
 
   (* the event is false *)
-  let smem_ = Fsubst.f_bind_mem Fsubst.f_subst_id mhr mhr in 
-  let ev   = Fsubst.f_subst smem_ ev in
-  let fun_ = EcEnv.Fun.by_xpath f env in
-  let me = EcEnv.Fun.actmem_post mhr f fun_ in
-  let concl_po = f_forall_mems [me] (f_imp f_false ev) in
-    prove_goal_by [is_zero;concl_po] rn_hl_prfalse g
+  let smem_    = Fsubst.f_bind_mem Fsubst.f_subst_id mhr mhr in 
+  let ev       = Fsubst.f_subst smem_ ev in
+  let fun_     = EcEnv.Fun.by_xpath f env in
+  let me       = EcEnv.Fun.actmem_post mhr f fun_ in
+  let concl_po = f_forall_mems [me] (f_imp ev f_false) in
+
+  prove_goal_by [is_zero;concl_po] rn_hl_prfalse g
