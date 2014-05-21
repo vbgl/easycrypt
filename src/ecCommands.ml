@@ -7,6 +7,9 @@ open EcTyping
 open EcOptions
 open EcLogic
 
+module Sid = EcIdent.Sid
+module Mx  = EcPath.Mx
+
 (* -------------------------------------------------------------------- *)
 type pragma = {
   pm_verbose : bool; (* true  => display goal after each command *)
@@ -78,7 +81,30 @@ let process_pr fmt scope p =
   | Pr_ty qs ->
       let (x, ty) = EcEnv.Ty.lookup qs.pl_desc env in
       Format.fprintf fmt "%a@." (EcPrinting.pp_typedecl ppe) (x, ty)
-        
+
+  | Pr_glob qs -> begin
+      let (p, _me) = EcEnv.Mod.lookup qs.pl_desc env in
+      let us = EcEnv.NormMp.mod_use env p in
+
+      Format.fprintf fmt "Globals [# = %d]:@."
+        (Sid.cardinal us.EcEnv.us_gl);
+      Sid.iter (fun id ->
+        Format.fprintf fmt "  %s@." (EcIdent.name id))
+        us.EcEnv.us_gl;
+
+      Format.fprintf fmt "@.";
+
+      Format.fprintf fmt "Prog. variables [# = %d]:@."
+        (Mx.cardinal us.EcEnv.us_pv);
+      Mx.iter (fun xp _ ->
+        let pv = EcTypes.pv_glob xp in
+        let ty = EcEnv.Var.by_xpath xp env in
+        Format.fprintf fmt "  @[%a : %a@]@."
+          (EcPrinting.pp_pv ppe) pv
+          (EcPrinting.pp_type ppe) ty.EcEnv.vb_type)
+        us.EcEnv.us_pv
+  end
+
   | Pr_op qs | Pr_pr qs ->
       let (x, op) = EcEnv.Op.lookup qs.pl_desc env in
       Format.fprintf fmt "%a@." (EcPrinting.pp_opdecl ppe) (x, op)
