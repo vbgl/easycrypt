@@ -621,7 +621,7 @@ type pprint =
   | Pr_ax   of pqsymbol
   | Pr_mod  of pqsymbol
   | Pr_mty  of pqsymbol
-  | Pr_glob of pqsymbol
+  | Pr_glob of pmsymbol located
 
 (* -------------------------------------------------------------------- *)
 type renaming_kind = 
