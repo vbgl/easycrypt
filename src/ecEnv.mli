@@ -255,10 +255,6 @@ module NormMp : sig
 end
 
 (* -------------------------------------------------------------------- *)
-type ctheory_w3
-
-val ctheory_of_ctheory_w3 : ctheory_w3 -> ctheory
-
 module Theory : sig
   type t    = ctheory
   type mode = [`All | thmode]
@@ -270,14 +266,14 @@ module Theory : sig
   val lookup_path : ?mode:mode -> qsymbol -> env -> path
 
   val add  : path -> env -> env
-  val bind : ?mode:thmode -> symbol -> ctheory_w3 -> env -> env
+  val bind : ?mode:thmode -> symbol -> ctheory -> env -> env
 
-  val require : ?mode:thmode -> symbol -> ctheory_w3 -> env -> env
+  val require : ?mode:thmode -> symbol -> ctheory -> env -> env
   val import  : path -> env -> env
   val export  : path -> env -> env
 
   val enter : symbol -> env -> env
-  val close : env -> ctheory_w3
+  val close : env -> ctheory
 end
 
 (* -------------------------------------------------------------------- *)
@@ -378,11 +374,6 @@ type ebinding = [
 val bind1   : symbol * ebinding -> env -> env
 val bindall : (symbol * ebinding) list -> env -> env
 
-val import_w3_dir :
-     env -> string list -> string
-  -> EcWhy3.renaming_decl
-  -> env * ctheory_item list
-
 (* -------------------------------------------------------------------- *)
 open EcBaseLogic
 
@@ -448,6 +439,3 @@ module LDecl : sig
   val inv_memenv  : hyps -> hyps
   val inv_memenv1 : hyps -> hyps
 end
-
-(* -------------------------------------------------------------------- *)
-val check_goal : EcProvers.prover_infos -> LDecl.hyps * form -> bool
