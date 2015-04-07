@@ -520,6 +520,15 @@ module List = struct
     match l with
     | [_] -> true
     |  _  -> false
+
+  (* ------------------------------------------------------------------ *)
+  let ksort ?(stable = false) ?(rev = false) ~key ~cmp xs =
+    let cmp  =
+      match rev with
+      | false -> (fun x y -> cmp (key x) (key y))
+      | true  -> (fun y x -> cmp (key x) (key y)) in
+    let sort = if stable then List.stable_sort else List.sort in
+    sort cmp xs
 end
 
 (* -------------------------------------------------------------------- *)
@@ -622,6 +631,24 @@ module String = struct
       if List.is_singleton matched then matched
       else last_matched matched s
 
+end
+
+(* -------------------------------------------------------------------- *)
+module Buffer = struct
+  include BatBuffer
+
+  let from_string ?(size = 0) (s : string) : t =
+    let buffer = BatBuffer.create size in
+    BatBuffer.add_string buffer s; buffer
+
+  let from_char ?(size = 0) (c : char) : t =
+    let buffer = BatBuffer.create size in
+    BatBuffer.add_char buffer c; buffer
+end
+
+(* -------------------------------------------------------------------- *)
+module Regexp = struct
+  include Str
 end
 
 (* -------------------------------------------------------------------- *)
