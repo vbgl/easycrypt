@@ -314,7 +314,7 @@ let opchar = ['=' '<' '>' '+' '-' '*' '/' '\\' '%' '&' '^' '|' ':']
 let sop = opchar+ | '`' opchar+ '`'
 let nop = '\\' ichar+
 
-let uniop = sop | nop | '!'
+let uniop = nop | ['-' '+']+ | '!'
 let binop = sop | nop
 
 (* -------------------------------------------------------------------- *)
