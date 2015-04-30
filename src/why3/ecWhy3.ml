@@ -1378,8 +1378,8 @@ let trans_form env f =
     | FequivF _   -> raise (CannotTranslate "FequivF")
     | FeagerF _   -> raise (CannotTranslate "FeagerF")
     | FequivS _   -> raise (CannotTranslate "FequivS")
-    | FphoareF _  -> raise (CannotTranslate "FphoareF")
-    | FphoareS _  -> raise (CannotTranslate "FphoareS")
+    | FmuhoareF _  -> raise (CannotTranslate "FmuhoareF")
+    | FmuhoareS _  -> raise (CannotTranslate "FmuhoareS")
     | Fintegr _  -> raise (CannotTranslate "Fintegr")
 
 

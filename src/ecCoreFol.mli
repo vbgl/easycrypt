@@ -72,20 +72,20 @@ and f_node =
 
   | Fpr of pr (* hr *)
 
-  | FphoareF of phoareF
-  | FphoareS of phoareS
+  | FmuhoareF of muhoareF
+  | FmuhoareS of muhoareS
   | Fintegr  of integral
 
-and phoareF = {
-  phf_pr : (EcIdent.t * EcMemory.memtype) * form;
-  phf_f  : EcPath.xpath;
-  phf_po : (EcIdent.t * EcMemory.memtype) * form;
+and muhoareF = {
+  muhf_pr : (EcIdent.t * EcMemory.memtype) * form;
+  muhf_f  : EcPath.xpath;
+  muhf_po : (EcIdent.t * EcMemory.memtype) * form;
 }
 
-and phoareS = {
-  ph_pr : (EcIdent.t * EcMemory.memtype) * form;
-  ph_s  : stmt;
-  ph_po : (EcIdent.t * EcMemory.memtype) * form;
+and muhoareS = {
+  muh_pr : (EcIdent.t * EcMemory.memtype) * form;
+  muh_s  : stmt;
+  muh_po : (EcIdent.t * EcMemory.memtype) * form;
 }
 
 and integral = {

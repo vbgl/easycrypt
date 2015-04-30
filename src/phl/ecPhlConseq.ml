@@ -35,6 +35,28 @@ let bd_goal pe fcmp fbd cmp bd =
   | None    -> tc_error pe "cannot swap"
   | Some fp -> fp
 
+(*
+(* -------------------------------------------------------------------- *)
+let t_phoareF_conseq pre post tc = 
+  let env = FApi.tc1_env tc in
+  let ph = tc1_as_phoareF tc in
+  let cond1, cond2 = conseq_cond_bis ph.phf_pr ph.phf_po pre post in
+  let concl1 = f_forall_distr cond1 in
+  let concl2 = f_forall_distr cond2 in
+  let concl3 = f_phoareF_r {ph with phf_pr = pre; phf_po = post } in
+  FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
+
+let t_phoareS_conseq pre post tc = 
+  let env = FApi.tc1_env tc in
+  let ph = tc1_as_phoareS tc in
+  let cond1, cond2 = conseq_cond_bis ph.ph_pr ph.ph_po pre post in
+  let concl1 = f_forall_distr cond1 in
+  let concl2 = f_forall_distr cond2 in
+  let concl3 = f_phoareS_r {ph with ph_pr = pre; ph_po = post } in
+  FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
+  
+*)
+
 (* -------------------------------------------------------------------- *)
 let t_hoareF_conseq pre post tc =
   let env = FApi.tc1_env tc in
