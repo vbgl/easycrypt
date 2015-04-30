@@ -35,28 +35,31 @@ let bd_goal pe fcmp fbd cmp bd =
   | None    -> tc_error pe "cannot swap"
   | Some fp -> fp
 
-(*
 (* -------------------------------------------------------------------- *)
-let t_phoareF_conseq pre post tc = 
-  let env = FApi.tc1_env tc in
-  let ph = tc1_as_phoareF tc in
-  let cond1, cond2 = conseq_cond_bis ph.phf_pr ph.phf_po pre post in
+let f_imp_bis ((id1,ty1),f1) ((id2,ty2),f2) = 
+  assert (EcMemory.mt_equal ty1 ty2);
+  let f2 = Fsubst.f_subst_mem id2 id1 f2 in
+  (id1,ty1), f_imp f1 f2
+  
+let conseq_cond_bis pre post spre spost =
+  f_imp_bis pre spre, f_imp_bis spost post
+
+let t_muhoareF_conseq pre post tc = 
+  let muh = tc1_as_muhoareF tc in
+  let cond1, cond2 = conseq_cond_bis muh.muhf_pr muh.muhf_po pre post in
   let concl1 = f_forall_distr cond1 in
   let concl2 = f_forall_distr cond2 in
-  let concl3 = f_phoareF_r {ph with phf_pr = pre; phf_po = post } in
+  let concl3 = f_muhoareF_r {muh with muhf_pr = pre;muhf_po = post } in
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
 
 let t_phoareS_conseq pre post tc = 
-  let env = FApi.tc1_env tc in
-  let ph = tc1_as_phoareS tc in
-  let cond1, cond2 = conseq_cond_bis ph.ph_pr ph.ph_po pre post in
+  let muh = tc1_as_muhoareS tc in
+  let cond1, cond2 = conseq_cond_bis muh.muh_pr muh.muh_po pre post in
   let concl1 = f_forall_distr cond1 in
   let concl2 = f_forall_distr cond2 in
-  let concl3 = f_phoareS_r {ph with ph_pr = pre; ph_po = post } in
+  let concl3 = f_muhoareS_r {muh with muh_pr = pre; muh_po = post } in
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
   
-*)
-
 (* -------------------------------------------------------------------- *)
 let t_hoareF_conseq pre post tc =
   let env = FApi.tc1_env tc in

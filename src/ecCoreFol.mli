@@ -204,6 +204,7 @@ val f_exists : bindings -> form -> form
 val f_forall : bindings -> form -> form
 val f_lambda : bindings -> form -> form
 
+val f_forall_distr : (EcIdent.t * memtype) * form -> form
 val f_forall_mems : (EcIdent.t * memtype) list -> form -> form
 
 (* soft-constructors - hoare *)
@@ -237,6 +238,20 @@ val f_eagerF   : form -> stmt -> xpath -> xpath -> stmt -> form -> form
 val f_pr_r : pr -> form
 val f_pr   : memory -> xpath -> form -> form -> form
 
+(* soft-constructors - mu hoare *)
+val f_muhoareF_r : muhoareF -> form
+val f_muhoareF   : (EcIdent.t * EcMemory.memtype) * form ->
+                   EcPath.xpath -> 
+                   (EcIdent.t * EcMemory.memtype) * form ->
+                   form
+
+val f_muhoareS_r : muhoareS -> form
+val f_muhoareS   : (EcIdent.t * EcMemory.memtype) * form ->
+                   EcModules.stmt ->
+                   (EcIdent.t * EcMemory.memtype) * form ->
+                   form
+val f_ig_r : integral -> form
+val f_ig   : (EcIdent.t * EcMemory.memtype) * form -> EcIdent.t -> form 
 (* soft-constructors - unit *)
 val f_tt : form
 
@@ -355,6 +370,8 @@ val destr_equivS    : form -> equivS
 val destr_eagerF    : form -> eagerF
 val destr_hoareF    : form -> hoareF
 val destr_hoareS    : form -> hoareS
+val destr_muhoareF    : form -> muhoareF
+val destr_muhoareS    : form -> muhoareS
 val destr_bdHoareF  : form -> bdHoareF
 val destr_bdHoareS  : form -> bdHoareS
 val destr_pr        : form -> pr

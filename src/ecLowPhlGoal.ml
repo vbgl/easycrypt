@@ -25,6 +25,7 @@ type hlform = [`Any | `Pred | `Stmt]
 type hlkind = [
   | `Hoare  of hlform
   | `PHoare of hlform
+  | `MUHoare of hlform
   | `Equiv  of hlform
   | `Eager
 ]
@@ -49,6 +50,7 @@ let tc_error_noXhl ?(kinds : hlkinds option) pf =
       match kind with
       | `Hoare  fm -> ("hoare" , fm)
       | `PHoare fm -> ("phoare", fm)
+      | `MUHoare fm -> ("muhoare", fm)
       | `Equiv  fm -> ("equiv" , fm)
       | `Eager     -> ("eager" , `Any)
     in
@@ -153,9 +155,16 @@ let pf_as_equivF   pe c = as_phl (`Equiv  `Pred) (fun () -> destr_equivF   c) pe
 let pf_as_equivS   pe c = as_phl (`Equiv  `Stmt) (fun () -> destr_equivS   c) pe
 let pf_as_eagerF   pe c = as_phl `Eager          (fun () -> destr_eagerF   c) pe
 
+let pf_as_muhoareF pe c = as_phl (`MUHoare `Pred) (fun () -> destr_muhoareF   c) pe
+let pf_as_muhoareS pe c = as_phl (`MUHoare `Stmt) (fun () -> destr_muhoareS   c) pe
+let pf_as_equivS   pe c = as_phl (`Equiv  `Stmt) (fun () -> destr_equivS   c) pe
+let pf_as_eagerF   pe c = as_phl `Eager          (fun () -> destr_eagerF   c) pe
+
 (* -------------------------------------------------------------------- *)
 let tc1_as_hoareF   tc = pf_as_hoareF   !!tc (FApi.tc1_goal tc)
 let tc1_as_hoareS   tc = pf_as_hoareS   !!tc (FApi.tc1_goal tc)
+let tc1_as_muhoareF tc = pf_as_muhoareF   !!tc (FApi.tc1_goal tc)
+let tc1_as_muhoareS tc = pf_as_muhoareS   !!tc (FApi.tc1_goal tc)
 let tc1_as_bdhoareF tc = pf_as_bdhoareF !!tc (FApi.tc1_goal tc)
 let tc1_as_bdhoareS tc = pf_as_bdhoareS !!tc (FApi.tc1_goal tc)
 let tc1_as_equivF   tc = pf_as_equivF   !!tc (FApi.tc1_goal tc)

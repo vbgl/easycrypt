@@ -557,6 +557,9 @@ let gty_as_mem =
 let gty_as_distr =
   function GTmem (m,`Distr) -> m  | _ -> assert false
 
+let gty_as_memordistr =
+  function GTmem (m,_) -> m  | _ -> assert false
+
 let gty_as_mod =
   function GTmodty (mt, mr) -> (mt, mr) | _ -> assert false
 
@@ -643,6 +646,9 @@ let f_lambda b  f     = f_quant Llambda b f
 
 let f_forall_mems bds f =
   f_forall (List.map (fun (m, mt) -> (m, gtmem mt)) bds) f
+
+let f_forall_distr ((id,mt), f) = 
+  f_forall [id, gtdistr mt] f
 
 (* -------------------------------------------------------------------- *)
 let ty_fbool1 = toarrow (List.make 1 tbool) tbool
@@ -1155,6 +1161,16 @@ let destr_hoareS f =
   | FhoareS es -> es
   | _ -> destr_error "hoareS"
 
+let destr_muhoareS f =
+  match f.f_node with
+  | FmuhoareS es -> es
+  | _ -> destr_error "muhoareS"
+
+let destr_muhoareF f =
+  match f.f_node with
+  | FmuhoareF es -> es
+  | _ -> destr_error "muhoareF"
+
 let destr_hoareF f =
   match f.f_node with
   | FhoareF es -> es
@@ -1605,7 +1621,31 @@ module Fsubst = struct
 
       FSmart.f_pr (fp, pr) { pr_mem; pr_fun; pr_args; pr_event; }
 
+    | FmuhoareF mh ->
+      let muhf_pr = subst_bindmem ~tx `Distr s mh.muhf_pr in
+      let muhf_po = subst_bindmem ~tx `Distr s mh.muhf_po in
+      let muhf_f  = EcPath.x_substm s.fs_sty.ts_p s.fs_mp mh.muhf_f in
+      FSmart.f_muhoareF  (fp,mh) { muhf_pr; muhf_po; muhf_f }
+ 
+    | FmuhoareS mh ->
+      let muh_pr = subst_bindmem ~tx `Distr s mh.muh_pr in
+      let muh_po = subst_bindmem ~tx `Distr s mh.muh_po in
+      let es = e_subst_init s.fs_freshen s.fs_sty.ts_p s.fs_ty s.fs_opdef s.fs_mp in
+      let muh_s  = EcModules.s_subst es mh.muh_s in
+      FSmart.f_muhoareS (fp,mh) { muh_pr; muh_po; muh_s }
+      
+    | Fintegr ig ->
+      let ig_fo = subst_bindmem ~tx `Mem s ig.ig_fo in
+      let ig_mu  = Mid.find_def ig.ig_mu ig.ig_mu s.fs_mem in
+      FSmart.f_ig (fp,ig) { ig_fo; ig_mu }
+
     | _ -> f_map s.fs_ty (f_subst ~tx s) fp)
+
+  and subst_bindmem ~tx k s ((id,ty),f) = 
+    let s, (id', gty') = add_binding s (id, GTmem(ty,k)) in
+    let f'    = f_subst ~tx s f in
+    let ty'   = gty_as_memordistr gty' in
+    (id', ty'), f'
 
   and f_subst_op ~tx freshen fty tys args (tyids, e) =
     (* FIXME: factor this out *)
