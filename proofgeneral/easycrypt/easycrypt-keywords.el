@@ -1,4 +1,4 @@
-; Generated on Wed Mar  4 14:39:24 2015
+; Generated on Thu Apr 30 17:47:28 2015
 
 (defvar easycrypt-bytac-keywords '(
   "exact"
@@ -52,12 +52,12 @@
   "with"
   "prover"
   "timeout"
-  "nolocals"
   "Top"
   "Self"
 ))
 
 (defvar easycrypt-internal-keywords '(
+  "time"
   "undo"
   "debug"
   "pragma"
@@ -83,6 +83,7 @@
   "equiv"
   "hoare"
   "phoare"
+  "muhoare"
   "islossless"
 ))
 

@@ -43,6 +43,7 @@
     "equiv"       , EQUIV      ;        (* KW: prog *)
     "hoare"       , HOARE      ;        (* KW: prog *)
     "phoare"      , PHOARE     ;        (* KW: prog *)
+    "muhoare"     , MUHOARE    ;        (* KW: prog *)
     "islossless"  , LOSSLESS   ;        (* KW: prog *)
 
     "try"         , TRY        ;        (* KW: tactical *)

@@ -387,6 +387,7 @@
 %token MODPATH
 %token MODULE
 %token MOVE
+%token MUHOARE
 %token NE
 %token NOSMT
 %token NOT
@@ -930,7 +931,12 @@ sform_u(P):
        parse_error n.pl_loc (Some "tuple projection start at 1");
      PFproji(f,n.pl_desc - 1) }
 
+| SAMPLE LBRACKET f=form_r(P) PIPE x=mdident RBRACKET
+   { PFintegr (x, f) }
+
 | HOARE LBRACKET hb=hoare_body(P) RBRACKET { hb }
+
+| MUHOARE LBRACKET mb=muhoare_body(P) RBRACKET { mb }
 
 | EQUIV LBRACKET eb=equiv_body(P) RBRACKET { eb }
 
@@ -1081,6 +1087,10 @@ hoare_bd_cmp :
 hoare_body(P):
   mp=loc(fident) COLON pre=form_r(P) LONGARROW post=form_r(P)
     { PFhoareF (pre, mp, post) }
+
+muhoare_body(P):
+  mp=loc(fident) COLON pre=form_r(P) LONGARROW post=form_r(P)
+    { PFmuhoareF (pre, mp, post) }
 
 phoare_body(P):
   LBRACKET mp=loc(fident) COLON
@@ -1647,9 +1657,10 @@ axiom:
 | l=local LEMMA o=nosmt d=lemma_decl ao=axiom_tc
     { mk_axiom ~local:l ~nosmt:o d ao }
 
-| l=local  EQUIV x=ident pd=pgtybindings? COLON p=loc( equiv_body(none)) ao=axiom_tc
-| l=local  HOARE x=ident pd=pgtybindings? COLON p=loc( hoare_body(none)) ao=axiom_tc
-| l=local PHOARE x=ident pd=pgtybindings? COLON p=loc(phoare_body(none)) ao=axiom_tc
+| l=local   EQUIV x=ident pd=pgtybindings? COLON p=loc(  equiv_body(none)) ao=axiom_tc
+| l=local   HOARE x=ident pd=pgtybindings? COLON p=loc(  hoare_body(none)) ao=axiom_tc
+| l=local MUHOARE x=ident pd=pgtybindings? COLON p=loc(  hoare_body(none)) ao=axiom_tc
+| l=local  PHOARE x=ident pd=pgtybindings? COLON p=loc(muhoare_body(none)) ao=axiom_tc
     { mk_axiom ~local:l (x, None, pd, p) ao }
 
 (* -------------------------------------------------------------------- *)
