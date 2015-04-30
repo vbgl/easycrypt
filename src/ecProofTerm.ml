@@ -36,8 +36,8 @@ type pt_ev_arg = {
 }
 
 and pt_ev_arg_r =
-| PVAFormula of EcFol.form
-| PVAMemory  of EcMemory.memory
+| PVAFormula of EcFol.form 
+| PVAMemory  of EcMemory.memory * [`Mem | `Distr] 
 | PVAModule  of (EcPath.mpath * EcModules.module_sig)
 | PVASub     of pt_ev
 
@@ -45,6 +45,7 @@ and pt_ev_arg_r =
 type apperror = [
   | `FormWanted
   | `MemoryWanted
+  | `MemDistrWanted
   | `ModuleWanted
   | `PTermWanted
   | `CannotInferMod
@@ -61,6 +62,7 @@ let tc_pterm_apperror pte ?loc (kind : apperror) =
     match kind with
     | `FormWanted      -> Format.fprintf fmt "%s" "expecting a formula"
     | `MemoryWanted    -> Format.fprintf fmt "%s" "expecting a memory"
+    | `MemDistrWanted    -> Format.fprintf fmt "%s" "expecting a memdistr"
     | `ModuleWanted    -> Format.fprintf fmt "%s" "expecting a module expression"
     | `PTermWanted     -> Format.fprintf fmt "%s" "expecting a proof-term"
     | `CannotInferMod  -> Format.fprintf fmt "%s" "cannot infer module arguments"
@@ -133,7 +135,7 @@ let concretize_e_form (CPTEnv subst) f =
 let rec concretize_e_arg ((CPTEnv subst) as cptenv) arg =
   match arg with
   | PAFormula f        -> PAFormula (Fsubst.f_subst subst f)
-  | PAMemory  m        -> PAMemory (Mid.find_def m m subst.fs_mem)
+  | PAMemory  (m,k)    -> PAMemory (Mid.find_def m m subst.fs_mem, k)
   | PAModule  (mp, ms) -> PAModule (mp, ms)
   | PASub     pt       -> PASub (pt |> omap (concretize_e_pt cptenv))
 
@@ -444,8 +446,8 @@ and trans_pterm_arg_mem pe ?name { pl_desc = arg; pl_loc = loc; } =
   let dfl () = Printf.sprintf "&m%d" (EcUid.unique ()) in
 
   match arg with
-  | EA_form { pl_loc = lc; pl_desc = (PFmem m) } ->
-      trans_pterm_arg_mem pe ?name (mk_loc lc (EA_mem m))
+  | EA_form { pl_loc = lc; pl_desc = (PFmem (m,k)) } ->
+      trans_pterm_arg_mem pe ?name (mk_loc lc (EA_mem (m,k)))
 
   | EA_mod  _ | EA_proof _ | EA_form _ ->
       tc_pterm_apperror ~loc pe `MemoryWanted
@@ -453,12 +455,12 @@ and trans_pterm_arg_mem pe ?name { pl_desc = arg; pl_loc = loc; } =
   | EA_none ->
       let x = EcIdent.create (ofdfl dfl name) in
       pe.pte_ev := EcMatching.MEV.add x `Mem !(pe.pte_ev);
-      { ptea_env = pe; ptea_arg = PVAMemory x; }
+      { ptea_env = pe; ptea_arg = PVAMemory (x, `Mem); }
 
-  | EA_mem mem ->
+  | EA_mem (mem,k) ->
       let env = LDecl.toenv pe.pte_hy in
       let mem = Exn.recast_pe pe.pte_pe pe.pte_hy (fun () -> EcTyping.transmem env mem) in
-        { ptea_env = pe; ptea_arg = PVAMemory mem; }
+        { ptea_env = pe; ptea_arg = PVAMemory (mem,k); }
 
 (* ------------------------------------------------------------------ *)
 and process_pterm_arg
@@ -523,10 +525,13 @@ and check_pterm_oarg pe (x, xty) f arg =
       | _ -> tc_pterm_apperror pe `FormWanted
   end
 
-  | GTmem _ -> begin
+  | GTmem (_,k1) -> begin
       match dfl_arg_for_mem pe arg with
-      | PVAMemory arg -> (Fsubst.f_subst_mem x arg f, PAMemory arg)
-      | _ -> tc_pterm_apperror pe `MemoryWanted
+      | PVAMemory (arg,k2) when k1 = k2 ->
+        (Fsubst.f_subst_mem x arg f, PAMemory (arg, k1))
+      | _ when k1 = `Mem -> tc_pterm_apperror pe `MemoryWanted
+      | _ -> tc_pterm_apperror pe `MemDistrWanted
+
   end
 
   | GTmodty (emt, restr) -> begin
@@ -701,7 +706,7 @@ type prept = [
 
 and prept_arg =  [
   | `F   of form
-  | `Mem of EcMemory.memory
+  | `Mem of EcMemory.memory * [`Mem | `Distr]
   | `Mod of (EcPath.mpath * EcModules.module_sig)
   | `Sub of prept
   | `H_
@@ -719,7 +724,7 @@ let pt_of_prept tc pt =
 
   and app_pt_ev pt_ev = function
     | `F f    -> apply_pterm_to_arg_r pt_ev (PVAFormula f)
-    | `Mem m  -> apply_pterm_to_arg_r pt_ev (PVAMemory m)
+    | `Mem (m,k) -> apply_pterm_to_arg_r pt_ev (PVAMemory (m,k) )
     | `Mod m  -> apply_pterm_to_arg_r pt_ev (PVAModule m)
     | `Sub pt -> apply_pterm_to_arg_r pt_ev (PVASub (build_pt pt))
     | `H_     -> apply_pterm_to_hole pt_ev

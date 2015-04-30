@@ -268,6 +268,7 @@
 %token <EcSymbols.symbol> UIDENT
 %token <EcSymbols.symbol> TIDENT
 %token <EcSymbols.symbol> MIDENT
+%token <EcSymbols.symbol> MDIDENT
 %token <EcSymbols.symbol> PUNIOP
 %token <EcSymbols.symbol> PBINOP
 
@@ -512,6 +513,7 @@
 %inline uident: x=loc(UIDENT) { x }
 %inline tident: x=loc(TIDENT) { x }
 %inline mident: x=loc(MIDENT) { x }
+%inline mdident: x=loc(MDIDENT) { x }
 
 %inline _ident:
 | x=LIDENT { x }
@@ -890,7 +892,10 @@ sform_u(P):
    { PFident (x, ti) }
 
 | x=mident
-   { PFmem x }
+   { PFmem (x, `Mem) }
+
+| x=mdident
+   { PFmem (x, `Distr) }
 
 | se=sform_r(P) op=loc(FROM_INT)
    { let id = PFident(mk_loc op.pl_loc EcCoreLib.s_real_of_int, None) in

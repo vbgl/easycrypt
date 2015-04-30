@@ -19,7 +19,7 @@ type abs_uses = {
 
 type local_kind =
 | LD_var    of ty * form option
-| LD_mem    of EcMemory.memtype
+| LD_mem    of EcMemory.memtype * [`Mem | `Distr ]
 | LD_modty  of EcModules.module_type * EcModules.mod_restr
 | LD_hyp    of form                     (* of type bool *)
 | LD_abs_st of abs_uses

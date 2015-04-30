@@ -34,7 +34,7 @@ type pt_ev_arg = {
 
 and pt_ev_arg_r =
 | PVAFormula of EcFol.form
-| PVAMemory  of EcMemory.memory
+| PVAMemory  of EcMemory.memory * [`Mem | `Distr]
 | PVAModule  of (EcPath.mpath * EcModules.module_sig)
 | PVASub     of pt_ev
 
@@ -114,7 +114,7 @@ type prept = [
 
 and prept_arg =  [
   | `F   of form
-  | `Mem of EcMemory.memory
+  | `Mem of EcMemory.memory * [`Mem | `Distr]
   | `Mod of (EcPath.mpath * EcModules.module_sig)
   | `Sub of prept
   | `H_

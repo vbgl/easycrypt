@@ -232,7 +232,7 @@ and pformula_r =
   | PFint    of zint
   | PFtuple  of pformula list
   | PFident  of pqsymbol * ptyannot option
-  | PFmem    of psymbol
+  | PFmem    of psymbol * [`Mem | `Distr]
   | PFside   of pformula * (int * symbol) located
   | PFapp    of pformula * pformula list
   | PFif     of pformula * pformula * pformula
@@ -325,7 +325,7 @@ type 'a ppt_head =
 type ppt_arg =
   | EA_none
   | EA_form  of pformula
-  | EA_mem   of pmemory
+  | EA_mem   of pmemory * [`Mem | `Distr]
   | EA_mod   of pmsymbol located
   | EA_proof of pformula gppterm
 

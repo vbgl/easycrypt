@@ -1197,7 +1197,8 @@ let trans_gty env gty =
   match gty with
   | GTty ty   -> env, trans_ty env ty
   | GTmodty _ -> raise (CannotTranslate "binding of module")
-  | GTmem   mt -> 
+  | GTmem   (mt,k) -> 
+    assert (k = `Mem);
     match mt with
     | None -> env, ty_mem 
     | Some lmt ->
@@ -1393,7 +1394,7 @@ let trans_form env f =
         let f = 
           trans_fun !env pr.pr_fun (oget args.Term.t_ty) in
         let mid = save () in
-        let env0, ty = trans_gty !env (GTmem None) in
+        let env0, ty = trans_gty !env (gtmem None) in
         let env1, vs  = add_id env0 (EcCoreFol.mhr, ty) in
         env := env1;
         let evbody = trans_form pr.pr_event in
@@ -1746,14 +1747,16 @@ let check_goal ?notify me_of_mt env pi (hyps, concl) =
         env :=
           { !env with logic_task = add_decl_with_tuples !env.logic_task decl }
           
-      | LD_mem  mt ->
-        let env0, _ = trans_gty !env (GTmem mt) in 
+      | LD_mem (mt,`Mem) ->
+        let env0, _ = trans_gty !env (gtmem mt) in 
         let ls = Term.create_fsymbol (preid id) [] ty_mem in
         let decl = Decl.create_param_decl ls in
         env := 
           { env0 with env_id = Mid.add id (t_app ls [] ty_mem) env0.env_id;
             logic_task = add_decl_with_tuples env0.logic_task decl }
-          
+
+      | LD_mem (_mt,`Distr) -> assert false 
+
       | LD_modty (mt,restr) ->
         env := add_abs_mod me_of_mt !env id mt restr
 

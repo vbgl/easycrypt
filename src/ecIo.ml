@@ -159,6 +159,11 @@ let is_mem_ident x =
   | Some (EcParser.MIDENT _) -> true
   | _ -> false
 
+let is_mdistr_ident x =
+  match lex_single_token x with
+  | Some (EcParser.MDIDENT _) -> true
+  | _ -> false
+
 let is_mod_ident x =
   match lex_single_token x with
   | Some (EcParser.UIDENT _) -> true

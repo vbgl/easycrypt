@@ -416,10 +416,10 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
 
             (env, subst)
 
-        | GTmem None, GTmem None ->
+        | GTmem (None, k1), GTmem (None, k2) when k1 = k2->
             (env, subst)
 
-        | GTmem (Some m1), GTmem (Some m2) ->
+        | GTmem (Some m1,k1), GTmem (Some m2, k2) when k1 = k2 ->
             let xp1 = EcMemory.lmt_xpath m1 in
             let xp2 = EcMemory.lmt_xpath m2 in
             let m1  = EcMemory.lmt_bindings m1 in

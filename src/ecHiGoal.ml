@@ -530,7 +530,7 @@ let process_view1 pe tc =
             | GTty _, PAFormula { f_node = Flocal x } when MEV.mem x `Form evm ->
                 if MEV.isset x `Form evm then None else Some (x, idty)
 
-            | GTmem _, PAMemory x when MEV.mem x `Mem evm ->
+            | GTmem (_,k1), PAMemory (x,k2) when MEV.mem x `Mem evm && k1 = k2 ->
                 if MEV.isset x `Mem evm then None else Some (x, idty)
 
             | _, _ -> assert false

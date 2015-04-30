@@ -60,6 +60,27 @@ module PPEnv = struct
     let m = EcMemory.empty_local id xp in
       push_mem ppe ?active m
 
+  let enter_by_distrid ppe id =
+    match EcEnv.MemDistr.byid id ppe.ppe_env with
+    | None   -> ppe
+    | Some m -> begin
+      match snd m with
+      | None   -> ppe
+      | Some _ ->
+          { ppe with ppe_env =
+              EcEnv.MemDistr.set_active (fst m) ppe.ppe_env }
+    end
+
+  let push_distr ppe ?(active = false) m =
+    let ppe = { ppe with ppe_env = EcEnv.MemDistr.push m ppe.ppe_env } in
+      match active with
+      | true  -> enter_by_distrid ppe (fst m)
+      | false -> ppe
+
+  let create_and_push_distr ppe ?active (id, xp) =
+    let m = EcMemory.empty_local id xp in
+    push_distr ppe ?active m
+
   let push_mems ppe ids =
     List.fold_left (push_mem ?active:None) ppe ids
 
@@ -1144,7 +1165,7 @@ let pp_binding (ppe : PPEnv.t) (xs, ty) =
       in
         (tenv1, pp)
 
-  | GTmem m ->
+  | GTmem (m,`Mem) ->
       let tenv1 = PPEnv.add_locals ppe xs in
       let tenv1 =
         match m with
@@ -1153,6 +1174,22 @@ let pp_binding (ppe : PPEnv.t) (xs, ty) =
             let xp = EcMemory.lmt_xpath m in
               List.fold_left
                 (fun tenv1 x -> PPEnv.create_and_push_mem tenv1 (x, xp))
+                tenv1 xs
+      in
+      let pp fmt =
+        Format.fprintf fmt "%a" (pp_list "@ " (pp_local tenv1)) xs
+      in
+        (tenv1, pp)
+
+  | GTmem (m,`Distr) ->
+      let tenv1 = PPEnv.add_locals ppe xs in
+      let tenv1 =
+        match m with
+        | None   -> tenv1
+        | Some m ->
+            let xp = EcMemory.lmt_xpath m in
+              List.fold_left
+                (fun tenv1 x -> PPEnv.create_and_push_distr tenv1 (x, xp))
                 tenv1 xs
       in
       let pp fmt =
@@ -2037,9 +2074,13 @@ module PPGoal = struct
   let pre_pp_hyp ppe (id, k) =
     let ppe =
       match k with
-      | EcBaseLogic.LD_mem (Some m) ->
+      | EcBaseLogic.LD_mem (Some m, `Mem) ->
           let ppe = PPEnv.add_local ~force:true ppe id in
           PPEnv.create_and_push_mem ppe (id, EcMemory.lmt_xpath m)
+
+      | EcBaseLogic.LD_mem (Some m, `Distr) ->
+          let ppe = PPEnv.add_local ~force:true ppe id in
+          PPEnv.create_and_push_distr ppe (id, EcMemory.lmt_xpath m)
 
       | EcBaseLogic.LD_modty (p,_) ->
           PPEnv.add_mods ~force:true ppe [id] p
@@ -2055,11 +2096,18 @@ module PPGoal = struct
             Format.fprintf fmt "%a@ := %a"
               (pp_type ppe) ty (pp_form ppe) body
 
-        | EcBaseLogic.LD_mem None ->
+        | EcBaseLogic.LD_mem (None, `Mem) ->
             Format.fprintf fmt "memory"
 
-        | EcBaseLogic.LD_mem (Some m) ->
+        | EcBaseLogic.LD_mem (Some m, `Mem) ->
             Format.fprintf fmt "memory <%a>"
+              (pp_funname ppe) (EcMemory.lmt_xpath m)
+
+        | EcBaseLogic.LD_mem (None, `Distr) ->
+          Format.fprintf fmt "memdistr"
+
+        | EcBaseLogic.LD_mem (Some m, `Distr) ->
+            Format.fprintf fmt "memdistr <%a>"
               (pp_funname ppe) (EcMemory.lmt_xpath m)
 
         | EcBaseLogic.LD_modty (p, sm) ->

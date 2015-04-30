@@ -2439,7 +2439,7 @@ let trans_form_or_pattern env (ps, ue) pf tt =
           List.map_fold add1 env xs 
 
         | PGTY_Mem ->
-          let ty = GTmem None in
+          let ty = gtmem None in
           let add1 env x = 
             let x = EcIdent.create x.pl_desc in
             let env = EcEnv.Memory.push (EcMemory.abstract x) env in

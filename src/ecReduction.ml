@@ -500,7 +500,8 @@ let check_alpha_equal ri hyps f1 f2 =
       List.fold_left2 add_local (env,subst) lid1 lid2
     | _, _ -> error() in
 
-  let check_memtype env mt1 mt2 =
+  let check_memtype env mt1 k1 mt2 k2 =
+    ensure (k1 = k2);
     match mt1, mt2 with
     | None, None -> ()
     | Some lmt1, Some lmt2 ->
@@ -525,8 +526,9 @@ let check_alpha_equal ri hyps f1 f2 =
       Mod.bind_local x1 p1 r1 env,
       if id_equal x1 x2 then subst
       else Fsubst.f_bind_mod subst x2 (EcPath.mident x1)
-    | GTmem   me1, GTmem me2  ->
-      check_memtype env me1 me2;
+    | GTmem   (me1,k1), GTmem (me2,k2)  ->
+     
+      check_memtype env me1 k1 me2 k2;
       env,
       if id_equal x1 x2 then subst
       else Fsubst.f_bind_mem subst x2 x1

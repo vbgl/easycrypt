@@ -98,7 +98,7 @@ module LowApply = struct
               raise InvalidProofTerm;
             (Fsubst.f_bind_local sbt x arg, f)
 
-        | GTmem _, PAMemory m ->
+        | GTmem (_,k1), PAMemory (m,k2) when k1 = k2 ->
             (Fsubst.f_bind_mem sbt x m, f)
 
         | GTmodty (emt, restr), PAModule (mp, mt) -> begin
@@ -224,8 +224,9 @@ module LowIntro = struct
   let valid_value_name (x : symbol) = x = "_" || EcIo.is_sym_ident x
   let valid_mod_name   (x : symbol) = x = "_" || EcIo.is_mod_ident x
   let valid_mem_name   (x : symbol) = x = "_" || EcIo.is_mem_ident x
+  let valid_mdistr_name(x : symbol) = x = "_" || EcIo.is_mdistr_ident x
 
-  type kind = [`Value | `Module | `Memory]
+  type kind = [`Value | `Module | `Memory | `MemDistr]
 
   let tc_no_product (pe : proofenv) ?loc () =
     tc_error pe ?loc "nothing to introduce"
@@ -233,9 +234,10 @@ module LowIntro = struct
   let check_name_validity pe kind x : unit =
     let ok =
       match kind with
-      | `Value  -> valid_value_name (tg_val x)
-      | `Module -> valid_mod_name   (tg_val x)
-      | `Memory -> valid_mem_name   (tg_val x)
+      | `Value    -> valid_value_name  (tg_val x)
+      | `Module   -> valid_mod_name    (tg_val x)
+      | `Memory   -> valid_mem_name    (tg_val x)
+      | `MemDistr -> valid_mdistr_name (tg_val x)
     in
       if not ok then
         tc_error pe ?loc:(tg_tag x) "invalid name: %s" (tg_val x)
@@ -252,9 +254,9 @@ let t_intros (ids : ident mloc list) (tc : tcenv1) =
     | GTty ty ->
         LowIntro.check_name_validity !!tc `Value name;
         (LD_var (ty, None), Fsubst.f_bind_local sbt x (f_local id ty))
-    | GTmem me ->
+    | GTmem (me,k) ->
         LowIntro.check_name_validity !!tc `Memory name;
-        (LD_mem me, Fsubst.f_bind_mem sbt x id)
+        (LD_mem (me,k), Fsubst.f_bind_mem sbt x id)
     | GTmodty (i, r) ->
         LowIntro.check_name_validity !!tc `Module name;
         (LD_modty (i, r), Fsubst.f_bind_mod sbt x (EcPath.mident id))
@@ -407,11 +409,11 @@ let t_generalize_hyps ?(clear = false) ids tc =
         let args = PAFormula (f_local id ty) :: args in
         (s, bds, args)
 
-    | LD_mem mt ->
+    | LD_mem (mt,k) ->
       let x    = EcIdent.fresh id in
       let s    = Fsubst.f_bind_mem s id x in
-      let bds  = `Forall (x, GTmem mt) :: bds in
-      let args = PAMemory id :: args in
+      let bds  = `Forall (x, GTmem (mt,k)) :: bds in
+      let args = PAMemory (id,k) :: args in
       (s, bds, args)
 
     | LD_modty (mt,r) ->

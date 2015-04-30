@@ -24,7 +24,7 @@ open EcBigInt.Notations
 type gty =
   | GTty    of EcTypes.ty
   | GTmodty of module_type * mod_restr
-  | GTmem   of EcMemory.memtype
+  | GTmem   of EcMemory.memtype * [ `Mem | `Distr ]
 
 type quantif =
   | Lforall
@@ -143,15 +143,16 @@ let gty_equal ty1 ty2 =
   | GTmodty (p1, r1), GTmodty (p2, r2)  ->
     EcModules.mty_equal p1 p2 && mr_equal r1 r2
 
-  | GTmem mt1, GTmem mt2 ->
-      EcMemory.mt_equal mt1 mt2
+  | GTmem (mt1,k1), GTmem (mt2,k2) ->
+      EcMemory.mt_equal mt1 mt2 && k1 = k2
 
   | _ , _ -> false
 
 let gty_hash = function
-  | GTty ty -> EcTypes.ty_hash ty
-  | GTmodty (p, _)  ->  EcModules.mty_hash p
-  | GTmem _ -> 1
+  | GTty ty          -> EcTypes.ty_hash ty
+  | GTmodty (p, _)   ->  EcModules.mty_hash p
+  | GTmem (_,`Mem)   -> 1
+  | GTmem (_,`Distr) -> 2
 
 let gty_fv = function
   | GTty ty -> ty.ty_fv
@@ -159,7 +160,7 @@ let gty_fv = function
     let fv =
       EcPath.Sm.fold (fun mp fv -> EcPath.m_fv fv mp) r EcIdent.Mid.empty in
     EcPath.Sx.fold (fun xp fv -> EcPath.x_fv fv xp) rx fv
-  | GTmem mt -> EcMemory.mt_fv mt
+  | GTmem (mt,_) -> EcMemory.mt_fv mt
 
 let gtty (ty : EcTypes.ty) =
   GTty ty
@@ -168,7 +169,10 @@ let gtmodty (mt : module_type) (mr : mod_restr) =
   GTmodty (mt, mr)
 
 let gtmem (mt : EcMemory.memtype) =
-  GTmem mt
+  GTmem (mt, `Mem)
+
+let gtdistr (mt : EcMemory.memtype) =
+  GTmem (mt, `Distr)
 
 (*-------------------------------------------------------------------- *)
 let b_equal (b1 : bindings) (b2 : bindings) =
@@ -474,15 +478,19 @@ let gty_as_ty =
   function GTty ty -> ty | _ -> assert false
 
 let gty_as_mem =
-  function GTmem m -> m  | _ -> assert false
+  function GTmem (m,`Mem) -> m  | _ -> assert false
+
+let gty_as_distr =
+  function GTmem (m,`Distr) -> m  | _ -> assert false
 
 let gty_as_mod =
   function GTmodty (mt, mr) -> (mt, mr) | _ -> assert false
 
 let kind_of_gty = function
-  | GTty    _ -> `Form
-  | GTmem   _ -> `Mem
-  | GTmodty _ -> `Mod
+  | GTty    _          -> `Form
+  | GTmem   (_,`Mem)   -> `Mem
+  | GTmem   (_,`Distr) -> `Distr
+  | GTmodty _          -> `Mod
 
 (* -------------------------------------------------------------------- *)
 let hoarecmp_opp cmp =
@@ -560,7 +568,7 @@ let f_forall b  f     = f_quant Lforall b f
 let f_lambda b  f     = f_quant Llambda b f
 
 let f_forall_mems bds f =
-  f_forall (List.map (fun (m, mt) -> (m, GTmem mt)) bds) f
+  f_forall (List.map (fun (m, mt) -> (m, gtmem mt)) bds) f
 
 (* -------------------------------------------------------------------- *)
 let ty_fbool1 = toarrow (List.make 1 tbool) tbool
@@ -1292,9 +1300,9 @@ module Fsubst = struct
         then gty
         else GTmodty (p', (rx', r'))
 
-    | GTmem mt ->
+    | GTmem (mt,k) ->
         let mt' = EcMemory.mt_substm s.fs_sty.ts_p s.fs_mp s.fs_ty mt in
-        if mt == mt' then gty else GTmem mt'
+        if mt == mt' then gty else GTmem(mt',k)
 
   (* ------------------------------------------------------------------ *)
   let add_binding s (x, gty as xt) =

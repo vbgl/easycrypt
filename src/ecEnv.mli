@@ -54,11 +54,24 @@ exception LookupFailure of lookup_error
 
 (* -------------------------------------------------------------------- *)
 type meerror =
-| UnknownMemory of [`Symbol of symbol | `Memory of memory]
+| UnknownMemory of [`Symbol of symbol | `Memory of memory | `MemDistr of memory]
 
 exception MEError of meerror
 
 module Memory : sig
+  val all         : env -> memenv list
+  val set_active  : memory -> env -> env
+  val get_active  : env -> memory option
+
+  val byid        : memory -> env -> memenv option
+  val lookup      : int -> symbol -> env -> memenv option
+  val current     : env -> memenv option
+  val push        : memenv -> env -> env
+  val push_all    : memenv list -> env -> env
+  val push_active : memenv -> env -> env
+end
+
+module MemDistr : sig
   val all         : env -> memenv list
   val set_active  : memory -> env -> env
   val get_active  : env -> memory option

@@ -140,8 +140,8 @@ let on_mpath_binding cb b =
     on_mpath_modty cb mty;
     Sx.iter (fun x -> cb x.x_top) rx;
     Sm.iter cb r
-  | EcFol.GTmem   None      -> ()
-  | EcFol.GTmem   (Some m)  -> on_mpath_lcmem cb m
+  | EcFol.GTmem   (None,_)      -> ()
+  | EcFol.GTmem   (Some m, _)  -> on_mpath_lcmem cb m
 
 let on_mpath_bindings cb b =
   List.iter (fun (_, b) -> on_mpath_binding cb b) b

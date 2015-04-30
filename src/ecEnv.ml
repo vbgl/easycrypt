@@ -139,6 +139,8 @@ type preenv = {
   env_locals   : (EcIdent.t * EcTypes.ty) MMsym.t;
   env_memories : EcMemory.memenv MMsym.t;
   env_actmem   : EcMemory.memory option;
+  env_memdistr : EcMemory.memenv MMsym.t;
+  env_actdistr : EcMemory.memory option;
   env_abs_st   : EcBaseLogic.abs_uses Mid.t;
   env_tci      : ((ty_params * ty) * tcinstance) list;
   env_tc       : TC.graph;
@@ -240,6 +242,8 @@ let empty gstate =
     env_locals   = MMsym.empty;
     env_memories = MMsym.empty;
     env_actmem   = None;
+    env_memdistr = MMsym.empty;
+    env_actdistr = None;
     env_abs_st   = Mid.empty;
     env_tci      = [];
     env_tc       = TC.Graph.empty;
@@ -1139,7 +1143,7 @@ let enter mode (name : symbol) (env : env) =
 
 (* -------------------------------------------------------------------- *)
 type meerror =
-| UnknownMemory of [`Symbol of symbol | `Memory of memory]
+| UnknownMemory of [`Symbol of symbol | `Memory of memory | `MemDistr of memory]
 
 exception MEError of meerror
 
@@ -1186,6 +1190,60 @@ module Memory = struct
       MMsym.add (EcIdent.name id) me env.env_memories
     in
       { env with env_memories = maps }
+
+  let push_all memenvs env =
+    List.fold_left
+      (fun env m -> push m env)
+      env memenvs
+
+  let push_active memenv env =
+    set_active (EcMemory.memory memenv)
+      (push memenv env)
+end
+
+(* -------------------------------------------------------------------- *)
+module MemDistr = struct
+
+  let all env =
+    MMsym.fold (fun _ l all -> List.rev_append l all) env.env_memdistr []
+
+  let byid (me : memory) (env : env) =
+    let memories = MMsym.all (EcIdent.name me) env.env_memdistr in
+    let memories =
+      List.filter
+        (fun me' -> EcIdent.id_equal me (EcMemory.memory me'))
+        memories
+    in
+      match memories with
+      | []     -> None
+      | m :: _ -> Some m
+
+  let lookup (g : int) (me : symbol) (env : env) =
+    let mems = MMsym.all me env.env_memdistr in
+      try  Some (List.nth mems g)
+      with Failure _ -> None
+
+  let set_active (me : memory) (env : env) =
+    match byid me env with
+    | None   -> raise (MEError (UnknownMemory (`MemDistr me)))
+    | Some _ -> { env with env_actdistr = Some me }
+
+  let get_active (env : env) =
+    env.env_actmem
+
+  let current (env : env) =
+    match env.env_actdistr with
+    | None    -> None
+    | Some me -> Some (oget (byid me env))
+
+  let push (me : EcMemory.memenv) (env : env) =
+    (* FIXME: assert (byid (EcMemory.memory me) env = None); *)
+
+    let id = EcMemory.memory me in
+    let maps =
+      MMsym.add (EcIdent.name id) me env.env_memdistr
+    in
+      { env with env_memdistr = maps }
 
   let push_all memenvs env =
     List.fold_left
@@ -2236,14 +2294,14 @@ module NormMp = struct
         match gty with
         | GTty ty -> GTty (norm_ty env ty)
         | GTmodty _ -> gty
-        | GTmem None -> gty
-        | GTmem (Some mt) ->
+        | GTmem (None,_) -> gty
+        | GTmem (Some mt, k) ->
           let me =
             EcMemory.empty_local id (norm_xfun env (EcMemory.lmt_xpath mt)) in
           let me = Msym.fold (fun id (p,ty) me ->
             EcMemory.bindp id p (norm_ty env ty) me)
               (EcMemory.lmt_bindings mt) me  in
-          GTmem (snd me) in
+          GTmem (snd me, k) in
       id,gty in
 
     let has_mod b =
@@ -3053,7 +3111,7 @@ module LDecl = struct
       s = EcIdent.name x ||
       (if strict then
           match k with
-          | LD_mem (Some lmt) -> Msym.mem s (lmt_bindings lmt)
+          | LD_mem (Some lmt,_) -> Msym.mem s (lmt_bindings lmt)
           | _ -> false
        else false) in
     List.exists test hyps.h_local
@@ -3092,8 +3150,8 @@ module LDecl = struct
     match ld with
     | LD_var (ty, body) ->
       LD_var (s.fs_ty ty, body |> omap (Fsubst.f_subst s))
-    | LD_mem mt ->
-      LD_mem (EcMemory.mt_substm s.fs_sty.ts_p s.fs_mp s.fs_ty mt)
+    | LD_mem (mt,k) ->
+      LD_mem (EcMemory.mt_substm s.fs_sty.ts_p s.fs_mp s.fs_ty mt, k)
     | LD_modty(p,r) ->
       begin match Fsubst.gty_subst s (GTmodty(p,r)) with
       | GTmodty(p',r') -> LD_modty(p',r')
@@ -3115,7 +3173,8 @@ module LDecl = struct
   let add_local_env x k env =
     match k with
     | LD_var (ty,_)  -> Var.bind_local x ty  env
-    | LD_mem mt      -> Memory.push (x,mt)   env
+    | LD_mem (mt,`Mem) -> Memory.push (x,mt)   env
+    | LD_mem (mt,`Distr) -> MemDistr.push (x,mt)   env
     | LD_modty (i,r) -> Mod.bind_local x i r env
     | LD_hyp   _     -> env
     | LD_abs_st us    -> AbsStmt.bind x us env
@@ -3143,7 +3202,7 @@ module LDecl = struct
     let fv_lk = function
       | LD_var (ty,None)   -> ty.ty_fv
       | LD_var (ty,Some f) -> fv_union ty.ty_fv f.f_fv
-      | LD_mem mt -> EcMemory.mt_fv mt
+      | LD_mem (mt,_) -> EcMemory.mt_fv mt
       | LD_hyp f -> f.f_fv
       | LD_modty(p,r) -> gty_fv (GTmodty(p,r))
       | LD_abs_st us ->

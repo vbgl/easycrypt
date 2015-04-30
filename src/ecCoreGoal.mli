@@ -66,12 +66,13 @@ and pt_head =
 
 and pt_arg =
 | PAFormula of EcFol.form
-| PAMemory  of EcMemory.memory
+| PAMemory  of EcMemory.memory * [`Mem | `Distr ]
 | PAModule  of (EcPath.mpath * EcModules.module_sig)
 | PASub     of proofterm option
 
 val paformula : EcFol.form -> pt_arg
 val pamemory  : EcMemory.memory -> pt_arg
+val pamemdistr : EcMemory.memory -> pt_arg
 val pamodule  : EcPath.mpath * EcModules.module_sig -> pt_arg
 val paglobal  : EcPath.path -> ty list -> pt_arg
 val palocal   : EcIdent.t -> pt_arg

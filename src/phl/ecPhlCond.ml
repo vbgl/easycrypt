@@ -86,7 +86,7 @@ let rec t_equiv_cond side tc =
 
       let t_aux =
         let rwpt = { pt_head = PTLocal hiff;
-                     pt_args = [PAMemory m1; PAMemory m2; PASub None]; } in
+                     pt_args = [pamemory m1; pamemory m2; PASub None]; } in
 
 
         FApi.t_seqs [t_intros_i [m1]    ; EcPhlSkip.t_skip;

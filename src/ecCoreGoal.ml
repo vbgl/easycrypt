@@ -58,13 +58,14 @@ and pt_head =
 
 and pt_arg =
 | PAFormula of EcFol.form
-| PAMemory  of EcMemory.memory
+| PAMemory  of EcMemory.memory * [`Mem | `Distr ]
 | PAModule  of (EcPath.mpath * EcModules.module_sig)
 | PASub     of proofterm option
 
 (* -------------------------------------------------------------------- *)
 let paformula x = PAFormula x
-let pamemory  x = PAMemory  x
+let pamemory  x = PAMemory  (x, `Mem)
+let pamemdistr x = PAMemory  (x, `Distr)
 let pamodule  x = PAModule  x
 
 let paglobal p tys =

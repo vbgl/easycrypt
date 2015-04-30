@@ -152,7 +152,7 @@ let t_eager_if_r tc =
 
   let aT =
     f_forall
-      [(mleft, GTmem (snd es.es_ml)); (mright, GTmem (snd es.es_mr))]
+      [(mleft, gtmem (snd es.es_ml)); (mright, gtmem (snd es.es_mr))]
       (f_imp es.es_pr (f_eq fel fer)) in
 
   let bT =
@@ -164,7 +164,7 @@ let t_eager_if_r tc =
     let p   = Fsubst.f_subst sub es.es_pr in
 
     f_forall
-      [(m2, GTmem (snd es.es_mr)); (b, GTty tbool)]
+      [(m2, gtmem (snd es.es_mr)); (b, GTty tbool)]
       (f_hoareS (mhr, snd es.es_ml) (f_and p eqb) s eqb) in
 
   let cT =
@@ -215,7 +215,7 @@ let t_eager_while_r h tc =
 
   let aT =
     f_forall
-      [mleft,GTmem (snd eC.es_ml); mright, GTmem (snd eC.es_mr)]
+      [mleft,gtmem (snd eC.es_ml); mright, gtmem (snd eC.es_mr)]
       (f_imp eqI (f_eq e1 e2))
 
   and bT = f_equivS_r { eC with

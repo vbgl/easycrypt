@@ -297,12 +297,12 @@ module UpToLow = struct
       let cond1 = f_equivF pre o_l o_r post in
       let cond2 =
         let q = Fsubst.f_subst_mem ml EcFol.mhr invQ in
-          f_forall[(mr, GTmem None)]
+          f_forall[(mr, gtmem None)]
             (f_imp bad2 (f_bdHoareF q o_l q FHeq f_r1)) in
       let cond3 =
         let q  = Fsubst.f_subst_mem mr EcFol.mhr invQ in
         let bq = f_and bad q in
-          f_forall [(ml, GTmem None)]
+          f_forall [(ml, gtmem None)]
             (f_bdHoareF bq o_r bq FHeq f_r1) in
 
       [cond1; cond2; cond3]

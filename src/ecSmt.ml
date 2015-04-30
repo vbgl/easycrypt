@@ -433,7 +433,7 @@ let trans_binding genv lenv (x, xty) =
   let wty = 
     match xty with
     | GTty ty -> trans_ty (genv, lenv) ty
-    | GTmem _ -> ty_mem
+    | GTmem (_, `Mem) -> ty_mem
     | _ -> raise CanNotTranslate in
   let wvs = WTerm.create_vsymbol (preid x) wty in
   ({ lenv with le_lv = Mid.add x wvs lenv.le_lv }, wvs)
@@ -754,7 +754,7 @@ and trans_pr ((genv,lenv) as env) {pr_mem; pr_fun; pr_args; pr_event} =
 
   let d = WTerm.t_app ls [warg; wmem] (Some ty_mem_distr) in
   let wev = 
-    let lenv, wbd = trans_binding genv lenv (mhr, GTmem None) in
+    let lenv, wbd = trans_binding genv lenv (mhr, gtmem None) in
     let wbody = trans_form_b (genv,lenv) pr_event in
     trans_lambda genv [wbd] wbody
 
