@@ -72,6 +72,27 @@ and f_node =
 
   | Fpr of pr (* hr *)
 
+  | FphoareF of phoareF
+  | FphoareS of phoareS
+  | Fintegr  of integral
+
+and phoareF = {
+  phf_pr : (EcIdent.t * EcMemory.memtype) * form;
+  phf_f  : EcPath.xpath;
+  phf_po : (EcIdent.t * EcMemory.memtype) * form;
+}
+
+and phoareS = {
+  ph_pr : (EcIdent.t * EcMemory.memtype) * form;
+  ph_s  : stmt;
+  ph_po : (EcIdent.t * EcMemory.memtype) * form;
+}
+
+and integral = {
+  ig_fo : (EcIdent.t * EcMemory.memtype) * form;
+  ig_mu : EcIdent.t;
+}
+
 and eagerF = {
   eg_pr : form;
   eg_sl : stmt;  (* No local program variables *)

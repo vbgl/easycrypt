@@ -1378,6 +1378,10 @@ let trans_form env f =
     | FequivF _   -> raise (CannotTranslate "FequivF")
     | FeagerF _   -> raise (CannotTranslate "FeagerF")
     | FequivS _   -> raise (CannotTranslate "FequivS")
+    | FphoareF _  -> raise (CannotTranslate "FphoareF")
+    | FphoareS _  -> raise (CannotTranslate "FphoareS")
+    | Fintegr _  -> raise (CannotTranslate "Fintegr")
+
 
     | Fpvar(pv,m) ->
         let pv = trans_pv !env pv f.f_ty m in
