@@ -7,7 +7,7 @@ EasyCrypt uses the following third-party tools/libraries:
 
      Available at http://caml.inria.fr/
 
- * Why3 (= 0.85)
+ * Why3 (>= 0.85)
 
      Available at http://why3.lri.fr/
 
@@ -27,7 +27,7 @@ EasyCrypt uses the following third-party tools/libraries:
 Installing requirements using OPAM (POSIX systems - preferred)
 --------------------------------------------------------------------
 
-Starting with opam 1.2.0, you can install all the needed depdendencies
+Starting with opam 1.2.0, you can install all the needed dependencies
 via the opam OCaml packages manager.
 
   0. Optionally, switch to a dedicated compiler for EasyCrypt:
@@ -66,6 +66,7 @@ Opam can be easily installed from source or via your packages manager:
         LDFLAGS="-L/usr/local/lib"
 
 See [https://opam.ocaml.org/doc/Install.html] for how to install opam.
+
 See [https://opam.ocaml.org/doc/Usage.html] for how to initialize opam
 
 
@@ -126,6 +127,9 @@ We do NOT provide an automated way to install provers.
 
 
 ### On Win32
+
+WARNING: wodi is no more maintained. We are thinking on a new
+way of installing EasyCrypt requirements on Windows.
 
 WARNING: the instructions are given for the 32bit version of
 cygwin. Replace 32- by 64- if you are using the 64bit version.
