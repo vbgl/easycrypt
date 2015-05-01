@@ -85,6 +85,19 @@ let t_hoareF_fun_def_r tc =
   FApi.xmutate1 tc `FunDef [concl']
 
 (* ------------------------------------------------------------------ *)
+let t_muhoareF_fun_def_r tc =
+  let env = FApi.tc1_env tc in
+  let muh = tc1_as_muhoareF tc in
+  let f = NormMp.norm_xfun env muh.muhf_f in
+  check_concrete !!tc env f;
+  let ((_,mt), (fsig, fdef), env) = Fun.hoareS f env in
+  let fres = odfl e_tt fdef.f_ret in
+  let pr = EcLowMuHoare.wp_pre env mt f fsig muh.muhf_pr in
+  let po = EcLowMuHoare.wp_ret env mt (pv_res f) fres muh.muhf_po in
+  let concl' = f_muhoareS pr fdef.f_body po in
+  FApi.xmutate1 tc `FunDef [concl']
+
+(* ------------------------------------------------------------------ *)
 let t_bdhoareF_fun_def_r tc =
   let env = FApi.tc1_env tc in
   let bhf = tc1_as_bdhoareF tc in
@@ -125,6 +138,7 @@ let t_equivF_fun_def_r tc =
 
 (* -------------------------------------------------------------------- *)
 let t_hoareF_fun_def   = FApi.t_low0 "hoare-fun-def"   t_hoareF_fun_def_r
+let t_muhoareF_fun_def = FApi.t_low0 "muhoare-fun-def" t_muhoareF_fun_def_r
 let t_bdhoareF_fun_def = FApi.t_low0 "bdhoare-fun-def" t_bdhoareF_fun_def_r
 let t_equivF_fun_def   = FApi.t_low0 "equiv-fun-def"   t_equivF_fun_def_r
 
@@ -132,9 +146,10 @@ let t_equivF_fun_def   = FApi.t_low0 "equiv-fun-def"   t_equivF_fun_def_r
 let t_fun_def_r tc =
   let th  = t_hoareF_fun_def
   and tbh = t_bdhoareF_fun_def
-  and te  = t_equivF_fun_def in
+  and te  = t_equivF_fun_def 
+  and tmuh = t_muhoareF_fun_def in
 
-  t_hF_or_bhF_or_eF ~th ~tbh ~te tc
+  t_hF_or_bhF_or_eF ~th ~tbh ~te ~tmuh tc
 
 let t_fun_def = FApi.t_low0 "fun-def" t_fun_def_r
 
