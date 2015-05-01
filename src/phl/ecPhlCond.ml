@@ -41,41 +41,29 @@ module LowInternal = struct
 end
 
 (* -------------------------------------------------------------------- *)
-(* mix of the if rule + conseq rule *)
-(*let pre_post_cond ((mur1,mt),pr1)
-                  ((muo2,mto2),po1) 
-                  ((mur2,mt2),pr2) po2 e pr po = 
+(* mix of the if rule + conseq rule + seq rule *)
 
 let t_muhoare_cond pr1 po1 pr2 po2 tc = 
   let muh = tc1_as_muhoareS tc in 
-  let mt = snd (fst pr1) in
-  assert (EcMemory.mt_equal mt (snd (fst po1)));
-  assert (EcMemory.mt_equal mt (snd (fst pr2)));
-  assert (EcMemory.mt_equal mt (snd (fst po2)));
-  assert (EcMemory.mt_equal mt (snd (fst muh.muh_pr)));
-  assert (EcMemory.mt_equal mt (snd (fst muh.muh_po)));
-  let (e,s1,s2), s = tc1_first_if tc muh.muh_s in
-  if s.EcModules.s_node <> [] then 
-    tc_error !!tc "the instruction should be a single random";
+  let (e,s1,s2), s = tc1_last_if tc muh.muh_s in
   let concl1 = f_muhoareS_r {muh_pr = pr1; muh_s = s1; muh_po = po1;} in
   let concl2 = f_muhoareS_r {muh_pr = pr2; muh_s = s2; muh_po = po2;} in
- 
+  assert (EcMemory.mt_equal (snd (fst pr1)) (snd (fst muh.muh_pr)));
+  assert (EcMemory.mt_equal (snd (fst pr2)) (snd (fst muh.muh_pr)));
   let concl3 = 
-    let id1 = fst (fst (muh.muh_pr)) in
-    f_forall_distr ((id1,mt), f_imp (snd muh.muh_pr) (curly_b id1 e pr1 pr2)) in
+    let (mu,mt), po = muh.muh_po in
+    let mu1 = EcIdent.create "mu1" in
+    let mu2 = EcIdent.create "mu2" in
+    let _, po1 = EcLowMuHoare.ldm_app (mu1, mt) po1 in
+    let _, po2 = EcLowMuHoare.ldm_app (mu2, mt) po2 in
+    f_forall [(mu1,gtdistr mt); (mu2,gtdistr mt)]
+      (f_imp po1 (f_imp po2 (EcLowMuHoare.oplus mu mu1 mu2 po))) in
+  
+  let po = EcLowMuHoare.curly e pr1 pr2 in
+  let concl4 = f_muhoareS_r { muh with muh_s = s; muh_po = po } in
 
-  let mu1 = EcIdent.fresh (fst (fst po1)) in
-  let mu2 = EcIdent.fresh (fst (fst po2)) in
-  let concl4 =  
-    f_imp (Fsubst.f_subst_mem (fst (fst po1)) mu1 (snd po1))
-      (f_imp (Fsubst.f_subst_mem (fst (fst po2)) mu2 (snd po2))
-          (oplus mu mu1 mu2 muh.muh_po)) in
-  let concl4 = 
-    f_forall_distr ((mu1,mt), f_forall_distr ((mu2,mt), concl4))
-                   
-  in
-  FApi.xmutate1 tc `Conseq [concl1; concl2; concl3;concl4 ]
-*)  
+  FApi.xmutate1 tc `Conseq [concl1; concl2; concl3; concl4 ]
+
 (* -------------------------------------------------------------------- *)
 let t_hoare_cond tc =
   let hs = tc1_as_hoareS tc in

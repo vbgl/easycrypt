@@ -26,6 +26,7 @@ type gty =
 val gtty    : EcTypes.ty -> gty
 val gtmodty : module_type -> mod_restr -> gty
 val gtmem   : EcMemory.memtype -> gty
+val gtdistr : EcMemory.memtype -> gty
 
 val gty_equal : gty  -> gty -> bool
 val gty_fv    : gty -> int Mid.t

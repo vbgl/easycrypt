@@ -30,9 +30,10 @@ let mt_fv = function
     Msym.fold (fun _ (_,ty) fv -> EcIdent.fv_union fv ty.ty_fv) lmt.mt_vars fv 
 
 let lmt_equal mt1 mt2 =   
-  EcPath.x_equal mt1.mt_path mt2.mt_path &&
-    Msym.equal (fun (p1,ty1) (p2,ty2) -> p1 = p2 && ty_equal ty1 ty2) 
-      mt1.mt_vars mt2.mt_vars
+  mt1 == mt2 || 
+    (EcPath.x_equal mt1.mt_path mt2.mt_path &&
+       Msym.equal (fun (p1,ty1) (p2,ty2) -> p1 = p2 && ty_equal ty1 ty2) 
+       mt1.mt_vars mt2.mt_vars)
 
 let lmt_xpath mt = mt.mt_path
 let lmt_bindings mt = mt.mt_vars

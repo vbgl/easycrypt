@@ -872,7 +872,7 @@ module FSmart = struct
   let f_muhoareS (fp, bhs) bhs' =
     if muh_equal bhs bhs' then fp else f_muhoareS_r bhs'
 
-  let f_ig (fp, pr) pr' =
+  let f_integr (fp, pr) pr' =
     if ig_equal pr pr' then fp else f_integr_r pr'
 
       
@@ -995,7 +995,7 @@ let f_map gt g fp =
         muhf_po = (fst ph.muhf_po, g (snd ph.muhf_po)); }
 
   | Fintegr ph ->
-    FSmart.f_ig (fp, ph) 
+    FSmart.f_integr (fp, ph) 
       { ph with ig_fo = (fst ph.ig_fo, g (snd ph.ig_fo)) } 
 
 (* -------------------------------------------------------------------- *)
@@ -1639,7 +1639,7 @@ module Fsubst = struct
     | Fintegr ig ->
       let ig_fo = subst_bindmem ~tx `Mem s ig.ig_fo in
       let ig_mu  = Mid.find_def ig.ig_mu ig.ig_mu s.fs_mem in
-      FSmart.f_ig (fp,ig) { ig_fo; ig_mu }
+      FSmart.f_integr (fp,ig) { ig_fo; ig_mu }
 
     | _ -> f_map s.fs_ty (f_subst ~tx s) fp)
 
