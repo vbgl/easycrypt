@@ -236,31 +236,35 @@ let s_split_o i s =
   | Some i -> s_split i s
 
 (* -------------------------------------------------------------------- *)
-let t_hS_or_bhS_or_eS ?th ?tbh ?te tc =
+let t_hS_or_bhS_or_eS ?th ?tbh ?te ?tmuh tc =
   match (FApi.tc1_goal tc).f_node with
-  | FhoareS   _ when EcUtils.is_some th  -> (oget th ) tc
-  | FbdHoareS _ when EcUtils.is_some tbh -> (oget tbh) tc
-  | FequivS   _ when EcUtils.is_some te  -> (oget te ) tc
+  | FhoareS   _ when EcUtils.is_some th   -> (oget th  ) tc
+  | FbdHoareS _ when EcUtils.is_some tbh  -> (oget tbh ) tc
+  | FequivS   _ when EcUtils.is_some te   -> (oget te  ) tc
+  | FmuhoareS _ when EcUtils.is_some tmuh -> (oget tmuh) tc
 
   | _ ->
     let kinds = List.flatten [
-         if EcUtils.is_some th  then [`Hoare  `Stmt] else [];
-         if EcUtils.is_some tbh then [`PHoare `Stmt] else [];
-         if EcUtils.is_some te  then [`Equiv  `Stmt] else []]
+         if EcUtils.is_some th   then [`Hoare  `Stmt] else [];
+         if EcUtils.is_some tbh  then [`PHoare `Stmt] else [];
+         if EcUtils.is_some te   then [`Equiv  `Stmt] else [];
+         if EcUtils.is_some tmuh then [`MUHoare `Stmt] else [];]
 
     in tc_error_noXhl ~kinds !!tc
 
-let t_hF_or_bhF_or_eF ?th ?tbh ?te ?teg tc =
+let t_hF_or_bhF_or_eF ?th ?tbh ?te ?teg ?tmuh tc =
   match (FApi.tc1_goal tc).f_node with
-  | FhoareF   _ when EcUtils.is_some th  -> (oget th ) tc
-  | FbdHoareF _ when EcUtils.is_some tbh -> (oget tbh) tc
-  | FequivF   _ when EcUtils.is_some te  -> (oget te ) tc
-  | FeagerF   _ when EcUtils.is_some teg -> (oget teg) tc
+  | FhoareF   _ when EcUtils.is_some th   -> (oget th ) tc
+  | FbdHoareF _ when EcUtils.is_some tbh  -> (oget tbh) tc
+  | FequivF   _ when EcUtils.is_some te   -> (oget te ) tc
+  | FeagerF   _ when EcUtils.is_some teg  -> (oget teg) tc
+  | FmuhoareF _ when EcUtils.is_some tmuh -> (oget tmuh) tc
 
   | _ ->
     let kinds = List.flatten [
          if EcUtils.is_some th  then [`Hoare  `Pred] else [];
          if EcUtils.is_some tbh then [`PHoare `Pred] else [];
+         if EcUtils.is_some tmuh then [`MUHoare `Pred] else [];
          if EcUtils.is_some te  then [`Equiv  `Pred] else [];
          if EcUtils.is_some teg then [`Eager       ] else []]
 

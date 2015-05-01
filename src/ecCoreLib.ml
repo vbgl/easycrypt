@@ -99,6 +99,9 @@ module CI_Distr = struct
   let p_mu      = _Pervasive "mu"
   let p_mu_x    = _Distr "mu_x"
   let p_weight  = _Distr "weight"
+  let p_real_of_bool = _Distr "b2r"
+  let p_muf     = _Distr "muf"
+
 end
 
 (* -------------------------------------------------------------------- *)

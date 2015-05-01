@@ -15,6 +15,7 @@ open EcPV
 open EcCoreGoal
 open EcLowGoal
 open EcLowPhlGoal
+open EcLowMuHoare
 
 module PT  = EcProofTerm
 module TTC = EcProofTyping
@@ -36,28 +37,25 @@ let bd_goal pe fcmp fbd cmp bd =
   | Some fp -> fp
 
 (* -------------------------------------------------------------------- *)
-let f_imp_bis ((id1,ty1),f1) ((id2,ty2),f2) = 
-  assert (EcMemory.mt_equal ty1 ty2);
-  let f2 = Fsubst.f_subst_mem id2 id1 f2 in
-  (id1,ty1), f_imp f1 f2
-  
-let conseq_cond_bis pre post spre spost =
-  f_imp_bis pre spre, f_imp_bis spost post
+(* Conseq rule for muhoare
+     pr1 => pr2    po2 => po1       {pr2} _ {po2}  
+    ----------------------------------------------
+                 {pr1} _ {po1} 
+*)
 
-let t_muhoareF_conseq pre post tc = 
+let conseq_muhoare pr1 po1 pr2 po2 = 
+  ldm_forall_imp pr1 pr2, ldm_forall_imp po2 po1
+ 
+let t_muhoareF_conseq pr po tc = 
   let muh = tc1_as_muhoareF tc in
-  let cond1, cond2 = conseq_cond_bis muh.muhf_pr muh.muhf_po pre post in
-  let concl1 = f_forall_distr cond1 in
-  let concl2 = f_forall_distr cond2 in
-  let concl3 = f_muhoareF_r {muh with muhf_pr = pre;muhf_po = post } in
+  let concl1, concl2 = conseq_muhoare muh.muhf_pr muh.muhf_po pr po in
+  let concl3 = f_muhoareF_r {muh with muhf_pr = pr;muhf_po = po } in
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
 
-let t_phoareS_conseq pre post tc = 
+let t_muhoareS_conseq pr po tc = 
   let muh = tc1_as_muhoareS tc in
-  let cond1, cond2 = conseq_cond_bis muh.muh_pr muh.muh_po pre post in
-  let concl1 = f_forall_distr cond1 in
-  let concl2 = f_forall_distr cond2 in
-  let concl3 = f_muhoareS_r {muh with muh_pr = pre; muh_po = post } in
+  let concl1, concl2 = conseq_muhoare muh.muh_pr muh.muh_po pr po in
+  let concl3 = f_muhoareS_r {muh with muh_pr = pr; muh_po = po } in
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
   
 (* -------------------------------------------------------------------- *)

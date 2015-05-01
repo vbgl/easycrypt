@@ -273,6 +273,11 @@ let t_hoare_rnd   = FApi.t_low0 "hoare-rnd"   t_hoare_rnd_r
 let t_bdhoare_rnd = FApi.t_low1 "bdhoare-rnd" t_bdhoare_rnd_r
 let t_equiv_rnd   = FApi.t_low2 "equiv-rnd"   t_equiv_rnd_r
 
+let t_muhoare_rnd tc = 
+  let muh = tc1_as_muhoareS tc in
+  let _, s = tc1_last_rnd tc muh.muh_s in
+  EcPhlWp.t_wp (Some (Single (List.length s.s_node))) tc
+
 (* -------------------------------------------------------------------- *)
 let process_rnd side tac_info tc =
   let concl = FApi.tc1_goal tc in

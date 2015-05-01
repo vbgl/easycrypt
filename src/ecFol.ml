@@ -118,6 +118,14 @@ let f_mu  env f1 f2 = f_app (fop_mu (proj_distr_ty env f1.f_ty)) [f1; f2] treal
 let fop_weight ty = f_op EcCoreLib.CI_Distr.p_weight [ty] (tfun (tdistr ty) treal) (* CORELIB *)
 let f_weight ty d = f_app (fop_weight ty) [d] treal
 
+let fop_real_of_bool = 
+  f_op EcCoreLib.CI_Distr.p_real_of_bool [tbool] treal (* CORELIB *)
+let fop_muf ty = 
+ f_op EcCoreLib.CI_Distr.p_muf [toarrow [ty] treal; tdistr ty] treal (* CORELIB *)
+  
+let f_real_of_bool f = f_app fop_real_of_bool [f] treal
+let f_muf ty f1 f2 = f_app (fop_muf ty) [f1;f2] treal
+
 (* -------------------------------------------------------------------- *)
 let f_losslessF f = f_bdHoareF f_true f f_true FHeq f_r1
 

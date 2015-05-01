@@ -76,20 +76,22 @@ and f_node =
   | FmuhoareS of muhoareS
   | Fintegr  of integral
 
+and lmd_form = (EcIdent.t * EcMemory.memtype) * form
+
 and muhoareF = {
-  muhf_pr : (EcIdent.t * EcMemory.memtype) * form;
+  muhf_pr : lmd_form;
   muhf_f  : EcPath.xpath;
-  muhf_po : (EcIdent.t * EcMemory.memtype) * form;
+  muhf_po : lmd_form;
 }
 
 and muhoareS = {
-  muh_pr : (EcIdent.t * EcMemory.memtype) * form;
+  muh_pr : lmd_form;
   muh_s  : stmt;
-  muh_po : (EcIdent.t * EcMemory.memtype) * form;
+  muh_po : lmd_form;
 }
 
 and integral = {
-  ig_fo : (EcIdent.t * EcMemory.memtype) * form;
+  ig_fo : lmd_form;
   ig_mu : EcIdent.t;
 }
 
@@ -204,7 +206,7 @@ val f_exists : bindings -> form -> form
 val f_forall : bindings -> form -> form
 val f_lambda : bindings -> form -> form
 
-val f_forall_distr : (EcIdent.t * memtype) * form -> form
+val f_forall_distr : lmd_form -> form
 val f_forall_mems : (EcIdent.t * memtype) list -> form -> form
 
 (* soft-constructors - hoare *)
@@ -240,18 +242,13 @@ val f_pr   : memory -> xpath -> form -> form -> form
 
 (* soft-constructors - mu hoare *)
 val f_muhoareF_r : muhoareF -> form
-val f_muhoareF   : (EcIdent.t * EcMemory.memtype) * form ->
-                   EcPath.xpath -> 
-                   (EcIdent.t * EcMemory.memtype) * form ->
-                   form
+val f_muhoareF   : lmd_form -> EcPath.xpath -> lmd_form ->form
 
 val f_muhoareS_r : muhoareS -> form
-val f_muhoareS   : (EcIdent.t * EcMemory.memtype) * form ->
-                   EcModules.stmt ->
-                   (EcIdent.t * EcMemory.memtype) * form ->
-                   form
-val f_ig_r : integral -> form
-val f_ig   : (EcIdent.t * EcMemory.memtype) * form -> EcIdent.t -> form 
+val f_muhoareS   : lmd_form -> EcModules.stmt -> lmd_form -> form
+
+val f_integr_r : integral -> form
+val f_integr   : lmd_form -> EcIdent.t -> form 
 (* soft-constructors - unit *)
 val f_tt : form
 

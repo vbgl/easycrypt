@@ -110,26 +110,43 @@ module TacInternal = struct
     let sr = EcModules.stmt (s_hdr @ s_wpr) in
     let concl = f_equivS_r {es with es_sl = sl; es_sr=sr; es_po = post} in
     FApi.xmutate1 tc `Wp [concl]
+
+  let t_muhoare_wp i tc = 
+    let env = FApi.tc1_env tc in
+    let muh = tc1_as_muhoareS tc in
+    let i = ofdfl (fun () -> EcLowMuHoare.max_wp muh.muh_s) i in
+    let s_hd,s_tl = s_split i muh.muh_s in
+    let po = 
+      try EcLowMuHoare.wp_muhoare env (stmt s_tl) muh.muh_po 
+      with EcLowMuHoare. NoWpMuhoare ->
+        tc_error !!tc "not able to compute the wp for muhoare"
+    in
+    let concl = f_muhoareS_r {muh with muh_s = stmt s_hd; muh_po = po }in
+    FApi.xmutate1 tc `Wp [concl]
+       
 end
 
 (* -------------------------------------------------------------------- *)
 let t_wp_r ?(uselet=true) k g =
   let module T = TacInternal in
 
-  let (th, tbh, te) =
+  let (th, tbh, te, tmuh) =
     match k with
     | None -> (Some (T.t_hoare_wp   ~uselet None),
                Some (T.t_bdhoare_wp ~uselet None),
-               Some (T.t_equiv_wp   ~uselet None))
+               Some (T.t_equiv_wp   ~uselet None),
+               Some (T.t_muhoare_wp None)
+    )
 
     | Some (Single i) -> (Some (T.t_hoare_wp   ~uselet (Some i)),
                           Some (T.t_bdhoare_wp ~uselet (Some i)),
-                          None (* ------------------- *))
+                          None (* ------------------- *),
+                          Some (T.t_muhoare_wp (Some i)))
 
     | Some (Double (i, j)) ->
-        (None, None, Some (T.t_equiv_wp ~uselet (Some (i, j))))
+        (None, None, Some (T.t_equiv_wp ~uselet (Some (i, j))), None)
 
   in
-    t_hS_or_bhS_or_eS ?th ?tbh ?te g
+    t_hS_or_bhS_or_eS ?th ?tbh ?te ?tmuh g
 
 let t_wp ?(uselet=true) = FApi.t_low1 "wp" (t_wp_r ~uselet)

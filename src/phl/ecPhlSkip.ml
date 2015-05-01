@@ -11,9 +11,24 @@ open EcFol
 open EcCoreGoal
 open EcLowPhlGoal
 open EcLowGoal
+open EcLowMuHoare
 
 (* -------------------------------------------------------------------- *)
 module LowInternal = struct
+
+  (* ------------------------------------------------------------------ *)
+  let t_muhoare_skip_r tc = 
+    let muh = tc1_as_muhoareS tc in
+
+    if not (List.is_empty muh.muh_s.s_node) then
+      tc_error !!tc "instruction list is not empty";
+    let concl = ldm_forall_imp muh.muh_pr muh.muh_po in
+    FApi.xmutate1 tc `Skip [concl]
+
+  let t_muhoare_skip = FApi.t_low0 "hoare-skip" t_muhoare_skip_r
+
+
+    
   (* ------------------------------------------------------------------ *)
   let t_hoare_skip_r tc =
     let hs = tc1_as_hoareS tc in
@@ -80,3 +95,4 @@ let t_skip =
     ~th: LowInternal.t_hoare_skip
     ~tbh:LowInternal.t_bdhoare_skip
     ~te: LowInternal.t_equiv_skip
+    ~tmuh: LowInternal.t_muhoare_skip

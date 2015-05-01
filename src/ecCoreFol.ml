@@ -76,20 +76,22 @@ and f_node =
   | FmuhoareS of muhoareS
   | Fintegr  of integral
 
+and lmd_form = (EcIdent.t * EcMemory.memtype) * form
+
 and muhoareF = {
-  muhf_pr : (EcIdent.t * EcMemory.memtype) * form;
+  muhf_pr : lmd_form; 
   muhf_f  : EcPath.xpath;
-  muhf_po : (EcIdent.t * EcMemory.memtype) * form;
+  muhf_po : lmd_form;
 }
 
 and muhoareS = {
-  muh_pr : (EcIdent.t * EcMemory.memtype) * form;
+  muh_pr : lmd_form;
   muh_s  : stmt;
-  muh_po : (EcIdent.t * EcMemory.memtype) * form;
+  muh_po : lmd_form;
 }
 
 and integral = {
-  ig_fo : (EcIdent.t * EcMemory.memtype) * form;
+  ig_fo : lmd_form;
   ig_mu : EcIdent.t;
 }
    
@@ -704,7 +706,7 @@ let f_eqs fs1 fs2 =
 (* -------------------------------------------------------------------- *)
 let f_hoareS_r hs = mk_form (FhoareS hs) tbool
 let f_hoareF_r hf = mk_form (FhoareF hf) tbool
-let f_ig_r ig     = mk_form (Fintegr ig) treal
+let f_integr_r ig     = mk_form (Fintegr ig) treal
 
 let f_hoareS hs_m hs_pr hs_s hs_po =
   f_hoareS_r { hs_m; hs_pr; hs_s; hs_po; }
@@ -712,7 +714,7 @@ let f_hoareS hs_m hs_pr hs_s hs_po =
 let f_hoareF hf_pr hf_f hf_po =
   f_hoareF_r { hf_pr; hf_f; hf_po; }
 
-let f_ig ig_fo ig_mu = f_ig_r { ig_fo; ig_mu }
+let f_integr ig_fo ig_mu = f_integr_r { ig_fo; ig_mu }
 
 (* -------------------------------------------------------------------- *)
 let f_muhoareS_r hs = mk_form (FmuhoareS hs) tbool
@@ -871,7 +873,7 @@ module FSmart = struct
     if muh_equal bhs bhs' then fp else f_muhoareS_r bhs'
 
   let f_ig (fp, pr) pr' =
-    if ig_equal pr pr' then fp else f_ig_r pr'
+    if ig_equal pr pr' then fp else f_integr_r pr'
 
       
 end
