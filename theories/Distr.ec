@@ -201,7 +201,8 @@ theory Dempty.
   by intros weight_0; rewrite -(pw_eq<:'a> d dempty); smt.
   qed.
 
-  lemma demptyU: isuniform dempty<:'a> by [].
+  lemma demptyU: isuniform dempty<:'a>. admit. qed.
+
 end Dempty.
 
 (** Point distribution *)
@@ -388,3 +389,62 @@ theory Dlap.
     0%r <= scale => weight (dlap mean scale) = 1%r.
 (* x = $dlap(x1,s)   ~ x = $dlap(0,s) + x1 : ={x1,s} ==> ={x}. *)
 end Dlap.
+
+(* Operators needed for mu hoare *)
+op b2r (b:bool) = if b then 1%r else 0%r.
+lemma b2r_true : b2r true = 1%r by [].
+lemma b2r_false : b2r false = 0%r by [].
+lemma b2r_and (b1 b2: bool): b2r(b1 /\ b2) = b2r b1 * b2r b2.
+proof. by rewrite /b2r;case b1. qed.
+
+lemma b2r_or_and (b1 b2:bool): 
+    b2r (b1 \/ b2) = b2r b1 + b2r b2 - b2r b1 * b2r b2.
+proof. rewrite /b2r;case b1 => //= _;ringeq. qed.
+
+lemma b2r_not (b:bool): b2r (!b) = 1%r - b2r b.
+proof. by rewrite /b2r;case b. qed.
+
+
+(* intergral of f in a distribution d *)
+op muf : ('a -> real) -> 'a distr -> real.
+
+axiom muf_r2b (P: 'a -> bool) (d:'a distr) : 
+  mu d P = muf (fun a => b2r (P a)) d.
+
+(* FIXME: need to add restriction on f1 f2 *)
+axiom muf_add (f1 f2:'a -> real) (d:'a distr):
+  muf (fun x => f1 x + f2 x) d = 
+  muf f1 d + muf f2 d.
+
+axiom muf_opp (f : 'a -> real) (d:'a distr):
+  muf (fun x => -(f x)) d = - muf f d.
+
+lemma muf_sub (f1 f2:'a -> real) (d:'a distr):
+  muf (fun x => f1 x - (f2 x)) d = 
+  muf f1 d - muf f2 d.
+proof.
+  cut -> : muf f1 d - muf f2 d = muf f1 d + -muf f2 d.
+  + ringeq.
+  rewrite -muf_opp -muf_add.
+  congr;apply fun_ext=> x /=;ringeq.
+qed.
+
+axiom muf_mulc_l (c:real) (f:'a -> real) (d:'a distr):
+  muf (fun x => c * f x) d = c * muf f d.
+
+lemma muf_mulc_r (c:real) (f:'a -> real) (d:'a distr):
+  muf (fun x => f x * c) d = muf f d * c.
+proof.
+  rewrite Real.Comm.Comm -muf_mulc_l;congr.
+  apply fun_ext => x /=;ringeq.
+qed.
+
+lemma muf_c (c:real) (d:'a distr) : 
+   muf (fun x => c) d = c * muf (fun x => 1%r) d.
+proof. by rewrite -muf_mulc_l. qed.
+
+lemma muf_0 (d:'a distr) :
+  muf (fun x => 0%r) d = 0%r.
+proof. by rewrite muf_c. qed.
+
+
