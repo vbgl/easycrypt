@@ -427,6 +427,7 @@ module LDecl : sig
 
   val push_all    : memenv list -> hyps -> hyps
   val push_active : memenv -> hyps -> hyps
+  val push_active_distr : memenv -> hyps -> hyps
 
   val hoareF : xpath -> hyps -> hyps * hyps
   val equivF : xpath -> xpath -> hyps -> hyps * hyps

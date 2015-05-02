@@ -3258,6 +3258,9 @@ module LDecl = struct
   let push_active m lenv =
     { lenv with le_env = Memory.push_active m lenv.le_env }
 
+  let push_active_distr mu lenv =
+    { lenv with le_env = MemDistr.push_active mu lenv.le_env }
+
   let push_all l lenv =
     { lenv with le_env = Memory.push_all l lenv.le_env }
 

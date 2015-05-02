@@ -433,6 +433,7 @@ type pcond_info = [
   | `Head   of oside
   | `Seq    of oside * int option * int option * pformula
   | `SeqOne of side * int option * pformula * pformula
+  | `MuHoare of ((pformula * pformula) * (pformula * pformula))
 ]
 
 (* -------------------------------------------------------------------- *)

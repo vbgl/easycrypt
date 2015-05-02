@@ -132,11 +132,19 @@ let rec t_equiv_cond side tc =
                    [t_aux; t_clear hiff]]))
           tc
 
+let process_muhoare_cond ((pr1, po1),(pr2,po2)) tc = 
+  let pr1 = EcProofTyping.tc1_process_phl_ld_formula tc pr1 in
+  let po1 = EcProofTyping.tc1_process_phl_ld_formula tc po1 in
+  let pr2 = EcProofTyping.tc1_process_phl_ld_formula tc pr2 in
+  let po2 = EcProofTyping.tc1_process_phl_ld_formula tc po2 in
+  t_muhoare_cond pr1 po1 pr2 po2 tc  
+  
 (* -------------------------------------------------------------------- *)
 let process_cond info tc =
   let default_if i s = ofdfl (fun _ -> tc1_pos_last_if tc s) i in
   
   match info with
+  | `MuHoare info -> process_muhoare_cond info tc 
   | `Head side ->
     t_hS_or_bhS_or_eS ~th:t_hoare_cond ~tbh:t_bdhoare_cond ~te:(t_equiv_cond side) tc
 
