@@ -834,7 +834,7 @@ let process_conseq notmod (info1, info2, info3) tc =
     if not (is_none o) then tc_error !!tc "cannot give a bound here" in
 
   let process_cut1 ((pre, post), bd) =
-     let penv, qenv, gpre, gpost, fmake =
+    let entry = 
       match concl.f_node with
       | FhoareS hs ->
         let env = LDecl.push_active hs.hs_m hyps in
@@ -842,7 +842,7 @@ let process_conseq notmod (info1, info2, info3) tc =
           match bd with
           | None -> f_hoareS_r { hs with hs_pr = pre; hs_po = post; }
           | Some (cmp, bd) -> f_bdHoareS hs.hs_m pre hs.hs_s post (oget cmp) bd
-        in (env, env, hs.hs_pr, hs.hs_po, fmake)
+        in `Form (env, env, hs.hs_pr, hs.hs_po, fmake)
 
       | FhoareF hf ->
         let penv, qenv = LDecl.hoareF hf.hf_f hyps in
@@ -850,7 +850,7 @@ let process_conseq notmod (info1, info2, info3) tc =
           match bd with
           | None -> f_hoareF pre hf.hf_f post
           | Some (cmp, bd) -> f_bdHoareF pre hf.hf_f post (oget cmp) bd
-        in (penv, qenv, hf.hf_pr, hf.hf_po, fmake)
+        in `Form (penv, qenv, hf.hf_pr, hf.hf_po, fmake)
 
       | FbdHoareS bhs ->
         let env = LDecl.push_active bhs.bhs_m hyps in
@@ -859,7 +859,7 @@ let process_conseq notmod (info1, info2, info3) tc =
           let cmp = odfl bhs.bhs_cmp cmp in
           f_bdHoareS_r { bhs with
             bhs_pr = pre; bhs_po = post; bhs_cmp = cmp; bhs_bd = bd; }
-        in (env, env, bhs.bhs_pr, bhs.bhs_po, fmake)
+        in `Form(env, env, bhs.bhs_pr, bhs.bhs_po, fmake)
 
       | FbdHoareF hf ->
         let penv, qenv = LDecl.hoareF hf.bhf_f hyps in
@@ -867,29 +867,45 @@ let process_conseq notmod (info1, info2, info3) tc =
           let cmp, bd = bd |> odfl (None, hf.bhf_bd) in
           let cmp = cmp |> odfl hf.bhf_cmp in
           f_bdHoareF pre hf.bhf_f post cmp bd
-        in (penv, qenv, hf.bhf_pr, hf.bhf_po, fmake)
+        in `Form(penv, qenv, hf.bhf_pr, hf.bhf_po, fmake)
 
       | FequivF ef ->
         let penv, qenv = LDecl.equivF ef.ef_fl ef.ef_fr hyps in
         let fmake pre post bd =
           ensure_none bd; f_equivF pre ef.ef_fl ef.ef_fr post
-        in (penv, qenv, ef.ef_pr, ef.ef_po, fmake)
+        in `Form(penv, qenv, ef.ef_pr, ef.ef_po, fmake)
 
-      | FequivS es ->
-        let env = LDecl.push_all [es.es_ml; es.es_mr] hyps in
-        let fmake pre post bd =
-          ensure_none bd; f_equivS_r { es with es_pr = pre; es_po = post; }
-        in (env, env, es.es_pr, es.es_po, fmake)
+       | FequivS es ->
+         let env = LDecl.push_all [es.es_ml; es.es_mr] hyps in
+         let fmake pre post bd =
+           ensure_none bd; f_equivS_r { es with es_pr = pre; es_po = post; }
+         in `Form(env, env, es.es_pr, es.es_po, fmake)
 
-      | _ -> tc_error !!tc "conseq: not a phl/prhl judgement"
+       | FmuhoareS hs ->
+         let mupr = fst hs.muh_pr and mupo = fst hs.muh_po in
+         let penv = LDecl.push_active_distr mupr hyps in
+         let qenv = LDecl.push_active_distr mupo hyps in
+         let fmake pre post bd =
+           ensure_none bd; 
+           f_muhoareS_r {hs with muh_pr = pre; muh_po = post } in
+         let pro_pr tc env f = mupr, TTC.pf_process_formula tc env f in
+         let pro_po tc env f = mupo, TTC.pf_process_formula tc env f in
+         `LDForm (penv, qenv, hs.muh_pr, hs.muh_po, fmake, (pro_pr, pro_po))
+
+       | _ -> tc_error !!tc "conseq: not a phl/prhl judgement"
     in
 
-    let pre  = pre  |> omap (TTC.pf_process_formula !!tc penv) |> odfl gpre  in
-    let post = post |> omap (TTC.pf_process_formula !!tc qenv) |> odfl gpost in
-    let bd   = bd   |> omap (snd_map (TTC.pf_process_form !!tc penv treal)) in
-
-    fmake pre post bd
-
+    match entry with
+    | `Form(penv, qenv, gpre, gpost, fmake) -> 
+      let pre  = pre |> omap (TTC.pf_process_formula !!tc penv) |> odfl gpre  in
+      let post = post|> omap (TTC.pf_process_formula !!tc qenv) |> odfl gpost in
+      let bd   = bd  |> omap (snd_map (TTC.pf_process_form !!tc penv treal)) in
+      fmake pre post bd
+    | `LDForm(penv,qenv,gpre, gpost, fmake,(pro_pr, pro_po)) -> 
+      let pre  = pre |> omap (pro_pr !!tc penv) |> odfl gpre  in
+      let post = post|> omap (pro_po !!tc qenv) |> odfl gpost in
+      let bd   = bd  |> omap (snd_map (TTC.pf_process_form !!tc penv treal)) in
+      fmake pre post bd
   in
 
   let process_cut2 side ((pre, post), bd) =
