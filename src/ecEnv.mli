@@ -112,6 +112,8 @@ module Fun : sig
 
   val hoareS : xpath -> env -> memenv * (funsig * function_def) * env
 
+  val muhoareF : xpath -> env -> env * env
+
   val actmem_post :  memory -> xpath -> function_ -> memenv
 
   val inv_memenv : env -> env

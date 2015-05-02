@@ -78,12 +78,14 @@ type tyerror =
 | UnknownFunName         of qsymbol
 | UnknownModVar          of qsymbol
 | UnknownMemName         of int * symbol
+| UnknownDistrName       of int * symbol
 | InvalidFunAppl         of funapp_error
 | InvalidModAppl         of modapp_error
 | InvalidModType         of modtyp_error
 | InvalidMem             of symbol * mem_error
 | FunNotInModParam       of qsymbol
 | NoActiveMemory
+| NoActiveDistr
 | PatternNotAllowed
 | MemNotAllowed
 | UnknownScope           of qsymbol

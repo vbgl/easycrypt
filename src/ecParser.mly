@@ -932,7 +932,10 @@ sform_u(P):
      PFproji(f,n.pl_desc - 1) }
 
 | SAMPLE LBRACKET f=form_r(P) PIPE x=mdident RBRACKET
-   { PFintegr (x, f) }
+   { PFintegr (f, Some x) }
+
+| SAMPLE LBRACKET f=form_r(P) RBRACKET
+   { PFintegr (f, None) }
 
 | HOARE LBRACKET hb=hoare_body(P) RBRACKET { hb }
 

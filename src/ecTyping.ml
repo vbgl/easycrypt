@@ -88,12 +88,14 @@ type tyerror =
 | UnknownFunName         of qsymbol
 | UnknownModVar          of qsymbol
 | UnknownMemName         of int * symbol
+| UnknownDistrName       of int * symbol
 | InvalidFunAppl         of funapp_error
 | InvalidModAppl         of modapp_error
 | InvalidModType         of modtyp_error
 | InvalidMem             of symbol * mem_error
 | FunNotInModParam       of qsymbol
 | NoActiveMemory
+| NoActiveDistr
 | PatternNotAllowed
 | MemNotAllowed
 | UnknownScope           of qsymbol
@@ -320,6 +322,9 @@ let pp_tyerror env fmt error =
   | UnknownMemName (g, m) ->
       msg "unknown memory: %s[g=%d]" m g
 
+  | UnknownDistrName (g, m) ->
+      msg "unknown distribution: %s[g=%d]" m g
+
   | InvalidFunAppl FAE_WrongArgCount ->
       msg "invalid function application: wrong number of arguments"
 
@@ -341,6 +346,9 @@ let pp_tyerror env fmt error =
 
   | NoActiveMemory ->
       msg "no active memory at this point"
+
+  | NoActiveDistr ->
+      msg "no active distribution at this point"
 
   | PatternNotAllowed ->
       msg "pattern not allowed here"
@@ -2415,6 +2423,40 @@ let trans_form_or_pattern env (ps, ue) pf tt =
         unify_or_fail penv ue pre .pl_loc ~expct:tbool pre' .f_ty;
         unify_or_fail qenv ue post.pl_loc ~expct:tbool post'.f_ty;
         f_eagerF pre' s1 fpath1 fpath2 s2 post'
+
+    | PFmuhoareF (pre, gp, post) ->
+        let fpath = trans_gamepath env gp in
+        let penv, qenv = EcEnv.Fun.muhoareF fpath env in
+        let pre'  = transf penv pre in
+        let post' = transf qenv post in
+        unify_or_fail penv ue pre.pl_loc  ~expct:tbool pre' .f_ty;
+        unify_or_fail qenv ue post.pl_loc ~expct:tbool post'.f_ty;
+        let get env = oget (EcEnv.MemDistr.current env) in
+        let pre' = get penv, pre' in
+        let post' = get qenv, post' in
+        f_muhoareF pre' fpath post'
+
+    | PFintegr(f,mu) ->
+      let (mu,mt) = 
+        match mu with
+        | None -> 
+          begin match EcEnv.MemDistr.current env with
+          | None -> tyerror f.pl_loc env NoActiveDistr
+          | Some mu -> mu 
+          end 
+        | Some s ->
+          begin match EcEnv.MemDistr.lookup 0 s.pl_desc env with
+          | None -> tyerror s.pl_loc env (UnknownDistrName(0,s.pl_desc))
+          | Some mu -> mu
+          end in
+      let bind = (EcCoreFol.mhr, mt) in       (* FIXME mhr *)
+      let env' = EcEnv.Memory.push_active bind env in
+      let f' = transf env f in
+      unify_or_fail env' ue f.pl_loc  ~expct:treal f'.f_ty;
+      f_integr (bind, f') mu
+      
+
+
 
   and trans_fbind env ue decl = 
     let trans1 env (xs, pgty) =
