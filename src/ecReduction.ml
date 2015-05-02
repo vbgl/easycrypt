@@ -610,7 +610,21 @@ let check_alpha_equal ri hyps f1 f2 =
       (* FIXME should check the memenv *)
       aux env subst hs1.hs_pr hs1.hs_pr;
       aux env subst hs1.hs_po hs2.hs_po
+    
+    | FmuhoareF hf1, FmuhoareF hf2 ->
+      check_xp env subst hf1.muhf_f hf2.muhf_f;
+      aux_ld gtdistr env subst hf1.muhf_pr hf2.muhf_pr;
+      aux_ld gtdistr env subst hf1.muhf_po hf2.muhf_po
 
+    | FmuhoareS hs1, FmuhoareS hs2 ->
+      check_s env subst hs1.muh_s hs2.muh_s;
+      aux_ld gtdistr env subst hs1.muh_pr hs2.muh_pr;
+      aux_ld gtdistr env subst hs1.muh_po hs2.muh_po
+
+    | Fintegr ig1, Fintegr ig2 ->
+      check_mem subst ig1.ig_mu ig2.ig_mu;      
+      aux_ld gtmem env subst ig1.ig_fo ig2.ig_fo;
+      
     | FbdHoareF hf1, FbdHoareF hf2 ->
       ensure (hf1.bhf_cmp = hf2.bhf_cmp);
       check_xp env subst hf1.bhf_f hf2.bhf_f;
@@ -654,6 +668,11 @@ let check_alpha_equal ri hyps f1 f2 =
       aux env subst pr1.pr_event pr2.pr_event
 
     | _, _ -> error ()
+
+  and aux_ld togt env subst (b1,f1) (b2,f2) = 
+    let togt (id,mt) = id, togt mt in
+    let env, subst = check_bindings env subst [togt b1] [togt b2] in
+    aux env subst f1 f2
 
   and aux env subst f1 f2 =
     try aux1 env subst f1 f2
