@@ -590,7 +590,8 @@ let rec trans_form ((genv, lenv) as env : tenv * lenv) (fp : form) =
   | FhoareF   _ | FhoareS   _
   | FbdHoareF _ | FbdHoareS _
   | FequivF   _ | FequivS   _
-    -> trans_gen env fp
+  | FmuhoareF _ | FmuhoareS _ -> trans_gen env fp
+  | Fintegr _ -> trans_gen env fp (* B: FIXME *)
 
 and trans_form_b env f = Cast.force_bool (trans_form env f)
 
@@ -1183,10 +1184,13 @@ module Frequency = struct
       | Fproj    (e, _)       -> doit e
         
       | FhoareF _ | FhoareS _ | FbdHoareF _ | FbdHoareS _ 
-      | FequivF _ | FequivS _ | FeagerF _  -> ()
+      | FequivF _ | FequivS _ | FeagerF _  
+      | FmuhoareS _ | FmuhoareF _ -> ()
       | Fpr pr -> 
         sf := Sx.add pr.pr_fun !sf; 
-        doit pr.pr_event; doit pr.pr_args in
+        doit pr.pr_event; doit pr.pr_args 
+      | Fintegr _ -> () (* B:FIXME *) in
+                 
     doit f;
     if not (Sx.is_empty !sf) then sp := Sp.add CI_Distr.p_mu !sp; 
     !sp, !sf
@@ -1445,13 +1449,13 @@ let select_add_axioms genv pi rs =
 (* -------------------------------------------------------------------- *)
 let check ?notify pi (hyps : LDecl.hyps) (concl : form) =
   (try Unix.unlink "task.why" with Unix.Unix_error _ -> ());
-  let out_task task = 
+ (* let out_task task = 
     let stream = open_out "task.why" in
     EcUtils.try_finally
       (fun () -> Format.fprintf
         (Format.formatter_of_out_channel stream)
         "%a@." Why3.Pretty.print_task task)
-      (fun () -> close_out stream) in
+      (fun () -> close_out stream) in *)
 
   let env   = LDecl.toenv hyps in
   let hyps  = LDecl.tohyps hyps in

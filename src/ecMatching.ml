@@ -717,6 +717,9 @@ module FPosition = struct
           | FbdHoareS _ -> raise InvalidPosition
           | FequivS   _ -> raise InvalidPosition
           | FeagerF   _ -> raise InvalidPosition
+          | FmuhoareF _ -> raise InvalidPosition (* PY: FIXME *)
+          | FmuhoareS _ -> raise InvalidPosition (* PY: FIXME *)
+          | Fintegr   _ -> raise InvalidPosition (* PY: FIXME *)
       end
 
     and doit ps fps =
