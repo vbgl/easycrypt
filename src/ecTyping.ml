@@ -2451,7 +2451,7 @@ let trans_form_or_pattern env (ps, ue) pf tt =
           end in
       let bind = (EcCoreFol.mhr, mt) in       (* FIXME mhr *)
       let env' = EcEnv.Memory.push_active bind env in
-      let f' = transf env f in
+      let f' = transf env' f in
       unify_or_fail env' ue f.pl_loc  ~expct:treal f'.f_ty;
       f_integr (bind, f') mu
       

@@ -300,7 +300,7 @@ let muh_equal ph1 ph2 =
 
 let ig_equal ig1 ig2 = 
      EcMemory.me_equal (fst ig1.ig_fo) (fst ig2.ig_fo)
-  && f_equal (snd ig2.ig_fo) (snd ig2.ig_fo)
+  && f_equal (snd ig1.ig_fo) (snd ig2.ig_fo)
   && EcIdent.id_equal ig1.ig_mu ig2.ig_mu
   
 (* -------------------------------------------------------------------- *)
