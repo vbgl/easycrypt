@@ -1458,7 +1458,7 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
   | Fintegr ig -> begin
       let pp_body fmt ig =
         let m, f = ig.ig_fo in
-        let ppe  = PPEnv.push_distr ppe ~active:true m in      
+        let ppe  = PPEnv.push_mem ppe ~active:true m in      
         pp_form ppe fmt f in
 
       match        
