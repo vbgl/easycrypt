@@ -52,13 +52,13 @@ module PPEnv = struct
 
   let push_mem ppe ?(active = false) m =
     let ppe = { ppe with ppe_env = EcEnv.Memory.push m ppe.ppe_env } in
-      match active with
-      | true  -> enter_by_memid ppe (fst m)
-      | false -> ppe
+    match active with
+    | true  -> enter_by_memid ppe (fst m)
+    | false -> ppe
 
   let create_and_push_mem ppe ?active (id, xp) =
     let m = EcMemory.empty_local id xp in
-      push_mem ppe ?active m
+    push_mem ppe ?active m
 
   let enter_by_distrid ppe id =
     match EcEnv.MemDistr.byid id ppe.ppe_env with
@@ -73,9 +73,9 @@ module PPEnv = struct
 
   let push_distr ppe ?(active = false) m =
     let ppe = { ppe with ppe_env = EcEnv.MemDistr.push m ppe.ppe_env } in
-      match active with
-      | true  -> enter_by_distrid ppe (fst m)
-      | false -> ppe
+    match active with
+    | true  -> enter_by_distrid ppe (fst m)
+    | false -> ppe
 
   let create_and_push_distr ppe ?active (id, xp) =
     let m = EcMemory.empty_local id xp in
@@ -1455,35 +1455,24 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         (pp_form ppe) hs.hs_pr
         (pp_form ppe) hs.hs_po
 
- | FmuhoareF hf ->
-      let ppe_pr = PPEnv.push_distr ppe ~active:true (fst hf.muhf_pr) in
-      let ppe_po = PPEnv.push_distr ppe ~active:true (fst hf.muhf_po) in
-      Format.fprintf fmt "muhoare[@[<hov 2>@ %a :@ @[%a ==>@ %a@]@]]"
-        (pp_funname ppe) hf.muhf_f
-        (pp_form ppe_pr) (snd hf.muhf_pr)
-        (pp_form ppe_po) (snd hf.muhf_po)
+  | Fintegr ig -> begin
+      let pp_body fmt ig =
+        let m, f = ig.ig_fo in
+        let ppe  = PPEnv.push_distr ppe ~active:true m in      
+        pp_form ppe fmt f in
 
-  | FmuhoareS hs ->
-    Format.fprintf fmt "muhoare[@[<hov 2>@ %a :@ @[%a ==>@ %a@]@]]"
-      (pp_stmt_for_form ppe) hs.muh_s 
-      (pp_ldform ppe) hs.muh_pr
-      (pp_ldform ppe) hs.muh_po
+      match        
+        match EcEnv.MemDistr.get_active ppe.PPEnv.ppe_env with
+        | Some mu -> EcIdent.id_equal mu ig.ig_mu
+        | None    -> false
+      with
+      | true  ->
+          Format.fprintf fmt "$[@[<hov 2>%a@]]" pp_body ig
 
-  | Fintegr ig ->
-    let env = ppe.PPEnv.ppe_env in
-    let is_active = 
-      match EcEnv.MemDistr.get_active env with
-      | Some mu -> EcIdent.id_equal mu ig.ig_mu
-      | None -> false in
-    let pp_body fmt ig =
-      let m,f = ig.ig_fo in
-      let ppe = PPEnv.push_mem ppe ~active:true m in      
-      pp_form ppe fmt f in
-    let pp_mu fmt ig = 
-      if not is_active then 
-        Format.fprintf fmt " |@ %a" (pp_distr ppe) ig.ig_mu in
-    Format.fprintf fmt "$[@[<hov 2>%a%a@]]"
-      pp_body ig pp_mu ig 
+      | false ->
+          Format.fprintf fmt "$[@[<hov 2>%a |@ %a@]]"
+            pp_body ig (pp_distr ppe) ig.ig_mu
+  end
 
   | FequivF eqv ->
       let ppe =
@@ -1536,6 +1525,20 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         (string_of_hcmp hs.bhs_cmp)
         (pp_form_r ppe (fst outer, (max_op_prec,`NonAssoc))) hs.bhs_bd
 
+  | FmuhoareF hf ->
+      let ppe_pr = PPEnv.push_distr ppe ~active:true (fst hf.muhf_pr) in
+      let ppe_po = PPEnv.push_distr ppe ~active:true (fst hf.muhf_po) in
+      Format.fprintf fmt "muhoare[@[<hov 2>@ %a :@ @[%a ==>@ %a@]@]]"
+        (pp_funname ppe) hf.muhf_f
+        (pp_form ppe_pr) (snd hf.muhf_pr)
+        (pp_form ppe_po) (snd hf.muhf_po)
+
+  | FmuhoareS hs ->
+      Format.fprintf fmt "muhoare[@[<hov 2>@ %a :@ @[%a ==>@ %a@]@]]"
+        (pp_stmt_for_form ppe) hs.muh_s 
+        (pp_ldform ppe) hs.muh_pr
+        (pp_ldform ppe) hs.muh_po
+
   | Fpr pr->
       let ppe = PPEnv.create_and_push_mem ppe ~active:true (EcFol.mhr, pr.pr_fun) in
       Format.fprintf fmt "Pr[@[%a@[%t@] @@ %a :@ %a@]]"
@@ -1564,8 +1567,8 @@ and pp_form_r (ppe : PPEnv.t) outer fmt f =
 and pp_form ppe fmt f =
   pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt f
 
-and pp_ldform ppe fmt (b,f) = 
-  let ppe = PPEnv.push_distr ppe ~active:true b in
+and pp_ldform ppe fmt (m, f) = 
+  let ppe = PPEnv.push_distr ppe ~active:true m in
   pp_form ppe fmt f 
 
 (* -------------------------------------------------------------------- *)
@@ -2045,7 +2048,7 @@ let pp_hoareS (ppe : PPEnv.t) fmt hs =
 
 (* -------------------------------------------------------------------- *)
 let pp_muhoareF (ppe : PPEnv.t) fmt hf =
-  Format.fprintf fmt "%a@\n%!" (pp_ldform ppe) hf.muhf_pr;
+  Format.fprintf fmt "%a@\n@\n%!" (pp_ldform ppe) hf.muhf_pr;
   Format.fprintf fmt "    %a@\n%!" (pp_funname ppe) hf.muhf_f;
   Format.fprintf fmt "@\n%a%!" (pp_ldform ppe) hf.muhf_po
 

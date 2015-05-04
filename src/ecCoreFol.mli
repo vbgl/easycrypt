@@ -75,7 +75,7 @@ and f_node =
 
   | FmuhoareF of muhoareF
   | FmuhoareS of muhoareS
-  | Fintegr  of integral
+  | Fintegr   of integral
 
 and lmd_form = (EcIdent.t * EcMemory.memtype) * form
 

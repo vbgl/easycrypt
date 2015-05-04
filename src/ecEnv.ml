@@ -1149,7 +1149,6 @@ exception MEError of meerror
 
 (* -------------------------------------------------------------------- *)
 module Memory = struct
-
   let all env =
     MMsym.fold (fun _ l all -> List.rev_append l all) env.env_memories []
 
@@ -1203,7 +1202,6 @@ end
 
 (* -------------------------------------------------------------------- *)
 module MemDistr = struct
-
   let all env =
     MMsym.fold (fun _ l all -> List.rev_append l all) env.env_memdistr []
 
@@ -1229,7 +1227,7 @@ module MemDistr = struct
     | Some _ -> { env with env_actdistr = Some me }
 
   let get_active (env : env) =
-    env.env_actmem
+    env.env_actdistr
 
   let current (env : env) =
     match env.env_actdistr with
