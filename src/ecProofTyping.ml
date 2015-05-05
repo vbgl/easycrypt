@@ -95,15 +95,16 @@ let tc1_process_phl_ld_form ?side tc ty pf =
 
   let ld, hyps = 
     match memory with 
-    | `Mem memory -> memory, LDecl.push_active memory hyps 
-    | `Distr memory -> memory, LDecl.push_active_distr memory hyps in
-  ld, pf_process_form !!tc hyps ty pf
+    | `Mem memory   -> memory, LDecl.push_active memory hyps 
+    | `Distr memory -> memory, LDecl.push_active_distr memory hyps
 
+  in (ld, pf_process_form !!tc hyps ty pf)
+
+(* ------------------------------------------------------------------ *)
 let tc1_process_phl_form ?side tc ty pf =
   snd (tc1_process_phl_ld_form ?side tc ty pf)
 
 (* ------------------------------------------------------------------ *)
-
 let tc1_process_phl_ld_formula ?side tc pf =
   tc1_process_phl_ld_form ?side tc tbool pf
 

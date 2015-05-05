@@ -196,24 +196,38 @@ module Hstmt = Why3.Hashcons.Make (struct
 end)
 
 (* -------------------------------------------------------------------- *)
-let mk_instr i =
-  Hinstr.hashcons { i_node = i; i_tag = -1; i_fv = EcIdent.Mid.empty }
+let mk_instr i = Hinstr.hashcons
+  { i_node = i; i_tag = -1; i_fv = EcIdent.Mid.empty }
 
-let i_asgn   (lv, e)      = mk_instr (Sasgn (lv, e))
-let i_rnd    (lv, e)      = mk_instr (Srnd (lv, e))
-let i_call   (lv, m, tys) = mk_instr (Scall (lv, m, tys))
-let i_if     (c, s1, s2)  = mk_instr (Sif (c, s1, s2))
-let i_while  (c, s)       = mk_instr (Swhile (c, s))
-let i_assert e            = mk_instr (Sassert e)
-let i_abstract id         = mk_instr (Sabstract id)
+let mk_stmt s = Hstmt.hashcons
+  { s_node = s; s_tag = -1; s_fv = EcIdent.Mid.empty}
 
-let stmt s =
-  Hstmt.hashcons { s_node = s; s_tag = -1; s_fv = EcIdent.Mid.empty}
+(* -------------------------------------------------------------------- *)
+let i_asgn     (lv, e)      = mk_instr (Sasgn (lv, e))
+let i_rnd      (lv, e)      = mk_instr (Srnd (lv, e))
+let i_call     (lv, m, tys) = mk_instr (Scall (lv, m, tys))
+let i_if       (c, s1, s2)  = mk_instr (Sif (c, s1, s2))
+let i_while    (c, s)       = mk_instr (Swhile (c, s))
+let i_assert   e            = mk_instr (Sassert e)
+let i_abstract id           = mk_instr (Sabstract id)
 
-let s_seq s1 s2 = stmt (s1.s_node @ s2.s_node)
+(* -------------------------------------------------------------------- *)
+let s_asgn     arg = mk_stmt [i_asgn arg]
+let s_rnd      arg = mk_stmt [i_rnd arg]
+let s_call     arg = mk_stmt [i_call arg]
+let s_if       arg = mk_stmt [i_if arg]
+let s_while    arg = mk_stmt [i_while arg]
+let s_assert   arg = mk_stmt [i_assert arg]
+let s_abstract arg = mk_stmt [i_abstract arg]
 
-let rstmt s = stmt (List.rev s)
+(* -------------------------------------------------------------------- *)
+let  stmt s = mk_stmt s
+let rstmt s = mk_stmt (List.rev s)
 
+let s_seq   = fun s1 s2 -> stmt (s1.s_node @ s2.s_node)
+let s_empty = stmt []
+
+(* -------------------------------------------------------------------- *)
 let s_split n s = List.takedrop n s.s_node
 
 let destr_asgn i =

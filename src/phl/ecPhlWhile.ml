@@ -320,12 +320,28 @@ let t_equiv_while_r inv tc =
   FApi.xmutate1 tc `While [b_concl; concl]
 
 (* -------------------------------------------------------------------- *)
+let t_muhoare_while (inv : lmd_form) tc =
+  let mus = tc1_as_muhoareS tc in
+  let (e, c), s = tc1_last_while tc mus.muh_s in
+
+  (* assert in cond. 2 should be inlined *)
+  let enot = e_op EcCoreLib.CI_Bool.p_not [] (toarrow [tbool] tbool) in
+  let ne   = e_app enot [e] tbool in
+
+  let cond1 = f_muhoareS mus.muh_pr s inv in
+  let cond2 = f_muhoareS inv (s_if (e, c, s_empty)) inv in
+  let cond3 = f_muhoareS inv (s_assert ne) mus.muh_po in
+
+  FApi.xmutate1 tc `While [cond1; cond2; cond3]
+
+(* -------------------------------------------------------------------- *)
 let t_hoare_while           = FApi.t_low1 "hoare-while"   t_hoare_while_r
 let t_bdhoare_while         = FApi.t_low2 "bdhoare-while" t_bdhoare_while_r
 let t_bdhoare_while_rev_geq = FApi.t_low4 "bdhoare-while" t_bdhoare_while_rev_geq_r
 let t_bdhoare_while_rev     = FApi.t_low1 "bdhoare-while" t_bdhoare_while_rev_r
 let t_equiv_while           = FApi.t_low1 "equiv-while"   t_equiv_while_r
 let t_equiv_while_disj      = FApi.t_low3 "equiv-while"   t_equiv_while_disj_r
+let t_muhoare_while         = FApi.t_low1 "muhoare-while" t_muhoare_while
 
 (* -------------------------------------------------------------------- *)
 let process_while side winfos tc =
@@ -376,4 +392,13 @@ let process_while side winfos tc =
       | _ -> tc_error !!tc "invalid arguments"
   end
 
-  | _ -> tc_error !!tc "expecting a hoare[...]/equiv[...]"
+  | FmuhoareS _ -> begin
+      match side, vrnt with
+      | None, None ->
+          t_muhoare_while (TTC.tc1_process_phl_ld_formula tc phi) tc
+
+      | _ -> tc_error !!tc "invalid arguments"
+          
+  end
+
+  | _ -> tc_error !!tc "invalid goal shape"

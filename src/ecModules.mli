@@ -60,19 +60,27 @@ val s_fv      : stmt -> int EcIdent.Mid.t
 val s_subst   : e_subst -> stmt -> stmt
 
 (* -------------------------------------------------------------------- *)
-val i_asgn    : lvalue * expr -> instr
-val i_rnd     : lvalue * expr -> instr
-val i_call    : lvalue option * xpath * expr list -> instr
-val i_if      : expr * stmt * stmt -> instr
-val i_while   : expr * stmt -> instr
-val i_assert  : expr -> instr
+val i_asgn     : lvalue * expr -> instr
+val i_rnd      : lvalue * expr -> instr
+val i_call     : lvalue option * xpath * expr list -> instr
+val i_if       : expr * stmt * stmt -> instr
+val i_while    : expr * stmt -> instr
+val i_assert   : expr -> instr
 val i_abstract : EcIdent.t -> instr
 
-val s_seq     : stmt -> stmt -> stmt
+val s_asgn     : lvalue * expr -> stmt
+val s_rnd      : lvalue * expr -> stmt
+val s_call     : lvalue option * xpath * expr list -> stmt
+val s_if       : expr * stmt * stmt -> stmt
+val s_while    : expr * stmt -> stmt
+val s_assert   : expr -> stmt
+val s_abstract : EcIdent.t -> stmt
 
-val stmt : instr list -> stmt
-(* [rstmt l] is stmt (List.rev l) *)
-val rstmt : instr list -> stmt
+val s_seq   : stmt -> stmt -> stmt
+val s_empty : stmt
+
+val stmt  : instr list -> stmt
+val rstmt : instr list -> stmt (* = stmt (rev s) *)
 
 val s_split : int -> stmt -> instr list * instr list
 
