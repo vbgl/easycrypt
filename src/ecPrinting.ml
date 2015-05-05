@@ -2060,7 +2060,7 @@ let pp_muhoareS (ppe : PPEnv.t) fmt hs =
     Format.fprintf fmt "Context : %a@\n%!" (pp_funname ppe) 
       (EcMemory.xpath (fst hs.muh_pr));
     Format.fprintf fmt "@\n%!";
-    Format.fprintf fmt "%a%!" (pp_ldform ppe) hs.muh_pr;
+    Format.fprintf fmt "%a@\n%!" (pp_ldform ppe) hs.muh_pr;
     Format.fprintf fmt "@\n%!";
     Format.fprintf fmt "%a" (pp_node `Left) ppnode;
     Format.fprintf fmt "@\n%!";
