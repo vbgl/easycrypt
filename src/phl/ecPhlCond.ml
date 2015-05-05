@@ -54,8 +54,8 @@ let t_muhoare_cond pr1 po1 pr2 po2 tc =
     let (mu,mt), po = muh.muh_po in
     let mu1 = EcIdent.create "mu1" in
     let mu2 = EcIdent.create "mu2" in
-    let _, po1 = EcLowMuHoare.ldm_app (mu1, mt) po1 in
-    let _, po2 = EcLowMuHoare.ldm_app (mu2, mt) po2 in
+    let _, po1 = EcLowMuHoare.lmd_app (mu1, mt) po1 in
+    let _, po2 = EcLowMuHoare.lmd_app (mu2, mt) po2 in
     f_forall [(mu1,gtdistr mt); (mu2,gtdistr mt)]
       (f_imp po1 (f_imp po2 (EcLowMuHoare.oplus mu mu1 mu2 po))) in
   

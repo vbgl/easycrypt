@@ -44,7 +44,7 @@ let bd_goal pe fcmp fbd cmp bd =
 *)
 
 let conseq_muhoare pr1 po1 pr2 po2 = 
-  ldm_forall_imp pr1 pr2, ldm_forall_imp po2 po1
+  lmd_forall_imp pr1 pr2, lmd_forall_imp po2 po1
  
 let t_muhoareF_conseq pr po tc = 
   let muh = tc1_as_muhoareF tc in

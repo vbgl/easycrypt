@@ -7,7 +7,7 @@ open EcModules
 open EcLowPhlGoal
 
 (* -------------------------------------------------------------------- *)
-let ldm_app (id,mt) ((id',mt'), body as f) =
+let lmd_app (id,mt) ((id',mt'), body as f) =
    assert (EcMemory.mt_equal mt mt');
    if EcIdent.id_equal id id' then f
    else
@@ -15,12 +15,12 @@ let ldm_app (id,mt) ((id',mt'), body as f) =
      (id,mt), body
 
 (* -------------------------------------------------------------------- *)
-let ldm_imp (b,f1) f2 =
-  let _, f2 = ldm_app b f2 in
+let lmd_imp (b,f1) f2 =
+  let _, f2 = lmd_app b f2 in
   b, f_imp f1 f2
 
 (* -------------------------------------------------------------------- *)
-let ldm_forall_imp f1 f2 = f_forall_distr (ldm_imp f1 f2)
+let lmd_forall_imp f1 f2 = f_forall_distr (lmd_imp f1 f2)
 
 (* -------------------------------------------------------------------- *)
 let oplus mu mu1 mu2 f =
@@ -41,11 +41,11 @@ let oplus mu mu1 mu2 f =
 
   let rec aux f =
     match f.f_node with
-    | Fintegr {ig_fo = ldm; ig_mu = mu'} ->
-      let ldm = aux_ldm ldm in
+    | Fintegr {ig_fo = lmd; ig_mu = mu'} ->
+      let lmd = aux_lmd lmd in
       if EcIdent.id_equal mu mu' then
-        f_real_add (f_integr ldm mu1) (f_integr ldm mu2)
-      else f_integr ldm mu'
+        f_real_add (f_integr lmd mu1) (f_integr lmd mu2)
+      else f_integr lmd mu'
     | Fquant(q,b,f1) ->
       if List.exists check_binding b then f
       else f_quant q b (aux f1)
@@ -60,7 +60,7 @@ let oplus mu mu1 mu2 f =
     | FmuhoareF _ | FmuhoareS _ -> assert false (* can be implemented *)
     | _ -> f_map (fun ty -> ty) aux f
 
-  and aux_ldm (b,f1 as f) = if check_binding b then f else (b,aux f1) in
+  and aux_lmd (b,f1 as f) = if check_binding b then f else (b,aux f1) in
 
   aux f
 
@@ -80,10 +80,10 @@ let do_on_mu onld mu f =
   let rec aux f =
     if Mid.mem mu f.f_fv then
       match f.f_node with
-      | Fintegr {ig_fo = ldm; ig_mu = mu'} ->
-        let ldm = aux_ldm ldm in
-        if EcIdent.id_equal mu mu' then f_integr (onld ldm) mu
-        else f_integr ldm mu'
+      | Fintegr {ig_fo = lmd; ig_mu = mu'} ->
+        let lmd = aux_lmd lmd in
+        if EcIdent.id_equal mu mu' then f_integr (onld lmd) mu
+        else f_integr lmd mu'
       | Fquant(q,b,f1) ->
         if List.exists check_binding b then f
         else f_quant q b (aux f1)
@@ -99,21 +99,21 @@ let do_on_mu onld mu f =
       | _ -> f_map (fun ty -> ty) aux f
     else f
 
-  and aux_ldm (b,f1 as f) = if check_binding b then f else (b,aux f1) in
+  and aux_lmd (b,f1 as f) = if check_binding b then f else (b,aux f1) in
 
   aux f
 
 (* -------------------------------------------------------------------- *)
 let mu_restr mu pos b f =
-  let ldm_restr ((m,mt), f) =
+  let lmd_restr ((m,mt), f) =
     let b = form_of_expr m b in
     let b = if pos then b else f_not b in
     (m,mt), f_real_mul (f_real_of_bool b) f in
-  do_on_mu ldm_restr mu f
+  do_on_mu lmd_restr mu f
 
 (* -------------------------------------------------------------------- *)
 let curly b ((mu,mt),f1) f2 =
-  let _, f2 = ldm_app (mu,mt) f2 in
+  let _, f2 = lmd_app (mu,mt) f2 in
   (mu,mt), f_and (mu_restr mu true b f1) (mu_restr mu false b f2)
 
 (* -------------------------------------------------------------------- *)

@@ -8,8 +8,8 @@ open EcModules
 open EcMemory
 
 (* -------------------------------------------------------------------- *)
-val ldm_app : (EcIdent.t * memtype) -> lmd_form -> lmd_form
-val ldm_forall_imp : lmd_form -> lmd_form -> form
+val lmd_app : (EcIdent.t * memtype) -> lmd_form -> lmd_form
+val lmd_forall_imp : lmd_form -> lmd_form -> form
 
 (* -------------------------------------------------------------------- *)
 val oplus : ident -> ident -> ident -> form -> form
