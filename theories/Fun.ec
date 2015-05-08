@@ -11,7 +11,7 @@
 require import ExtEq Option.
 
 (* -------------------------------------------------------------------- *)
-op id (x:'a) = x.
+op idfun (x:'a) = x.
 
 (* -------------------------------------------------------------------- *)
 pred preim ['a 'b] (f : 'a -> 'b) p x = p (f x).
@@ -89,7 +89,7 @@ lemma nosmt can2_eq (f : 'a -> 'b) g:
 proof. by move=> fK gK x y; rewrite -{1}gK; apply (can_eq f g). qed.
 
 (* -------------------------------------------------------------------- *)
-lemma nosmt inj_id: injective (id<:'a>).
+lemma nosmt inj_idfun: injective (idfun<:'a>).
 proof. by []. qed.
 
 lemma nosmt inj_can_sym (f:'a -> 'b) f':
