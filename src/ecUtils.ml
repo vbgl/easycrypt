@@ -523,6 +523,9 @@ module List = struct
   let max ?(cmp = Pervasives.compare) s = 
     reduce (fun x y -> if cmp x y > 0 then x else y) s
 
+  let fst xs = List.map fst xs
+  let snd xs = List.map snd xs
+
   let is_singleton l = 
     match l with
     | [_] -> true

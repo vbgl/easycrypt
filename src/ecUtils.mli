@@ -252,6 +252,10 @@ module List : sig
   val max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a
 
   (* ------------------------------------------------------------------ *)
+  val fst : ('a * 'b) list -> 'a list
+  val snd : ('a * 'b) list -> 'b list
+
+  (* ------------------------------------------------------------------ *)
   val mbfilter   : ('a -> bool) -> 'a list -> 'a list
   val fusion     : ('a -> 'a -> 'a) -> 'a list -> 'a list -> 'a list
   val is_unique  : ?eq:('a -> 'a -> bool) -> 'a list -> bool
