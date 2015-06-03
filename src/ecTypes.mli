@@ -18,12 +18,20 @@ type ty = private {
 }
 
 and ty_node =
+  | Tmem    of memtype
   | Tglob   of EcPath.mpath (* The tuple of global variable of the module *)
   | Tunivar of EcUid.uid
   | Tvar    of EcIdent.t 
   | Ttuple  of ty list
   | Tconstr of EcPath.path * ty list
   | Tfun    of ty * ty
+
+and memtype = local_memtype option
+
+and local_memtype = {
+  mt_path : EcPath.xpath;
+  mt_vars : ((int*int) option * ty) Msym.t
+}
 
 module Mty : Map.S with type key = ty
 module Sty : Set.S with module M = Map.MakeBase(Mty)
@@ -58,6 +66,14 @@ val flatten_ty : ty -> ty list
 exception FoundUnivar
 
 val ty_check_uni : ty -> unit
+
+(* -------------------------------------------------------------------- *)
+
+val mt_fv : memtype -> int Mid.t
+val lmt_equal : local_memtype -> local_memtype -> bool
+val mt_equal : memtype -> memtype -> bool
+val mt_subst :(EcPath.xpath -> EcPath.xpath) -> (ty -> ty) -> 
+               memtype -> memtype
 
 (* -------------------------------------------------------------------- *)
 type ty_subst = {
@@ -96,6 +112,10 @@ end
 (* -------------------------------------------------------------------- *)
 (* [map f t] applies [f] on strict subterms of [t] (not recursive) *)
 val ty_map : (ty -> ty) -> ty -> ty
+
+(* -------------------------------------------------------------------- *)
+(* [iter f t] applies [f] on strict subterms of [t] (not recursive) *)
+val ty_iter : (ty -> unit) -> ty -> unit
 
 (* [sub_exists f t] true if one of the strict-subterm of [t] valid [f] *)
 val ty_sub_exists : (ty -> bool) -> ty -> bool

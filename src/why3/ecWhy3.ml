@@ -931,6 +931,7 @@ let trans_glob env mp =
   
 let rec trans_ty env ty =
   match ty.ty_node with
+  | Tmem _ -> (* FIXME case Some *) ty_mem
   | Tglob mp -> trans_tglob env mp
   | Tunivar _ -> assert false
   | Tvar id -> trans_tv env id

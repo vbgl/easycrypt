@@ -323,6 +323,7 @@ let mk_tglob genv mp =
 (* -------------------------------------------------------------------- *)
 let rec trans_ty ((genv, lenv) as env) ty =
   match ty.ty_node with
+  | Tmem _ -> ty_mem
   | Tglob   mp -> 
     trans_tglob env mp
   | Tunivar _ -> assert false

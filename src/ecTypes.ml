@@ -9,6 +9,7 @@ open EcIdent
 open EcPath
 open EcUid
 
+module Msym = EcSymbols.Msym
 module BI = EcBigInt
 
 (* -------------------------------------------------------------------- *)
@@ -19,6 +20,7 @@ type ty = {
 }
 
 and ty_node =
+  | Tmem    of memtype
   | Tglob   of EcPath.mpath (* The tuple of global variable of the module *)
   | Tunivar of EcUid.uid
   | Tvar    of EcIdent.t 
@@ -26,10 +28,70 @@ and ty_node =
   | Tconstr of EcPath.path * ty list
   | Tfun    of ty * ty
 
+and memtype = local_memtype option
+
+and local_memtype = {
+  mt_path : EcPath.xpath;
+  mt_vars : ((int*int) option * ty) Msym.t
+}
+
 type dom = ty list
 
 let ty_equal : ty -> ty -> bool = (==)
 let ty_hash ty = ty.ty_tag
+
+(* -------------------------------------------------------------------- *)
+let lmt_equal mt1 mt2 =   
+  mt1 == mt2 || 
+    (EcPath.x_equal mt1.mt_path mt2.mt_path &&
+       Msym.equal (fun (p1,ty1) (p2,ty2) -> p1 = p2 && ty_equal ty1 ty2) 
+       mt1.mt_vars mt2.mt_vars)
+
+let mt_equal mt1 mt2 = 
+  match mt1, mt2 with
+  | Some mt1, Some mt2 -> lmt_equal mt1 mt2
+  | None, None         -> true
+  | _   , _            -> false
+
+let mt_hash = function
+  | None -> 1
+  | Some lmt -> EcPath.x_hash lmt.mt_path
+
+let mt_fv = function
+  | None -> EcIdent.Mid.empty
+  | Some lmt ->
+    let fv = EcPath.x_fv EcIdent.Mid.empty lmt.mt_path in
+    Msym.fold (fun _ (_,ty) fv -> EcIdent.fv_union fv ty.ty_fv) lmt.mt_vars fv 
+
+let mt_map f mt = 
+  match mt with 
+  | None     -> mt
+  | Some lmt ->
+    let lmt' = 
+      { lmt with mt_vars = Msym.map (fun (o,ty) -> (o,f ty)) lmt.mt_vars } in
+    if lmt_equal lmt lmt' then mt else Some lmt'
+
+let mt_exists f = function
+  | None -> false
+  | Some lmt -> Msym.exists (fun _ (_,ty) -> f ty) lmt.mt_vars
+
+let mt_iter f = function
+  | None -> ()
+  | Some lmt -> Msym.iter (fun _ (_,ty) -> f ty) lmt.mt_vars
+
+let mt_subst sx st o =
+  match o with
+  | None -> o
+  | Some mt ->
+    let p' = sx mt.mt_path in
+    let vars' = 
+      if st == identity then mt.mt_vars else
+        Msym.map (fun (p,ty) -> p, st ty) mt.mt_vars in 
+           (* FIXME could be greate to use smart_map *)
+    if p' == mt.mt_path && vars' == mt.mt_vars then o else
+      Some { mt_path   = p'; mt_vars   = vars' }
+
+(* -------------------------------------------------------------------- *)
 
 module Hsty = Why3.Hashcons.Make (struct
   type t = ty
@@ -54,30 +116,34 @@ module Hsty = Why3.Hashcons.Make (struct
     | Tfun (d1, c1), Tfun (d2, c2)-> 
         ty_equal d1 d2 && ty_equal c1 c2
 
+    | Tmem mt1, Tmem mt2 -> mt_equal mt1 mt2
     | _, _ -> false
       
   let hash ty = 
     match ty.ty_node with 
-    | Tglob m          -> EcPath.m_hash m
+    | Tglob   m        -> EcPath.m_hash m
     | Tunivar u        -> u
     | Tvar    id       -> EcIdent.tag id
     | Ttuple  tl       -> Why3.Hashcons.combine_list ty_hash 0 tl
     | Tconstr (p, tl)  -> Why3.Hashcons.combine_list ty_hash p.p_tag tl
     | Tfun    (t1, t2) -> Why3.Hashcons.combine (ty_hash t1) (ty_hash t2)
+    | Tmem    mt       -> mt_hash mt
         
   let fv ty =
     let union ex =
       List.fold_left (fun s a -> fv_union s (ex a)) Mid.empty in
 
     match ty with
-    | Tglob m          -> EcPath.m_fv Mid.empty m
+    | Tglob   m        -> EcPath.m_fv Mid.empty m
     | Tunivar _        -> Mid.empty
     | Tvar    _        -> Mid.empty
     | Ttuple  tys      -> union (fun a -> a.ty_fv) tys
     | Tconstr (_, tys) -> union (fun a -> a.ty_fv) tys
     | Tfun    (t1, t2) -> union (fun a -> a.ty_fv) [t1; t2]
+    | Tmem    mt       -> mt_fv mt
 
   let tag n ty = { ty with ty_tag = n; ty_fv = fv ty.ty_node; }
+
 end)
 
 let mk_ty node =  
@@ -114,12 +180,16 @@ let rec dump_ty ty =
   | Tfun (t1, t2) ->
       Printf.sprintf "(%s) -> (%s)" (dump_ty t1) (dump_ty t2)
 
+  | Tmem _mt -> 
+      "mem"
+
 (* -------------------------------------------------------------------- *)
 let tuni uid     = mk_ty (Tunivar uid)
 let tvar id      = mk_ty (Tvar id)
 let tconstr p lt = mk_ty (Tconstr (p, lt))
 let tfun t1 t2   = mk_ty (Tfun (t1, t2)) 
 let tglob m      = mk_ty (Tglob m)
+let tmem  mt     = mk_ty (Tmem mt)
 
 (* -------------------------------------------------------------------- *)
 let tunit      = tconstr EcCoreLib.CI_Unit .p_unit  []
@@ -156,6 +226,10 @@ module TySmart = struct
 
   let tfun (ty, (t1, t2)) (t1', t2') =
     if t1 == t1' && t2 == t2' then ty else tfun t1' t2'
+
+  let tmem (ty,mt) mt' = 
+    if mt == mt' then ty else tmem mt
+
 end
 
 (* -------------------------------------------------------------------- *)
@@ -173,12 +247,18 @@ let ty_map f t =
   | Tfun (t1, t2) -> 
       TySmart.tfun (t, (t1, t2)) (f t1, f t2)
 
+  | Tmem mt ->
+      TySmart.tmem (t,mt) (mt_map f mt) 
+
 let ty_fold f s ty = 
   match ty.ty_node with 
   | Tglob _ | Tunivar _ | Tvar _ -> s
   | Ttuple lty -> List.fold_left f s lty
   | Tconstr(_, lty) -> List.fold_left f s lty
   | Tfun(t1,t2) -> f (f s t1) t2
+  | Tmem mt -> 
+       ofold (fun lmt s -> Msym.fold (fun _x (_,ty) s -> f s ty) lmt.mt_vars s)
+         s mt
 
 let ty_sub_exists f t =
   match t.ty_node with
@@ -186,6 +266,7 @@ let ty_sub_exists f t =
   | Ttuple lty -> List.exists f lty
   | Tconstr (_, lty) -> List.exists f lty
   | Tfun (t1, t2) -> f t1 || f t2
+  | Tmem mt -> mt_exists f mt
 
 let ty_iter f t = 
   match t.ty_node with
@@ -193,6 +274,7 @@ let ty_iter f t =
   | Ttuple lty -> List.iter f lty
   | Tconstr (_, lty) -> List.iter f lty
   | Tfun (t1,t2) -> f t1; f t2
+  | Tmem mt -> mt_iter f mt
 
 exception FoundUnivar
 
@@ -219,6 +301,7 @@ let symbol_of_ty (ty : ty) =
              | _ -> doit (i+1)
       in
         doit 0
+  | Tmem _         -> "m"
 
 let fresh_id_of_ty (ty : ty) =
   EcIdent.create (symbol_of_ty ty)
@@ -256,7 +339,8 @@ let rec ty_subst s =
       | Tvar id       -> odfl ty (s.ts_v id)
       | Ttuple lty    -> TySmart.ttuple (ty, lty) (List.Smart.map aux lty)
       | Tfun (t1, t2) -> TySmart.tfun (ty, (t1, t2)) (aux t1, aux t2)
-
+      | Tmem mt       -> 
+        TySmart.tmem (ty, mt) (mt_subst (EcPath.x_subst s.ts_mp) aux mt)
       | Tconstr(p, lty) -> begin
         match Mp.find_opt p s.ts_def with
         | None -> 
@@ -270,6 +354,7 @@ let rec ty_subst s =
               with Failure _ -> assert false
             in
               ty_subst { ty_subst_id with ts_v = Mid.find_opt^~ s; } body
+        
       end)
 
 (* -------------------------------------------------------------------- *)

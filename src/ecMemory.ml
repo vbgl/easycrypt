@@ -5,7 +5,6 @@
 
 (* -------------------------------------------------------------------- *)
 open EcSymbols
-open EcUtils
 open EcTypes
 
 module Msym = EcSymbols.Msym
@@ -16,33 +15,18 @@ type memory = EcIdent.t
 let mem_equal = EcIdent.id_equal
 
 (* -------------------------------------------------------------------- *)
-type local_memtype = {
-  mt_path : EcPath.xpath;
-  mt_vars : ((int*int) option * ty) Msym.t
-}
+type local_memtype = EcTypes.local_memtype 
 
 type memtype = local_memtype option
 
-let mt_fv = function
-  | None -> EcIdent.Mid.empty
-  | Some lmt ->
-    let fv = EcPath.x_fv EcIdent.Mid.empty lmt.mt_path in
-    Msym.fold (fun _ (_,ty) fv -> EcIdent.fv_union fv ty.ty_fv) lmt.mt_vars fv 
+let mt_fv = EcTypes.mt_fv
 
-let lmt_equal mt1 mt2 =   
-  mt1 == mt2 || 
-    (EcPath.x_equal mt1.mt_path mt2.mt_path &&
-       Msym.equal (fun (p1,ty1) (p2,ty2) -> p1 = p2 && ty_equal ty1 ty2) 
-       mt1.mt_vars mt2.mt_vars)
+let lmt_equal = EcTypes.lmt_equal
 
 let lmt_xpath mt = mt.mt_path
 let lmt_bindings mt = mt.mt_vars
 
-let mt_equal mt1 mt2 = 
-  match mt1, mt2 with
-  | Some mt1, Some mt2 -> lmt_equal mt1 mt2
-  | None, None         -> true
-  | _   , _            -> false
+let mt_equal = EcTypes.mt_equal 
 
 let mt_xpath = function
   | None -> assert false
@@ -98,17 +82,8 @@ let is_bound x me = lookup x me <> None
 let is_bound_pv pv me = 
   is_loc pv && is_bound (EcPath.xbasename pv.pv_name) me
 (* -------------------------------------------------------------------- *)
-let mt_subst sx st o =
-  match o with
-  | None -> o
-  | Some mt ->
-    let p' = sx mt.mt_path in
-    let vars' = 
-      if st == identity then mt.mt_vars else
-        Msym.map (fun (p,ty) -> p, st ty) mt.mt_vars in 
-           (* FIXME could be greate to use smart_map *)
-    if p' == mt.mt_path && vars' == mt.mt_vars then o else
-      Some { mt_path   = p'; mt_vars   = vars' }
+
+let mt_subst = EcTypes.mt_subst 
 
 let mt_substm sp smp st o =
   mt_subst (EcPath.x_substm sp smp) st o

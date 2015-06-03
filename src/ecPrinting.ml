@@ -622,6 +622,7 @@ let is_binop name =
 (* -------------------------------------------------------------------- *)
 let rec pp_type_r ppe outer fmt ty =
   match ty.ty_node with
+  | Tmem _ -> Format.fprintf fmt "memory"
   | Tglob m -> Format.fprintf fmt "(glob %a)" (pp_topmod ppe) m
 
   | Tunivar x -> pp_tyunivar ppe fmt x

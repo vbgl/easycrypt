@@ -59,9 +59,7 @@ let rec on_mpath_ty cb (ty : ty) =
   | Tunivar _        -> ()
   | Tvar    _        -> ()
   | Tglob mp         -> cb mp
-  | Ttuple tys       -> List.iter (on_mpath_ty cb) tys
-  | Tconstr (_, tys) -> List.iter (on_mpath_ty cb) tys
-  | Tfun (ty1, ty2)  -> List.iter (on_mpath_ty cb) [ty1; ty2]
+  | _                -> EcTypes.ty_iter (on_mpath_ty cb) ty
 
 let on_mpath_pv cb (pv : prog_var)=
   cb pv.pv_name.x_top
