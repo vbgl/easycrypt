@@ -114,9 +114,9 @@ let t_equiv_app_onesided side i pre post tc =
   let _s1, s2 = s_split i s in
 
   let modi = EcPV.s_write env (EcModules.stmt s2) in
-  let subst = Fsubst.f_subst_mem mhr (fst m) in
+  let subst = Fsubst.f_subst_mem mhr (snd m) (fst m) in
   let p' = subst pre and q' = subst post in
-  let r = f_and p' (generalize_mod env (fst m) modi (f_imp q' es.es_po)) in
+  let r = f_and p' (generalize_mod env (f_mem m) modi (f_imp q' es.es_po)) in
   FApi.t_seqsub (t_equiv_app ij r)
     [t_id; (* s1 ~ s' : pr ==> r *)
      FApi.t_seqsub (EcPhlConseq.t_equivS_conseq_nm p' q')

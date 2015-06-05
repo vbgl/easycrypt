@@ -404,7 +404,7 @@ let msymbol_of_pv (ppe : PPEnv.t) p =
   let inscope =
     let mem =
       let env = ppe.PPEnv.ppe_env in
-      obind (EcEnv.Memory.byid^~ env) (EcEnv.Memory.get_active env) in
+      obind (fun f -> EcEnv.Memory.byid (destr_local f) env) (EcEnv.Memory.get_active env) in
     match mem  with
     | None | Some (_, None) -> false
     | Some (_, Some lcmem) ->
@@ -1175,38 +1175,6 @@ let pp_binding (ppe : PPEnv.t) (xs, ty) =
       in
         (tenv1, pp)
 
-  | GTmem (m,`Mem) ->
-      let tenv1 = PPEnv.add_locals ppe xs in
-      let tenv1 =
-        match m with
-        | None   -> tenv1
-        | Some m ->
-            let xp = EcMemory.lmt_xpath m in
-              List.fold_left
-                (fun tenv1 x -> PPEnv.create_and_push_mem tenv1 (x, xp))
-                tenv1 xs
-      in
-      let pp fmt =
-        Format.fprintf fmt "%a" (pp_list "@ " (pp_local tenv1)) xs
-      in
-        (tenv1, pp)
-
-  | GTmem (m,`Distr) ->
-      let tenv1 = PPEnv.add_locals ppe xs in
-      let tenv1 =
-        match m with
-        | None   -> tenv1
-        | Some m ->
-            let xp = EcMemory.lmt_xpath m in
-              List.fold_left
-                (fun tenv1 x -> PPEnv.create_and_push_distr tenv1 (x, xp))
-                tenv1 xs
-      in
-      let pp fmt =
-        Format.fprintf fmt "%a" (pp_list "@ " (pp_local tenv1)) xs
-      in
-        (tenv1, pp)
-
   | GTmodty (p, sm) ->
       let tenv1  = PPEnv.add_mods ppe xs p in
       let pp fmt =
@@ -1252,8 +1220,8 @@ let rec try_pp_form_eqveq (ppe : PPEnv.t) _outer fmt f =
     match sform_of_form f with
     | SFeq ({ f_node = Fpvar (x1, me1) },
             { f_node = Fpvar (x2, me2) })
-        when (EcMemory.mem_equal me1 EcFol.mleft )
-          && (EcMemory.mem_equal me2 EcFol.mright)
+        when (is_local_id EcFol.mleft me1)
+          && (is_local_id EcFol.mright me2)
         ->
 
       let pv1 = msymbol_of_pv (PPEnv.enter_by_memid ppe EcFol.mleft ) x1 in
@@ -1263,8 +1231,8 @@ let rec try_pp_form_eqveq (ppe : PPEnv.t) _outer fmt f =
 
     | SFeq ({ f_node = Fglob (x1, me1) },
             { f_node = Fglob (x2, me2) })
-        when (EcMemory.mem_equal me1 EcFol.mleft )
-          && (EcMemory.mem_equal me2 EcFol.mright)
+         when (is_local_id EcFol.mleft me1)
+          && (is_local_id EcFol.mright me2)
         ->
 
       let pv1 = (PPEnv.mod_symb ppe x1) in
@@ -1377,21 +1345,23 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
 
   | Fpvar (x, i) -> begin
     match EcEnv.Memory.get_active ppe.PPEnv.ppe_env with
-    | Some i' when EcMemory.mem_equal i i' ->
+    | Some i' when f_equal i' i ->
         Format.fprintf fmt "%a" (pp_pv ppe) x
     | _ ->
-        let ppe = PPEnv.enter_by_memid ppe i in
-        Format.fprintf fmt "%a{%a}" (pp_pv ppe) x (pp_mem ppe) i
+      let i = destr_local i in
+      let ppe = PPEnv.enter_by_memid ppe i in
+      Format.fprintf fmt "%a{%a}" (pp_pv ppe) x (pp_mem ppe) i
     end
 
   | Fglob (mp, i) -> begin
     match EcEnv.Memory.get_active ppe.PPEnv.ppe_env with
-    | Some i' when EcMemory.mem_equal i i' ->
+    | Some i' when f_equal i' i ->
         Format.fprintf fmt "(glob %a)" (pp_topmod ppe) mp
     | _ ->
-        let ppe = PPEnv.enter_by_memid ppe i in
-        Format.fprintf fmt "(glob %a){%a}" (pp_topmod ppe) mp (pp_mem ppe) i
-    end
+      let i = destr_local i in
+      let ppe = PPEnv.enter_by_memid ppe i in
+      Format.fprintf fmt "(glob %a){%a}" (pp_topmod ppe) mp (pp_mem ppe) i
+  end
 
   | Fquant (q, bd, f) ->
       let (subppe, pp) = pp_bindings ppe bd in
@@ -2141,18 +2111,24 @@ module PPGoal = struct
   let pre_pp_hyp ppe (id, k) =
     let ppe =
       match k with
-      | EcBaseLogic.LD_mem (Some m, `Mem) ->
-          let ppe = PPEnv.add_local ~force:true ppe id in
-          PPEnv.create_and_push_mem ppe (id, EcMemory.lmt_xpath m)
-
-      | EcBaseLogic.LD_mem (Some m, `Distr) ->
-          let ppe = PPEnv.add_local ~force:true ppe id in
-          PPEnv.create_and_push_distr ppe (id, EcMemory.lmt_xpath m)
-
       | EcBaseLogic.LD_modty (p,_) ->
           PPEnv.add_mods ~force:true ppe [id] p
 
-      | _ -> PPEnv.add_local ~force:true ppe id
+      | EcBaseLogic.LD_var (ty,_) -> 
+        let ppe = PPEnv.add_local ~force:true ppe id in
+        if is_tmem ty then 
+          let mt = destr_tmem ty in
+          if mt <> None then PPEnv.create_and_push_mem ppe (id, EcMemory.lmt_xpath (oget mt))
+          else ppe
+        else if is_tdmem ty then 
+          let mt = destr_tdmem ty in
+          if mt <> None then PPEnv.create_and_push_mem ppe (id, EcMemory.lmt_xpath (oget mt))
+          else ppe
+        else ppe
+
+      | _ ->
+         PPEnv.add_local ~force:true ppe id
+        
 
     and dk fmt =
         match k with
@@ -2162,20 +2138,6 @@ module PPGoal = struct
         | EcBaseLogic.LD_var (ty, Some body) ->
             Format.fprintf fmt "%a@ := %a"
               (pp_type ppe) ty (pp_form ppe) body
-
-        | EcBaseLogic.LD_mem (None, `Mem) ->
-            Format.fprintf fmt "memory"
-
-        | EcBaseLogic.LD_mem (Some m, `Mem) ->
-            Format.fprintf fmt "memory <%a>"
-              (pp_funname ppe) (EcMemory.lmt_xpath m)
-
-        | EcBaseLogic.LD_mem (None, `Distr) ->
-          Format.fprintf fmt "memdistr"
-
-        | EcBaseLogic.LD_mem (Some m, `Distr) ->
-            Format.fprintf fmt "memdistr <%a>"
-              (pp_funname ppe) (EcMemory.lmt_xpath m)
 
         | EcBaseLogic.LD_modty (p, sm) ->
             pp_modtype ppe fmt (p, sm)

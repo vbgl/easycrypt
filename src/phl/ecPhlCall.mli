@@ -15,7 +15,7 @@ val wp2_call :
   -> EcPV.PV.t
   -> EcModules.lvalue option * EcPath.xpath * EcTypes.expr list
   -> EcPV.PV.t
-  -> EcMemory.memory -> EcMemory.memory -> form
+  -> EcMemory.memenv -> EcMemory.memenv -> form
   -> EcEnv.LDecl.hyps -> form
 
 val t_hoare_call   : form -> form -> backward

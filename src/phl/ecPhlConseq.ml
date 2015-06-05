@@ -185,19 +185,19 @@ let t_equivF_notmod post tc =
   let vresr = LDecl.fresh_id hyps "result_R" in
   let fresl = f_local vresl fsigl.fs_ret in
   let fresr = f_local vresr fsigr.fs_ret in
-  let ml, mr = fst mpol, fst mpor in
-  let s = PVM.add env pvresl ml fresl (PVM.add env pvresr mr fresr PVM.empty) in
+  let ml, mr = mpol, mpor in
+  let s = PVM.add env pvresl (fst ml) fresl (PVM.add env pvresr (fst mr) fresr PVM.empty) in
   let cond = f_imp post ef.ef_po in
   let cond = PVM.subst env s cond in
   let modil, modir = f_write env fl, f_write env fr in
-  let cond = generalize_mod env mr modir cond in
-  let cond = generalize_mod env ml modil cond in
+  let cond = generalize_mod env (f_mem mr) modir cond in
+  let cond = generalize_mod env (f_mem ml) modil cond in
   let cond =
     f_forall_simpl
       [(vresl, GTty fsigl.fs_ret);
        (vresr, GTty fsigr.fs_ret)]
       cond in
-  assert (fst mprl = ml && fst mprr = mr);
+  assert (fst mprl = fst ml && fst mprr = fst mr);
   let cond1 = f_forall_mems [mprl; mprr] (f_imp ef.ef_pr cond) in
   let cond2 = f_equivF ef.ef_pr fl fr post in
   FApi.xmutate1 tc `HlNotmod [cond1; cond2]
@@ -207,11 +207,11 @@ let t_equivS_notmod post tc =
   let env = FApi.tc1_env tc in
   let es = tc1_as_equivS tc in
   let sl, sr = es.es_sl, es.es_sr in
-  let ml, mr = fst es.es_ml, fst es.es_mr in
+  let ml, mr = es.es_ml, es.es_mr in
   let cond = f_imp post es.es_po in
   let modil, modir = s_write env sl, s_write env sr in
-  let cond = generalize_mod env mr modir cond in
-  let cond = generalize_mod env ml modil cond in
+  let cond = generalize_mod env (f_mem mr) modir cond in
+  let cond = generalize_mod env (f_mem ml) modil cond in
   let cond1 = f_forall_mems [es.es_ml; es.es_mr] (f_imp es.es_pr cond) in
   let cond2 = f_equivS_r {es with es_po = post} in
   FApi.xmutate1 tc `HlNotmod [cond1; cond2]
@@ -226,14 +226,14 @@ let t_hoareF_notmod post tc =
   let pvres = pv_res f in
   let vres = LDecl.fresh_id hyps "result" in
   let fres = f_local vres fsig.fs_ret in
-  let m    = fst mpo in
-  let s = PVM.add env pvres m fres PVM.empty in
+  let m    = mpo in
+  let s = PVM.add env pvres (fst m) fres PVM.empty in
   let cond = f_imp post hf.hf_po in
   let cond = PVM.subst env s cond in
   let modi = f_write env f in
-  let cond = generalize_mod env m modi cond in
+  let cond = generalize_mod env (f_mem m) modi cond in
   let cond = f_forall_simpl [(vres, GTty fsig.fs_ret)] cond in
-  assert (fst mpr = m);
+  assert (fst mpr = fst m);
   let cond1 = f_forall_mems [mpr] (f_imp hf.hf_pr cond) in
   let cond2 = f_hoareF hf.hf_pr f post in
   FApi.xmutate1 tc `HlNotmod [cond1; cond2]
@@ -243,10 +243,10 @@ let t_hoareS_notmod post tc =
   let env = FApi.tc1_env tc in
   let hs = tc1_as_hoareS tc in
   let s = hs.hs_s in
-  let m = fst hs.hs_m in
+  let m = hs.hs_m in
   let cond = f_imp post hs.hs_po in
   let modi = s_write env s in
-  let cond = generalize_mod env m modi cond in
+  let cond = generalize_mod env (f_mem m) modi cond in
   let cond1 = f_forall_mems [hs.hs_m] (f_imp hs.hs_pr cond) in
   let cond2 = f_hoareS_r {hs with hs_po = post} in
   FApi.xmutate1 tc `HlNotmod [cond1; cond2]
@@ -261,15 +261,15 @@ let t_bdHoareF_notmod post tc =
   let pvres = pv_res f in
   let vres = LDecl.fresh_id hyps "result" in
   let fres = f_local vres fsig.fs_ret in
-  let m    = fst mpo in
-  let s = PVM.add env pvres m fres PVM.empty in
+  let m    = mpo in
+  let s = PVM.add env pvres (fst m) fres PVM.empty in
   let _, cond =
     bdHoare_conseq_conds hf.bhf_cmp hf.bhf_pr hf.bhf_po hf.bhf_pr post in
   let cond = PVM.subst env s cond in
   let modi = f_write env f in
-  let cond = generalize_mod env m modi cond in
+  let cond = generalize_mod env (f_mem m) modi cond in
   let cond = f_forall_simpl [(vres, GTty fsig.fs_ret)] cond in
-  assert (fst mpr = m);
+  assert (fst mpr = fst m);
   let cond1 = f_forall_mems [mpr] (f_imp hf.bhf_pr cond) in
   let cond2 = f_bdHoareF hf.bhf_pr f post hf.bhf_cmp hf.bhf_bd in
   FApi.xmutate1 tc `HlNotmod [cond1; cond2]
@@ -279,11 +279,11 @@ let t_bdHoareS_notmod post tc =
   let env = FApi.tc1_env tc in
   let hs = tc1_as_bdhoareS tc in
   let s = hs.bhs_s in
-  let m = fst hs.bhs_m in
+  let m = hs.bhs_m in
   let _, cond = 
     bdHoare_conseq_conds hs.bhs_cmp hs.bhs_pr hs.bhs_po hs.bhs_pr post in
   let modi = s_write env s in
-  let cond = generalize_mod env m modi cond in
+  let cond = generalize_mod env (f_mem m) modi cond in
   let cond1 = f_forall_mems [hs.bhs_m] (f_imp hs.bhs_pr cond) in
   let cond2 = f_bdHoareS_r {hs with bhs_po = post} in
   FApi.xmutate1 tc `HlNotmod [cond1; cond2]
@@ -368,8 +368,8 @@ let t_bdHoareF_conseq_conj ~add post post' tc =
 (* -------------------------------------------------------------------- *)
 let t_equivS_conseq_conj pre1 post1 pre2 post2 pre' post' tc =
   let es = tc1_as_equivS tc in
-  let subst1 = Fsubst.f_subst_mem mhr mleft in
-  let subst2 = Fsubst.f_subst_mem mhr mright in
+  let subst1 = Fsubst.f_subst_mem mhr (snd es.es_ml) mleft in
+  let subst2 = Fsubst.f_subst_mem mhr (snd es.es_mr) mright in
   let pre1'  = subst1 pre1 in
   let post1' = subst1 post1 in
   let pre2'  = subst2 pre2 in
@@ -386,12 +386,18 @@ let t_equivS_conseq_conj pre1 post1 pre2 post2 pre' post' tc =
 (* -------------------------------------------------------------------- *)
 let t_equivF_conseq_conj pre1 post1 pre2 post2 pre' post' tc =
   let ef = tc1_as_equivF tc in
-  let subst1 = Fsubst.f_subst_mem mhr mleft in
-  let subst2 = Fsubst.f_subst_mem mhr mright in
+  let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) = 
+    EcEnv.Fun.equivF_memenv ef.ef_fl ef.ef_fr (FApi.tc1_env tc) in
+  let subst1 = Fsubst.f_subst_mem mhr mtl1 mleft in
+  let subst2 = Fsubst.f_subst_mem mhr mtr1 mright in
   let pre1'  = subst1 pre1 in
-  let post1' = subst1 post1 in
   let pre2'  = subst2 pre2 in
+
+  let subst1 = Fsubst.f_subst_mem mhr mtl2 mleft in
+  let subst2 = Fsubst.f_subst_mem mhr mtr2 mright in
+  let post1' = subst1 post1 in
   let post2' = subst2 post2 in
+
   if not (f_equal ef.ef_pr (f_ands [pre';pre1';pre2']) ) then
     tc_error !!tc "invalid pre-condition";
   if not (f_equal ef.ef_po (f_ands [post';post1';post2'])) then
@@ -413,7 +419,7 @@ let t_equivS_conseq_bd side pr po tc =
     let side = side2str (negside side) in
     tc_error !!tc "%s statement should be empty" side
   end;
-  let subst = Fsubst.f_subst_mem mhr (fst m) in
+  let subst = Fsubst.f_subst_mem mhr (snd m) (fst m) in
   let prs, pos = subst pr, subst po in
   if not (f_equal prs es.es_pr && f_equal pos es.es_po) then
     tc_error !!tc "invalid pre- or post-condition";
@@ -547,7 +553,7 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
     let m,hi,hh, h0 = 
       as_seq4 (LDecl.fresh_ids (FApi.tc1_hyps tc) ["&m";"_";"_";"_"]) in
     let pre    = f_and hs.bhs_pr hs2.hs_pr in
-    let mpre   = Fsubst.f_subst_mem mhr m pre in 
+    let mpre   = Fsubst.f_subst_mem mhr (snd hs2.hs_m) m pre in 
     let post1  = hs0.bhs_po in
     let post   = hs.bhs_po in
     let posta  = f_and post hs2.hs_po in
@@ -568,7 +574,7 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
               t_bdHoareS_conseq_conj ~add:false hs2.hs_po post1 @+ [
                 t_hoareS_conseq pre hs2.hs_po @+ [
                   t_intros_i [m;h0] @! t_cutdef 
-                    {pt_head = PTLocal hi;pt_args = [pamemory m; palocal h0]} 
+                    {pt_head = PTLocal hi;pt_args = [pamemory (m,snd hs.bhs_m); palocal h0]} 
                     mpre @! t_logic_trivial;
                   t_trivial;
                   t_apply_hyp hh];
@@ -618,11 +624,11 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
     let m,hi,hh, h0 = 
       as_seq4 (LDecl.fresh_ids (FApi.tc1_hyps tc) ["&m";"_";"_";"_"]) in
     let pre    = f_and hs.bhf_pr hs2.hf_pr in
-    let mpre   = Fsubst.f_subst_mem mhr m pre in 
+    let mpr,_  = EcEnv.Fun.hoareF_memenv hs0.bhf_f (FApi.tc1_env tc) in
+    let mpre   = Fsubst.f_subst_mem mhr (snd mpr) m pre in 
     let post1  = hs0.bhf_po in
     let post   = hs.bhf_po in
     let posta  = f_and post hs2.hf_po in
-    let mpr,_ = EcEnv.Fun.hoareF_memenv hs0.bhf_f (FApi.tc1_env tc) in
     let concl1 = f_forall_mems [mpr] (f_imp hs0.bhf_pr pre) in
     
     let tc = ( t_cut concl1 @+ 
@@ -639,7 +645,7 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
               t_bdHoareF_conseq_conj ~add:false hs2.hf_po post1 @+ [
                 t_hoareF_conseq pre hs2.hf_po @+ [
                   t_intros_i [m;h0] @! t_cutdef 
-                    {pt_head = PTLocal hi;pt_args = [pamemory m; palocal h0]} 
+                    {pt_head = PTLocal hi;pt_args = [pamemory (m,snd mpr); palocal h0]} 
                     mpre @! t_logic_trivial;
                   t_trivial;
                   t_apply_hyp hh];
@@ -678,8 +684,8 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
       Some ((_, f2) as nf2),
       Some ((_, f3) as nf3)
     ->
-    let subst1 = Fsubst.f_subst_mem mhr mleft  in
-    let subst2 = Fsubst.f_subst_mem mhr mright in
+    let subst1 = Fsubst.f_subst_mem mhr (snd es.es_ml) mleft  in
+    let subst2 = Fsubst.f_subst_mem mhr (snd es.es_mr) mright in
     let hs2    = pf_as_hoareS !!tc f2 in
     let hs3    = pf_as_hoareS !!tc f3 in
     let pre    = f_ands [es.es_pr; subst1 hs2.hs_pr; subst2 hs3.hs_pr] in
@@ -731,8 +737,8 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
 
   (* ------------------------------------------------------------------ *)
   (* equivS / ⊥ / bdhoareS / ⊥                                          *)
-  | FequivS _, None, Some ((_, f2) as nf2), None ->
-    let subst1 = Fsubst.f_subst_mem mhr mleft in
+  | FequivS es, None, Some ((_, f2) as nf2), None ->
+    let subst1 = Fsubst.f_subst_mem mhr (snd es.es_ml) mleft in
     let hs = pf_as_bdhoareS !!tc f2 in
     let pre, post = subst1 hs.bhs_pr, subst1 hs.bhs_po in
     let tac = if notmod then t_equivS_conseq_nm else t_equivS_conseq in
@@ -748,8 +754,8 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
 
   (* ------------------------------------------------------------------ *)
   (* equivS / ⊥ / ⊥ / bdhoareS                                          *)
-  | FequivS _, None, None, Some ((_, f3) as nf3) ->
-    let subst2 = Fsubst.f_subst_mem mhr mright in
+  | FequivS es, None, None, Some ((_, f3) as nf3) ->
+    let subst2 = Fsubst.f_subst_mem mhr (snd es.es_mr) mright in
     let hs = pf_as_bdhoareS !!tc f3 in
     let pre, post = subst2 hs.bhs_pr, subst2 hs.bhs_po in
     let tac = if notmod then t_equivS_conseq_nm else t_equivS_conseq in
@@ -776,11 +782,15 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
       Some ((_, f2) as nf2),
       Some ((_, f3) as nf3)
     ->
-    let subst1 = Fsubst.f_subst_mem mhr mleft in
-    let subst2 = Fsubst.f_subst_mem mhr mright in
+    let ((_,mt1),(_,mt2)), ((_,mt1'),(_,mt2')) =
+      EcEnv.Fun.equivF_memenv ef.ef_fl ef.ef_fr (FApi.tc1_env tc) in
+    let subst1 = Fsubst.f_subst_mem mhr mt1 mleft in
+    let subst2 = Fsubst.f_subst_mem mhr mt2 mright in
     let hs2    = pf_as_hoareF !!tc f2 in
     let hs3    = pf_as_hoareF !!tc f3 in
     let pre    = f_ands [ef.ef_pr; subst1 hs2.hf_pr; subst2 hs3.hf_pr] in
+    let subst1 = Fsubst.f_subst_mem mhr mt1' mleft in
+    let subst2 = Fsubst.f_subst_mem mhr mt2' mright in
     let post   = f_ands [ef.ef_po; subst1 hs2.hf_po; subst2 hs3.hf_po] in
     let tac    = if notmod then t_equivF_conseq_nm else t_equivF_conseq in
 

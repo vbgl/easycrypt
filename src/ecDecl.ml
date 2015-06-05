@@ -161,7 +161,7 @@ let operator_as_fix (op : operator) =
 
 (* -------------------------------------------------------------------- *)
 let axiomatized_op ?(nargs = 0) ?(nosmt = false) path (tparams, bd) =
-  let axbd = EcCoreFol.form_of_expr EcCoreFol.mhr bd in
+  let axbd = EcCoreFol.form_of_expr None bd in
   let axbd, axpm =
     let bdpm = List.map fst tparams in
     let axpm = List.map EcIdent.fresh bdpm in

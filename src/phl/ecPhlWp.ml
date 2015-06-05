@@ -17,7 +17,7 @@ module LowInternal = struct
   exception No_wp
 
   let wp_asgn_aux m lv e (lets, f) =
-    let let1 = lv_subst m lv (form_of_expr m e) in
+    let let1 = lv_subst m lv (form_of_expr (Some m) e) in
       (let1::lets, f)
 
   let rec wp_stmt onesided env m (stmt: EcModules.instr list) letsf =
@@ -40,12 +40,12 @@ module LowInternal = struct
         if List.is_empty r1 && List.is_empty r2 then begin
           let post1 = mk_let_of_lv_substs env letsf1 in
           let post2 = mk_let_of_lv_substs env letsf2 in
-          let post  = f_if (form_of_expr m e) post1 post2 in
+          let post  = f_if (form_of_expr (Some m) e) post1 post2 in
             ([], post)
         end else raise No_wp
 
     | Sassert e when onesided ->
-        let phi = form_of_expr m e in
+        let phi = form_of_expr (Some m) e in
         let lets,f = letsf in
         (lets, EcFol.f_and_simpl phi f)
 
@@ -73,7 +73,7 @@ module TacInternal = struct
     let env = FApi.tc1_env tc in
     let hs = tc1_as_hoareS tc in
     let (s_hd, s_wp) = s_split_o i hs.hs_s in
-    let m = EcMemory.memory hs.hs_m in
+    let m = hs.hs_m in
     let s_wp = EcModules.stmt s_wp in
     let (s_wp, post) = wp ~uselet ~onesided:true env m s_wp hs.hs_po in
     ignore (check_wp_progress tc i hs.hs_s s_wp : int);
@@ -86,7 +86,7 @@ module TacInternal = struct
     let bhs = tc1_as_bdhoareS tc in
     let (s_hd, s_wp) = s_split_o i bhs.bhs_s in
     let s_wp = EcModules.stmt s_wp in
-    let m = EcMemory.memory bhs.bhs_m in
+    let m = bhs.bhs_m in
     let s_wp,post = wp ~uselet env m s_wp bhs.bhs_po in
     ignore (check_wp_progress tc i bhs.bhs_s s_wp : int);
     let s = EcModules.stmt (s_hd @ s_wp) in
@@ -99,8 +99,8 @@ module TacInternal = struct
     let i = omap fst ij and j = omap snd ij in
     let s_hdl,s_wpl = s_split_o i es.es_sl in
     let s_hdr,s_wpr = s_split_o j es.es_sr in
-    let meml, s_wpl = EcMemory.memory es.es_ml, EcModules.stmt s_wpl in
-    let memr, s_wpr = EcMemory.memory es.es_mr, EcModules.stmt s_wpr in
+    let meml, s_wpl = es.es_ml, EcModules.stmt s_wpl in
+    let memr, s_wpr = es.es_mr, EcModules.stmt s_wpr in
     let post = es.es_po in
     let s_wpl, post = wp ~uselet env meml s_wpl post in
     let s_wpr, post = wp ~uselet env memr s_wpr post in

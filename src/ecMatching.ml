@@ -160,7 +160,6 @@ end
 (* -------------------------------------------------------------------- *)
 type mevmap = {
   evm_form : form            evmap;
-  evm_mem  : EcMemory.memory evmap;
   evm_mod  : EcPath.mpath    evmap;
 }
 
@@ -168,40 +167,34 @@ type mevmap = {
 module MEV = struct
   type item = [
     | `Form of form
-    | `Mem  of EcMemory.memory
     | `Mod  of EcPath.mpath
   ]
 
-  type kind = [ `Form | `Mem | `Mod ]
+  type kind = [ `Form | `Mod ]
 
   let empty : mevmap = {
     evm_form = EV.empty;
-    evm_mem  = EV.empty;
     evm_mod  = EV.empty;
   }
 
   let of_idents ids k =
     match k with
     | `Form -> { empty with evm_form = EV.of_idents ids }
-    | `Mem  -> { empty with evm_mem  = EV.of_idents ids }
     | `Mod  -> { empty with evm_mod  = EV.of_idents ids }
 
   let add x k m =
     match k with
     | `Form -> { m with evm_form = EV.add x m.evm_form }
-    | `Mem  -> { m with evm_mem  = EV.add x m.evm_mem  }
     | `Mod  -> { m with evm_mod  = EV.add x m.evm_mod  }
 
   let mem x k m =
     match k with
     | `Form -> EV.mem x m.evm_form
-    | `Mem  -> EV.mem x m.evm_mem
     | `Mod  -> EV.mem x m.evm_mod
 
   let set x v m =
     match v with
     | `Form v -> { m with evm_form = EV.set x v m.evm_form }
-    | `Mem  v -> { m with evm_mem  = EV.set x v m.evm_mem  }
     | `Mod  v -> { m with evm_mod  = EV.set x v m.evm_mod  }
 
   let get x k m =
@@ -209,23 +202,19 @@ module MEV = struct
 
     match k with
     | `Form -> omap (tx (fun x -> `Form x)) (EV.get x m.evm_form)
-    | `Mem  -> omap (tx (fun x -> `Mem  x)) (EV.get x m.evm_mem )
     | `Mod  -> omap (tx (fun x -> `Mod  x)) (EV.get x m.evm_mod )
 
   let isset x k m =
     match k with
     | `Form -> EV.isset x m.evm_form
-    | `Mem  -> EV.isset x m.evm_mem
     | `Mod  -> EV.isset x m.evm_mod
 
   let filled m =
        EV.filled m.evm_form
-    && EV.filled m.evm_mem
     && EV.filled m.evm_mod
 
   let fold (f : _ -> item -> _ -> _) m v =
     let v = EV.fold (fun x k v -> f x (`Form k) v) m.evm_form v in
-    let v = EV.fold (fun x k v -> f x (`Mem  k) v) m.evm_mem  v in
     let v = EV.fold (fun x k v -> f x (`Mod  k) v) m.evm_mod  v in
     v
 end
@@ -298,9 +287,9 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
       | Fpvar (pv1, m1), Fpvar (pv2, m2) ->
           let pv1 = EcEnv.NormMp.norm_pvar env pv1 in
           let pv2 = EcEnv.NormMp.norm_pvar env pv2 in
-            if not (EcTypes.pv_equal pv1 pv2) then
-              raise MatchFailure;
-            doit_mem env mxs m1 m2
+          if not (EcTypes.pv_equal pv1 pv2) then
+            raise MatchFailure;
+          doit env (subst,mxs) m1 m2
 
       | Fif (c1, t1, e1), Fif (c2, t2, e2) ->
           List.iter2 (doit env ilc) [c1; t1; e1] [c2; t2; e2]
@@ -316,7 +305,7 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
           let mp2 = EcEnv.NormMp.norm_mpath env mp2 in
             if not (EcPath.m_equal mp1 mp2) then
               raise MatchFailure;
-            doit_mem env mxs me1 me2
+            doit env (subst,mxs) me1 me2
 
       | Ftuple fs1, Ftuple fs2 ->
           if List.length fs1 <> List.length fs2 then
@@ -378,21 +367,6 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
     in
       cb (odfl reduced (EcReduction.h_red_opt EcReduction.beta_red hyps reduced))
 
-  and doit_mem _env mxs m1 m2 =
-    match EV.get m1 !ev.evm_mem with
-    | None ->
-        if not (EcMemory.mem_equal m1 m2) then
-          raise MatchFailure
-
-    | Some `Unset ->
-        if Mid.mem m2 mxs then
-          raise MatchFailure;
-        ev := { !ev with evm_mem = EV.set m1 m2 !ev.evm_mem }
-
-    | Some (`Set m1) ->
-        if not (EcMemory.mem_equal m1 m2) then
-          raise MatchFailure
-
   and doit_bindings env (subst, mxs) q1 q2 =
     let doit_binding (env, subst, mxs) (x1, gty1) (x2, gty2) =
       let gty2 = Fsubst.gty_subst subst gty2 in
@@ -415,34 +389,6 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
             and env = EcEnv.Var.bind_local x1 ty1 env in
 
             (env, subst)
-
-        | GTmem (None, k1), GTmem (None, k2) when k1 = k2->
-            (env, subst)
-
-        | GTmem (Some m1,k1), GTmem (Some m2, k2) when k1 = k2 ->
-            let xp1 = EcMemory.lmt_xpath m1 in
-            let xp2 = EcMemory.lmt_xpath m2 in
-            let m1  = EcMemory.lmt_bindings m1 in
-            let m2  = EcMemory.lmt_bindings m2 in
-
-            if not (EcPath.x_equal xp1 xp2) then
-              raise MatchFailure;
-            if not (
-              try
-                EcSymbols.Msym.equal
-                  (fun (p1,ty1) (p2,ty2) ->
-                    if p1 <> p2 then raise MatchFailure;
-                    EcUnify.unify env ue ty1 ty2; true)
-                  m1 m2
-              with EcUnify.UnificationFailure _ -> raise MatchFailure)
-            then
-              raise MatchFailure;
-
-            let subst =
-              if   id_equal x1 x2
-              then subst
-              else Fsubst.f_bind_mem subst x2 x1
-            in (env, subst)
 
         | GTmodty (p1, r1), GTmodty (p2, r2) ->
             if not (ModTy.mod_type_equiv env p1 p2) then

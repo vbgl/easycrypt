@@ -29,7 +29,7 @@ let t_bdhoare_ppr_r tc =
   let fun_ = EcEnv.Fun.by_xpath f_xpath env in
   let penv,_qenv = EcEnv.Fun.hoareF_memenv f_xpath env in
   let m = EcIdent.create "&m" in
-  let args = to_args fun_ (f_pvarg f_xpath fun_.f_sig.fs_arg m) in
+  let args = to_args fun_ (f_pvarg f_xpath fun_.f_sig.fs_arg (f_mem (m,snd penv))) in
   (* Warning: currently no substitution on pre,post since penv is always mhr *)
   let pre,post = bhf.bhf_pr, bhf.bhf_po in
   let fop = match bhf.bhf_cmp with
@@ -38,7 +38,7 @@ let t_bdhoare_ppr_r tc =
     | FHeq -> f_eq
   in
   let concl = fop (f_pr m f_xpath args post) bhf.bhf_bd in
-  let concl = f_imp (Fsubst.f_subst_mem (fst penv) m pre) concl in
+  let concl = f_imp (Fsubst.f_subst_mem (fst penv) (snd penv) m pre) concl in
   let concl = f_forall_mems [m,snd penv] concl in
   FApi.xmutate1 tc `PPR [concl]
 
@@ -55,12 +55,13 @@ let t_equiv_ppr_r ty phi_l phi_r tc =
   let funl = EcEnv.Fun.by_xpath fl env in
   let funr = EcEnv.Fun.by_xpath fr env in
   let (penvl,penvr), (qenvl,qenvr) = EcEnv.Fun.equivF_memenv fl fr env in
-  let argsl = to_args funl (f_pvarg fl funl.f_sig.fs_arg (fst penvl)) in
-  let argsr = to_args funr (f_pvarg fr funr.f_sig.fs_arg (fst penvr)) in
+  let argsl = to_args funl (f_pvarg fl funl.f_sig.fs_arg (f_mem penvl)) in
+  let argsr = to_args funr (f_pvarg fr funr.f_sig.fs_arg (f_mem penvr)) in
   let a_id = EcIdent.create "a" in
   let a_f = f_local a_id ty in
-  let smem1 = Fsubst.f_bind_mem Fsubst.f_subst_id mleft mhr in
-  let smem2 = Fsubst.f_bind_mem Fsubst.f_subst_id mright mhr in
+  (* FIXME : What should be the type of mleft mright  *)
+  let smem1 = Fsubst.f_bind_mem Fsubst.f_subst_id mleft (snd penvl) mhr in
+  let smem2 = Fsubst.f_bind_mem Fsubst.f_subst_id mright (snd penvr) mhr in
   let phi1 = Fsubst.f_subst smem1 phi_l in
   let phi2 = Fsubst.f_subst smem2 phi_r in
   let pr1 = f_pr (fst penvl) fl argsl (f_eq a_f phi1) in
@@ -150,8 +151,6 @@ let t_prfalse tc =
   let is_zero = f_real_le bd f_r0 in
 
   (* the event is false *)
-  let smem  = Fsubst.f_bind_mem Fsubst.f_subst_id mhr mhr in
-  let ev    = Fsubst.f_subst smem ev in
   let fun_  = EcEnv.Fun.by_xpath f env in
   let me    = EcEnv.Fun.actmem_post mhr f fun_ in
   let concl_po = f_forall_mems [me] (f_imp f_false ev) in

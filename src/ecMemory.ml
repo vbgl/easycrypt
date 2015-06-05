@@ -15,9 +15,6 @@ type memory = EcIdent.t
 let mem_equal = EcIdent.id_equal
 
 (* -------------------------------------------------------------------- *)
-type local_memtype = EcTypes.local_memtype 
-
-type memtype = local_memtype option
 
 let mt_fv = EcTypes.mt_fv
 
@@ -88,14 +85,13 @@ let mt_subst = EcTypes.mt_subst
 let mt_substm sp smp st o =
   mt_subst (EcPath.x_substm sp smp) st o
 
-let me_subst sx sm st (m,mt as me) =
-  let m' = EcIdent.Mid.find_def m m sm in
+let me_subst sx st (m,mt as me) =
   let mt' = mt_subst sx st mt in
-  if m' == m && mt' == mt then me else 
-    (m', mt')
+  if mt' == mt then me else 
+    (m, mt')
 
-let me_substm sp smp sm st me =
-  me_subst (EcPath.x_substm sp smp) sm st me
+let me_substm sp smp st me =
+  me_subst (EcPath.x_substm sp smp) st me
 
 
 

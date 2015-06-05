@@ -306,13 +306,13 @@ let fresh_pv me v =
       (EcMemory.bind v.v_name v.v_type me, v.v_name)
 
 (* -------------------------------------------------------------------- *)
-let lv_subst m lv f =
+let lv_subst (m,mt) lv f =
   match lv with
   | LvVar _ -> lv,m,f
   | LvTuple _ -> lv,m,f
   | LvMap((p,tys),pv,e,ty) ->
     let set = f_op p tys (toarrow [ty; e.e_ty; f.f_ty] ty) in
-    let f   = f_app set [f_pvar pv ty m; form_of_expr m e; f] ty in
+    let f   = f_app set [f_pvar pv ty (f_mem (m, mt)); form_of_expr (Some (m,mt)) e; f] ty in
     LvVar(pv,ty), m, f
 
 (* -------------------------------------------------------------------- *)
@@ -453,7 +453,7 @@ let generalize_mod_ env m modi f =
   (* 3.a. Add the global variables *)
  
 (*  let scheck = proj3_3 (generalize_subst_ env m melts mglob )in *)
-  let (bd', bd, s ) = generalize_subst_ env m uelts uglob in
+  let (bd', bd, s ) = generalize_subst_ env (destr_local m) uelts uglob in
    (* 3.b. Check that the modify variables does not clash with
            the variables not generalized *)
   let restrs = 
@@ -474,7 +474,7 @@ let generalize_mod_ env m modi f =
     EcPath.Mm.iter check restrs) nglob;
 
   (* 3.c. Perform the substitution *)
-  let s = PVM.of_mpv s m in
+  let s = PVM.of_mpv s (destr_local m) in
   let f = PVM.subst env s f in
   f_forall_simpl (bd'@bd) f, (bd', uglob), (bd, uelts)
 

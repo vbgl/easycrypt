@@ -36,7 +36,7 @@ let t_kill_r side cpos olen tc =
 
     (* FIXME [BG]: check the usage of po_rd *)
     let ks_wr = is_write env ks in
-    let po_rd = PV.fv env (fst me) po in
+    let po_rd = PV.fv env (f_mem me) po in
 
     let pp_of_name =
       let ppe = EcPrinting.PPEnv.ofenv env in

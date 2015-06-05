@@ -17,6 +17,8 @@ module TTC = EcProofTyping
 (* -------------------------------------------------------------------- *)
 module LowInternal = struct
   let get_to_gen pf side f =
+    assert false 
+(*
     let do_side m =
       match side with
       | true  when EcIdent.id_equal m mleft  -> true
@@ -26,14 +28,14 @@ module LowInternal = struct
     in
       match f.f_node with
       | Fpvar (pv, m) ->
-          let id = id_of_pv pv m in
-            (id, do_side m, f_pvar pv f.f_ty, f)
+          let id = id_of_pv pv (destr_local m) in
+            (id, do_side (destr_local m), f_pvar pv f.f_ty, f)
 
       | Fglob (mp, m) ->
-          let id = id_of_mp mp m in
-            (id, do_side m, f_glob mp, f)
+          let id = id_of_mp mp (destr_local m) in
+            (id, do_side (destr_local m), f_glob mp, f)
 
-      | _ -> tc_error pf "global memory or variable expected"
+      | _ -> tc_error pf "global memory or variable expected" *)
 
   let get_to_gens pf side fs =
     List.map (get_to_gen pf side) fs

@@ -8,7 +8,6 @@ open EcIdent
 open EcUtils
 open EcTypes
 open EcModules
-open EcMemory
 open EcBigInt.Notations
 
 module BI = EcBigInt
@@ -545,8 +544,8 @@ let is_logical_op op =
 type sform =
   | SFint   of BI.zint
   | SFlocal of EcIdent.t
-  | SFpvar  of EcTypes.prog_var * memory
-  | SFglob  of EcPath.mpath * memory
+  | SFpvar  of EcTypes.prog_var * form
+  | SFglob  of EcPath.mpath * form
 
   | SFif    of form * form * form
   | SFlet   of lpattern * form * form

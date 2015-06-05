@@ -90,6 +90,9 @@ val proj4_4 : 'a * 'b * 'c * 'd -> 'd
 val fst_map : ('a -> 'c) -> 'a * 'b -> 'c * 'b
 val snd_map : ('b -> 'c) -> 'a * 'b -> 'a * 'c
 
+val fst_app : ('a -> 'c) -> 'a * 'b -> 'c
+val snd_app : ('b -> 'c) -> 'a * 'b -> 'c
+
 val swap: 'a * 'b -> 'b * 'a
 
 (* -------------------------------------------------------------------- *)

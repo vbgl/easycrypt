@@ -83,6 +83,8 @@ let callable_oracles_stmt env modv =
 (* -------------------------------------------------------------------- *)
 (* FIXME: do we have to subst more?                                     *)
 let t_failure_event_r (at_pos, cntr, ash, q, f_event, pred_specs, inv) tc =
+  assert false
+(*
   let env, _, concl = FApi.tc1_eflat tc in
 
   let (pr, bd) =
@@ -182,7 +184,7 @@ let t_failure_event_r (at_pos, cntr, ash, q, f_event, pred_specs, inv) tc =
   let os_goals = List.concat (List.map oracle_goal (Sx.elements os)) in
   let concls   = bound_goal :: post_goal :: init_goal :: os_goals in
   let res = FApi.xmutate1 tc (`Fel (cntr, ash, q, f_event, pred_specs)) concls in
-  res
+  res *)
 
 
 (* -------------------------------------------------------------------- *)

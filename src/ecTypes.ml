@@ -1024,3 +1024,40 @@ let destr_tuple_var e =
   | Etuple es -> List.map destr_var es
   | _ -> assert false
 
+let destr_tlocalmem t = 
+  match t.ty_node with
+  | Tmem (Some lmt) -> lmt
+  | _ -> assert false
+
+let is_tlocalmem t = 
+  match t.ty_node with
+  | Tmem (Some _) -> true
+  | _ -> false
+
+let destr_tmem t = 
+  match t.ty_node with
+  | Tmem mt -> mt
+  | _ -> assert false
+
+let is_tmem t = 
+  match t.ty_node with
+  | Tmem _ -> true
+  | _ -> false
+
+let is_tdmem t =
+  match t.ty_node with
+  | Tconstr (p, [{ty_node = Tmem _}]) ->
+    EcPath.p_equal p EcCoreLib.CI_Distr.p_distr
+  | _ -> false
+
+let destr_tdmem t =
+  match t.ty_node with
+  | Tconstr (p, [{ty_node = Tmem mt}]) when 
+      EcPath.p_equal p EcCoreLib.CI_Distr.p_distr -> mt
+  | _ -> assert false
+
+
+
+
+  
+  

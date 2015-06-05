@@ -291,7 +291,7 @@ let process_delta (s, o, p) tc =
 
         match op.EcDecl.op_kind with
         | EcDecl.OB_oper (Some (EcDecl.OP_Plain e)) ->
-            (snd p, op.EcDecl.op_tparams, form_of_expr EcFol.mhr e, args)
+            (snd p, op.EcDecl.op_tparams, form_of_expr None e, args)
         | EcDecl.OB_pred (Some f) ->
             (snd p, op.EcDecl.op_tparams, f, args)
         | _ ->
@@ -530,9 +530,6 @@ let process_view1 pe tc =
             | GTty _, PAFormula { f_node = Flocal x } when MEV.mem x `Form evm ->
                 if MEV.isset x `Form evm then None else Some (x, idty)
 
-            | GTmem (_,k1), PAMemory (x,k2) when MEV.mem x `Mem evm && k1 = k2 ->
-                if MEV.isset x `Mem evm then None else Some (x, idty)
-
             | _, _ -> assert false
 
           in List.pmap for1 args
@@ -544,7 +541,6 @@ let process_view1 pe tc =
           let for1 evm (x, idty) =
             match idty with
             | id, GTty    ty -> evm := MEV.set x (`Form (f_local id ty)) !evm
-            | id, GTmem   _  -> evm := MEV.set x (`Mem id) !evm
             | _ , GTmodty _  -> assert false
           in
 
@@ -561,7 +557,6 @@ let process_view1 pe tc =
           let for1 evm (x, idty) id =
             match idty with
             | _, GTty   ty -> evm := MEV.set x (`Form (f_local id ty)) !evm
-            | _, GTmem   _ -> evm := MEV.set x (`Mem id) !evm
             | _, GTmodty _ -> assert false
 
           in
@@ -1231,7 +1226,6 @@ let process_exists args (tc : tcenv1) =
         let arg =
           match xty with
           | GTty    _ -> trans_pterm_arg_value pte arg
-          | GTmem   _ -> trans_pterm_arg_mem   pte arg
           | GTmodty _ -> trans_pterm_arg_mod   pte arg
         in
           PT.check_pterm_arg pte (x, xty) f arg.ptea_arg

@@ -19,14 +19,13 @@ val mleft  : memory
 val mright : memory
 
 type gty =
-  | GTty    of EcTypes.ty
+  | GTty    of ty
   | GTmodty of module_type * mod_restr
-  | GTmem   of EcMemory.memtype * [ `Mem | `Distr ]
 
-val gtty    : EcTypes.ty -> gty
+val gtty    : ty -> gty
 val gtmodty : module_type -> mod_restr -> gty
-val gtmem   : EcMemory.memtype -> gty
-val gtdistr : EcMemory.memtype -> gty
+val gtmem   : memtype -> gty
+val gtdistr : memtype -> gty
 
 val gty_equal : gty  -> gty -> bool
 val gty_fv    : gty -> int Mid.t
@@ -53,21 +52,20 @@ and f_node =
   | Flet    of lpattern * form * form
   | Fint    of zint
   | Flocal  of EcIdent.t
-  | Fpvar   of EcTypes.prog_var * memory
-  | Fglob   of mpath * memory
-  | Fop     of path * ty list
+  | Fpvar   of EcTypes.prog_var * form
+  | Fglob   of EcPath.mpath     * form
+  | Fop     of EcPath.path * ty list
   | Fapp    of form * form list
   | Ftuple  of form list
   | Fproj   of form * int
-
   | FhoareF of hoareF (* $hr / $hr *)
-  | FhoareS of hoareS (* $hr  / $hr   *)
+  | FhoareS of hoareS
 
   | FbdHoareF of bdHoareF (* $hr / $hr *)
-  | FbdHoareS of bdHoareS (* $hr  / $hr   *)
+  | FbdHoareS of bdHoareS
 
   | FequivF of equivF (* $left,$right / $left,$right *)
-  | FequivS of equivS (* $left,$right / $left,$right *)
+  | FequivS of equivS
 
   | FeagerF of eagerF
 
@@ -76,8 +74,8 @@ and f_node =
   | FmuhoareF of muhoareF
   | FmuhoareS of muhoareS
   | Fintegr   of integral
-
-and lmd_form = (EcIdent.t * EcMemory.memtype) * form
+ 
+and lmd_form = (EcIdent.t * memtype) * form
 
 and muhoareF = {
   muhf_pr : lmd_form;
@@ -182,17 +180,16 @@ val form_exists: (form -> bool) -> form -> bool
 val form_forall: (form -> bool) -> form -> bool
 
 (* -------------------------------------------------------------------- *)
-val gty_as_ty  : gty -> EcTypes.ty
-val gty_as_mem : gty -> EcMemory.memtype
+val gty_as_ty  : gty -> ty
 val gty_as_mod : gty -> module_type * mod_restr
-val kind_of_gty: gty -> [`Form | `Mem | `Distr | `Mod]
 
 (* soft-constructors - common leaves *)
 val f_local : EcIdent.t -> EcTypes.ty -> form
-val f_pvar  : EcTypes.prog_var -> EcTypes.ty -> memory -> form
-val f_pvarg : xpath -> EcTypes.ty -> memory -> form
-val f_pvloc : xpath -> EcModules.variable -> memory -> form
-val f_glob  : mpath -> memory -> form
+val f_mem   : EcIdent.t * memtype -> form
+val f_pvar  : EcTypes.prog_var -> EcTypes.ty -> form (*memory*) -> form
+val f_pvarg : xpath -> EcTypes.ty -> form (*memory*) -> form
+val f_pvloc : xpath -> EcModules.variable -> form (*memory*) -> form
+val f_glob  : mpath -> form (*memory*) -> form
 
 (* soft-constructors - common formulas constructors *)
 val f_op     : path -> EcTypes.ty list -> EcTypes.ty -> form
@@ -304,7 +301,7 @@ val f_int_pow  : form -> form -> form
 (* -------------------------------------------------------------------- *)
 module FSmart : sig
   type a_local  = EcIdent.t * ty
-  type a_pvar   = prog_var * ty * memory
+  type a_pvar   = prog_var * ty * form (*memory*)
   type a_quant  = quantif * bindings * form
   type a_if     = form tuple3
   type a_let    = lpattern * form * form
@@ -312,7 +309,7 @@ module FSmart : sig
   type a_tuple  = form list
   type a_app    = form * form list * ty
   type a_proj   = form * ty
-  type a_glob   = mpath * memory
+  type a_glob   = mpath * form (*memory*)
 
   val f_local    : (form * a_local  ) -> a_local   -> form
   val f_pvar     : (form * a_pvar   ) -> a_pvar    -> form
@@ -390,6 +387,7 @@ val is_exists    : form -> bool
 val is_let       : form -> bool
 val is_eq        : form -> bool
 val is_local     : form -> bool
+val is_local_id  : EcIdent.t -> form -> bool
 val is_equivF    : form -> bool
 val is_equivS    : form -> bool
 val is_eagerF    : form -> bool
@@ -401,14 +399,13 @@ val is_pr        : form -> bool
 val is_eq_or_iff : form -> bool
 
 (* -------------------------------------------------------------------- *)
-val form_of_expr : EcMemory.memory -> EcTypes.expr -> form
+val form_of_expr : (EcMemory.memory * memtype) option -> EcTypes.expr -> form
 
 (* -------------------------------------------------------------------- *)
 type f_subst = private {
   fs_freshen : bool; (* true means realloc local *)
   fs_mp      : mpath Mid.t;
   fs_loc     : form Mid.t;
-  fs_mem     : EcIdent.t Mid.t;
   fs_sty     : ty_subst;
   fs_ty      : ty -> ty;
   fs_opdef   : (EcIdent.t list * expr) Mp.t;
@@ -429,14 +426,14 @@ module Fsubst : sig
     -> unit -> f_subst
 
   val f_bind_local : f_subst -> EcIdent.t -> form -> f_subst
-  val f_bind_mem   : f_subst -> EcIdent.t -> EcIdent.t -> f_subst
+  val f_bind_mem   : f_subst -> EcIdent.t -> memtype -> EcIdent.t -> f_subst
   val f_bind_mod   : f_subst -> EcIdent.t -> mpath -> f_subst
 
   val gty_subst : f_subst -> gty -> gty
   val f_subst   : ?tx:(form -> form -> form) -> f_subst -> form -> form
 
   val f_subst_local : EcIdent.t -> form -> form -> form
-  val f_subst_mem   : EcIdent.t -> EcIdent.t -> form -> form
+  val f_subst_mem   : EcIdent.t -> memtype -> EcIdent.t -> form -> form
   val f_subst_mod   : EcIdent.t -> mpath -> form -> form
 
   val uni : (EcUid.uid -> ty option) -> form -> form

@@ -58,8 +58,14 @@ let rec on_mpath_ty cb (ty : ty) =
   match ty.ty_node with
   | Tunivar _        -> ()
   | Tvar    _        -> ()
-  | Tglob mp         -> cb mp
+  | Tglob   mp       -> cb mp
+  | Tmem    None     -> ()
+  | Tmem  (Some lmt) -> on_mpath_lcmem cb lmt
   | _                -> EcTypes.ty_iter (on_mpath_ty cb) ty
+
+and on_mpath_lcmem cb m =
+  cb (EcMemory.lmt_xpath m).x_top;
+  Msym.iter (fun _ (_,ty) -> on_mpath_ty cb ty) (EcMemory.lmt_bindings m)
 
 let on_mpath_pv cb (pv : prog_var)=
   cb pv.pv_name.x_top
@@ -118,10 +124,6 @@ let rec on_mpath_instr cb (i : instr)=
 and on_mpath_stmt cb (s : stmt) =
   List.iter (on_mpath_instr cb) s.s_node
 
-let on_mpath_lcmem cb m =
-    cb (EcMemory.lmt_xpath m).x_top;
-    Msym.iter (fun _ (_,ty) -> on_mpath_ty cb ty) (EcMemory.lmt_bindings m)
-
 let on_mpath_memenv cb (m : EcMemory.memenv) =
   match snd m with
   | None    -> ()
@@ -138,9 +140,7 @@ let on_mpath_binding cb b =
     on_mpath_modty cb mty;
     Sx.iter (fun x -> cb x.x_top) rx;
     Sm.iter cb r
-  | EcFol.GTmem   (None,_)      -> ()
-  | EcFol.GTmem   (Some m, _)  -> on_mpath_lcmem cb m
-
+ 
 let on_mpath_bindings cb b =
   List.iter (fun (_, b) -> on_mpath_binding cb b) b
 

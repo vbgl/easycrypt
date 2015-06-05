@@ -81,8 +81,8 @@ let init_sim env spec inv =
   
   { sim_env  = env;
     sim_inv  = inv;
-    sim_ifvl = PV.fv env mleft inv;
-    sim_ifvr = PV.fv env mright inv;
+    sim_ifvl = PV.fv env (f_mem (mleft,None)) inv;
+    sim_ifvr = PV.fv env (f_mem (mright,None)) inv;
     default_spec = default_spec;
     needed_spec  = [];
   } 
@@ -273,6 +273,9 @@ and f_eqobs_in fl fr sim eqO =
           aux eqo in
         begin
           try
+            (*FIXME None *)
+            let mleft = f_mem (mleft, None) in
+            let mright = f_mem (mright, None) in
             let inv = Mpv2.to_form mleft mright eqi sim.sim_inv in
             let fvl = PV.fv env mleft inv in
             let fvr = PV.fv env mright inv in
@@ -316,13 +319,15 @@ let mk_inv_spec2 env inv (fl, fr, eqi, eqo) =
     EcReduction.EqTest.for_type env sigl.fs_arg sigr.fs_arg
     && EcReduction.EqTest.for_type env sigl.fs_ret sigr.fs_ret in
   if not testty then raise EqObsInError;
+  let ((_,mtl1),(_,mtr1)), ((_,mtl2),(_,mtr2)) =
+    EcEnv.Fun.equivF_memenv fl fr env in
   let eq_params =
     f_eqparams
-      fl sigl.fs_arg sigl.fs_anames mleft
-      fr sigr.fs_arg sigr.fs_anames mright in
-  let eq_res = f_eqres fl sigl.fs_ret mleft fr sigr.fs_ret mright in
-  let pre = f_and eq_params (Mpv2.to_form mleft mright eqi inv) in
-  let post = f_and eq_res (Mpv2.to_form mleft mright eqo inv) in
+      fl sigl.fs_arg sigl.fs_anames (f_mem (mleft,mtl1))
+      fr sigr.fs_arg sigr.fs_anames (f_mem (mright,mtr1)) in
+  let eq_res = f_eqres fl sigl.fs_ret (f_mem (mleft,mtl2)) fr sigr.fs_ret (f_mem (mright,mtr2)) in
+  let pre = f_and eq_params (Mpv2.to_form (f_mem (mleft,mtl1)) (f_mem (mright,mtr1)) eqi inv) in
+  let post = f_and eq_res (Mpv2.to_form (f_mem (mleft,mtl2)) (f_mem (mright,mtr2)) eqo inv) in
   f_equivF pre fl fr post
 
 let mk_inv_spec env inv (fl, fr, eqg) = 
@@ -338,8 +343,8 @@ let t_eqobs_inS_r sim eqo tc =
     with EqObsInError -> tc_error !!tc "cannot apply sim ..."
   in
   let inv = sim.sim_inv in
-  let post = Mpv2.to_form ml mr eqo inv in
-  let pre  = Mpv2.to_form ml mr eqi inv in
+  let post = Mpv2.to_form (f_mem es.es_ml) (f_mem es.es_mr) eqo inv in
+  let pre  = Mpv2.to_form (f_mem es.es_ml) (f_mem es.es_mr) eqi inv in
 
   let sl = stmt (List.rev sl) and sr = stmt (List.rev sr) in
   if not (EcReduction.is_alpha_eq hyps post es.es_po) then
@@ -368,7 +373,7 @@ let t_eqobs_inF_r sim eqo tc =
 
 let t_eqobs_inF = FApi.t_low2 "eqobs-in" t_eqobs_inF_r
 
-let process_eqs env tc f = 
+let process_eqs env tc f mleft mright = 
    try 
       Mpv2.of_form env mleft mright f
    with Not_found ->
@@ -378,11 +383,11 @@ let process_eqs env tc f =
          "cannot recognize %a as a set of equalities"
          (EcPrinting.pp_form ppe) f) 
 
-let process_hint tc hyps (feqs, inv) =
+let process_hint tc hyps (feqs, inv) mleft mright =
   let env = LDecl.toenv hyps in
   let ienv = LDecl.inv_memenv hyps in
   let doinv pf = TTC.pf_process_form !!tc ienv tbool pf in
-  let doeq pf = process_eqs env tc (doinv pf) in
+  let doeq pf = process_eqs env tc (doinv pf) mleft mright in
   let dof g = omap (EcTyping.trans_gamepath env) g in
   let geqs = 
     List.map (fun ((f1,f2),geq) -> dof f1, dof f2, doeq geq)
@@ -393,11 +398,13 @@ let process_hint tc hyps (feqs, inv) =
 let process_eqobs_inS info tc =
   let env, hyps, _ = FApi.tc1_eflat tc in
   let es = tc1_as_equivS tc in
-  let spec, inv = process_hint tc hyps info.EcParsetree.sim_hint in
+  let mleft, mright = f_mem es.es_ml, f_mem es.es_mr in
+  let spec, inv = process_hint tc hyps info.EcParsetree.sim_hint mleft mright in
+
   let eqo = 
     match info.EcParsetree.sim_eqs with
     | Some pf ->
-      process_eqs env tc (TTC.tc1_process_prhl_formula tc pf)
+      process_eqs env tc (TTC.tc1_process_prhl_formula tc pf) mleft mright
     | None ->
       try Mpv2.needed_eq env mleft mright es.es_po
       with _ -> tc_error !!tc "cannot infer the set of equalities" in
@@ -430,11 +437,15 @@ let process_eqobs_inS info tc =
 
 
 let process_eqobs_inF info tc = 
+  assert false
+(*
   if info.EcParsetree.sim_pos <> None then
     tc_error !!tc "no positions excepted";
   let env, hyps, _ = FApi.tc1_eflat tc in
   let ef = tc1_as_equivF tc in
-  let spec, inv = process_hint tc hyps info.EcParsetree.sim_hint in
+
+  let mleft, mright = f_mem es.es_ml, f_mem es.es_mr in
+  let spec, inv = process_hint tc hyps info.EcParsetree.sim_hint mleft mright in
   let fl = ef.ef_fl and fr = ef.ef_fr in
   let eqo = 
     match info.EcParsetree.sim_eqs with
@@ -455,7 +466,7 @@ let process_eqobs_inF info tc =
     t_logic_trivial;
     t_logic_trivial;
      t_eqobs_inF sim eqo]) tc
-
+*)
   
 
 let process_eqobs_in info tc = 

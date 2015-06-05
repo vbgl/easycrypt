@@ -48,7 +48,7 @@ let t_core_phoare_deno pre post tc =
 
   (* building the substitution for the pre *)
   let sargs = PVM.add env (pv_arg pr.pr_fun) mhr pr.pr_args PVM.empty in
-  let smem = Fsubst.f_bind_mem Fsubst.f_subst_id mhr pr.pr_mem in
+  let smem = Fsubst.f_bind_mem Fsubst.f_subst_id mhr None pr.pr_mem in
   let concl_pr = Fsubst.f_subst smem (PVM.subst env sargs pre) in
 
   (* building the substitution for the post *)
@@ -85,8 +85,8 @@ let cond_pre env prl prr pre =
   let sargs = PVM.add env (pv_arg prl.pr_fun) mleft  prl.pr_args PVM.empty in
   let sargs = PVM.add env (pv_arg prr.pr_fun) mright prr.pr_args sargs in
   let smem  = Fsubst.f_subst_id in
-  let smem  = Fsubst.f_bind_mem smem mleft  prl.pr_mem in
-  let smem  = Fsubst.f_bind_mem smem mright prr.pr_mem in
+  let smem  = Fsubst.f_bind_mem smem mleft  None prl.pr_mem in
+  let smem  = Fsubst.f_bind_mem smem mright None prr.pr_mem in
   Fsubst.f_subst smem (PVM.subst env sargs pre)
 
 let t_equiv_deno_r pre post tc =
@@ -117,8 +117,8 @@ let t_equiv_deno_r pre post tc =
   let concl_pr = cond_pre env prl prr pre in 
 
   (* building the substitution for the post *)
-  let smeml = Fsubst.f_bind_mem Fsubst.f_subst_id mhr mleft in
-  let smemr = Fsubst.f_bind_mem Fsubst.f_subst_id mhr mright in
+  let smeml = Fsubst.f_bind_mem Fsubst.f_subst_id mhr None mleft in
+  let smemr = Fsubst.f_bind_mem Fsubst.f_subst_id mhr None mright in
   let evl   = Fsubst.f_subst smeml prl.pr_event in
   let evr   = Fsubst.f_subst smemr prr.pr_event in
   let cmp   =
@@ -251,10 +251,10 @@ let t_equiv_deno_bad pre tc =
   let pro = f_pr_r { pr2 with pr_event = f_or fand prb.pr_event } in
   let pra = f_pr_r { pr2 with pr_event = fand } in
   let t_false tc = t_apply_prept (`UG real_upto_false) tc in
-
+  let _,((_,mtl),(_,mtr)) = EcEnv.Fun.equivF_memenv pr1.pr_fun pr2.pr_fun env in
   let post = 
-    let subst_l = Fsubst.f_subst_mem mhr mleft in
-    let subst_r = Fsubst.f_subst_mem mhr mright in
+    let subst_l = Fsubst.f_subst_mem mhr mtl mleft in
+    let subst_r = Fsubst.f_subst_mem mhr mtr mright in
     let ev1 = subst_l pr1.pr_event in
     let ev2 = subst_r pr2.pr_event in
     let bad2 = subst_r prb.pr_event in
@@ -303,10 +303,11 @@ let t_equiv_deno_bad2 pre bad1 tc =
       prb = destr_pr fprb in
   let f1 = pr1.pr_fun and f2 = pr2.pr_fun in
   let ev1 = pr1.pr_event and ev2 = pr2.pr_event in
+  let _,((_,mtl),(_,mtr)) = EcEnv.Fun.equivF_memenv pr1.pr_fun pr2.pr_fun env in
   let bad2 = prb.pr_event in
   let post = 
-    let subst_l = Fsubst.f_subst_mem mhr mleft in
-    let subst_r = Fsubst.f_subst_mem mhr mright in
+    let subst_l = Fsubst.f_subst_mem mhr mtl mleft in
+    let subst_r = Fsubst.f_subst_mem mhr mtr mright in
     let bad2 = subst_r bad2 in
     f_and (f_iff (subst_l bad1) bad2)
       (f_imp (f_not bad2) (f_iff (subst_l ev1) (subst_r ev2))) in
@@ -375,16 +376,16 @@ let process_pre tc hyps prl prr pre post =
         if not (EcReduction.EqTest.for_type env a.f_ty tunit) then
           push (f_eq (f_pvarg f a.f_ty m) a)
       with EcCoreGoal.TcError _ | EqObsInError -> () in
-
-    dof fl al mleft ml; dof fr ar mright mr;
+    let ((_,mtl),(_,mtr)),_ = EcEnv.Fun.equivF_memenv fl fr env in    
+    dof fl al (f_mem (mleft,mtl)) (f_mem (ml,None)); dof fr ar (f_mem (mright, mtr)) (f_mem (mr,None));
     f_ands !eqs
 
-let post_iff eq env evl evr =
+let post_iff eq env evl evr ml mr =
   let post = f_iff evl evr in
   try 
     if not eq then raise Not_found;
-    Mpv2.to_form mleft mright 
-      (Mpv2.needed_eq env mleft mright post) f_true
+    Mpv2.to_form ml mr 
+      (Mpv2.needed_eq env ml mr post) f_true
   with Not_found -> post
 
   
@@ -403,16 +404,17 @@ let process_equiv_deno1 info eq tc =
     let { pr_fun = fl; pr_event = evl } as prl = destr_pr f1 in
     let { pr_fun = fr; pr_event = evr } as prr = destr_pr f2 in
 
+    let _,((_,mtl),(_,mtr)) = EcEnv.Fun.equivF_memenv fl fr env in
     let post = 
       match post with
       | Some p -> 
         let _, qenv = LDecl.equivF fl fr hyps in
         TTC.pf_process_formula !!tc qenv p
       | None ->
-        let evl = Fsubst.f_subst_mem mhr mleft evl in
-        let evr = Fsubst.f_subst_mem mhr mright evr in
+        let evl = Fsubst.f_subst_mem mhr mtl mleft evl in
+        let evr = Fsubst.f_subst_mem mhr mtr mright evr in
         if EcPath.p_equal op EcCoreLib.CI_Bool.p_eq then 
-          post_iff eq env evl evr
+          post_iff eq env evl evr (f_mem (mleft, mtl)) (f_mem (mright, mtr))
         else if EcPath.p_equal op EcCoreLib.CI_Real.p_real_le then f_imp evl evr
         else if EcPath.p_equal op EcCoreLib.CI_Real.p_real_ge then f_imp evr evl
         else tc_error !!tc "not able to reconize a comparison operator" in
@@ -440,17 +442,17 @@ let process_equiv_deno_bad info tc =
 
     let { pr_fun = fl; pr_event = evl } as prl = destr_pr fpr1 in
     let { pr_fun = fr; pr_event = evr } as prr = destr_pr fpr2 in
-
     let post = 
       match post with
       | Some p -> 
         let _, qenv = LDecl.equivF fl fr hyps in
         TTC.pf_process_formula !!tc qenv p
       | None ->
-        let evl = Fsubst.f_subst_mem mhr mleft evl in
-        let evr = Fsubst.f_subst_mem mhr mright evr in
+        let _,((_,mtl),(_,mtr)) = EcEnv.Fun.equivF_memenv fl fr env in
+        let evl = Fsubst.f_subst_mem mhr mtl mleft evl in
+        let evr = Fsubst.f_subst_mem mhr mtr mright evr in
         let bad = (destr_pr fprb).pr_event in
-        let bad = Fsubst.f_subst_mem mhr mright bad in
+        let bad = Fsubst.f_subst_mem mhr mtr mright bad in
         f_imps [f_not bad;evl] evr in
     let pre = process_pre tc hyps prl prr pre post in
    
@@ -501,12 +503,13 @@ let process_equiv_deno_bad2 info eq bad1 tc =
         let _, qenv = LDecl.equivF fl fr hyps in    
         TTC.pf_process_formula !!tc qenv p
       | None ->
-        let evl = Fsubst.f_subst_mem mhr mleft evl in
-        let evr = Fsubst.f_subst_mem mhr mright evr in
-        let bad1 = Fsubst.f_subst_mem mhr mleft bad1 in
+        let _,((_,mtl),(_,mtr)) = EcEnv.Fun.equivF_memenv fl fr env in
+        let evl = Fsubst.f_subst_mem mhr mtl mleft evl in
+        let evr = Fsubst.f_subst_mem mhr mtr mright evr in
+        let bad1 = Fsubst.f_subst_mem mhr mtl mleft bad1 in
         let bad2 = (destr_pr fprb).pr_event in
-        let bad2 = Fsubst.f_subst_mem mhr mright bad2 in
-        let iff = post_iff eq env evl evr in
+        let bad2 = Fsubst.f_subst_mem mhr mtr mright bad2 in
+        let iff = post_iff eq env evl evr (f_mem (mleft,mtl)) (f_mem (mright, mtr)) in
         f_and (f_iff bad1 bad2) (f_imp (f_not bad2) iff) in
 
     let pre = process_pre tc hyps prl prr pre post in

@@ -63,7 +63,7 @@ let t_hoare_while_r inv tc =
   let hs = tc1_as_hoareS tc in
   let (e, c), s = tc1_last_while tc hs.hs_s in
   let m = EcMemory.memory hs.hs_m in
-  let e = form_of_expr m e in
+  let e = form_of_expr (Some hs.hs_m) e in
   (* the body preserves the invariant *)
   let b_pre  = f_and_simpl inv e in
   let b_post = inv in
@@ -71,7 +71,7 @@ let t_hoare_while_r inv tc =
   (* the wp of the while *)
   let post = f_imps_simpl [f_not_simpl e; inv] hs.hs_po in
   let modi = s_write env c in
-  let post = generalize_mod env m modi post in
+  let post = generalize_mod env (f_mem hs.hs_m) modi post in
   let post = f_and_simpl inv post in
   let concl = f_hoareS_r { hs with hs_s = s; hs_po=post} in
 
@@ -83,7 +83,7 @@ let t_bdhoare_while_r inv vrnt tc =
   let bhs = tc1_as_bdhoareS tc in
   let (e, c), s = tc1_last_while tc bhs.bhs_s in
   let m = EcMemory.memory bhs.bhs_m in
-  let e = form_of_expr m e in
+  let e = form_of_expr (Some bhs.bhs_m) e in
   (* the body preserves the invariant *)
   let k_id = EcIdent.create "z" in
   let k = f_local k_id tint in
@@ -102,7 +102,7 @@ let t_bdhoare_while_r inv vrnt tc =
   let term_condition = f_imps_simpl [inv;f_int_le vrnt f_i0] (f_not_simpl e) in
   let post = f_and term_condition post in
   let modi = s_write env c in
-  let post = generalize_mod env m modi post in
+  let post = generalize_mod env (f_mem bhs.bhs_m) modi post in
   let post = f_and_simpl inv post in
   let concl = f_bdHoareS_r { bhs with bhs_s = s; bhs_po=post} in
 
@@ -122,7 +122,7 @@ let t_bdhoare_while_rev_r inv tc =
   let bound  = bhs.bhs_bd in
 
   let (lp_guard_exp, lp_body), rem_s = tc1_last_while tc bhs.bhs_s in
-  let lp_guard = form_of_expr (EcMemory.memory mem) lp_guard_exp in
+  let lp_guard = form_of_expr (Some mem) lp_guard_exp in
 
   let w_u   = while_info env lp_guard_exp lp_body in
   let w     = EcEnv.LDecl.fresh_id hyps "w" in
@@ -147,7 +147,7 @@ let t_bdhoare_while_rev_r inv tc =
     let term_post = f_imp
       (f_and inv (f_and (f_not lp_guard) b_post))
       (f_eq bound f_r1) in
-    let term_post = generalize_mod env (EcMemory.memory mem) modi term_post in
+    let term_post = generalize_mod env (f_mem mem) modi term_post in
     let term_post = f_and inv term_post in
     f_hoareS mem b_pre rem_s term_post
   in
@@ -168,7 +168,7 @@ let t_bdhoare_while_rev_geq_r inv vrnt k eps tc =
   if not (List.is_empty rem_s.s_node) then
     tc_error !!tc  "only single loop statements are accepted";
 
-  let lp_guard = form_of_expr (EcMemory.memory mem) lp_guard_exp in
+  let lp_guard = form_of_expr (Some mem) lp_guard_exp in
   let bound    = bhs.bhs_bd in
   let modi     = s_write env lp_body in
 
@@ -179,7 +179,7 @@ let t_bdhoare_while_rev_geq_r inv vrnt k eps tc =
   let pre_bound_concl =
     let term_post = [b_pre; f_not lp_guard; f_not b_post] in
     let term_post = f_imps term_post (f_eq bound f_r0) in
-    let term_post = generalize_mod env (EcMemory.memory mem) modi term_post in
+    let term_post = generalize_mod env (f_mem mem) modi term_post in
       f_forall_mems [mem] term_post
   in
 
@@ -188,7 +188,7 @@ let t_bdhoare_while_rev_geq_r inv vrnt k eps tc =
     let concl = f_imp (f_int_le vrnt f_i0) (f_not lp_guard) in
     let concl = f_and (f_int_le vrnt k) concl in
     let concl = f_imp inv concl in
-      f_forall_mems [mem] (generalize_mod env (EcMemory.memory mem) modi concl)
+      f_forall_mems [mem] (generalize_mod env (f_mem mem) modi concl)
   in
 
   (* 4. Vrnt conclusion *)
@@ -253,7 +253,7 @@ let t_equiv_while_disj_r side vrnt inv tc =
     | `Left  -> es.es_sl, es.es_ml, es.es_mr
     | `Right -> es.es_sr, es.es_mr, es.es_ml in
   let (e, c), s = tc1_last_while tc s in
-  let e = form_of_expr (EcMemory.memory m_side) e in
+  let e = form_of_expr (Some m_side) e in
 
   (* 1. The body preserves the invariant and the variant decreases. *)
   let k_id = EcIdent.create "z" in
@@ -265,8 +265,8 @@ let t_equiv_while_disj_r side vrnt inv tc =
   let m_other' = (EcIdent.create "&m", EcMemory.memtype m_other) in
 
   let smem = Fsubst.f_subst_id in
-  let smem = Fsubst.f_bind_mem smem (EcMemory.memory m_side ) mhr in
-  let smem = Fsubst.f_bind_mem smem (EcMemory.memory m_other) (EcMemory.memory m_other') in
+  let smem = Fsubst.f_bind_mem smem (EcMemory.memory m_side) (snd m_side) mhr in
+  let smem = Fsubst.f_bind_mem smem (EcMemory.memory m_other) (snd m_other) (EcMemory.memory m_other') in
 
   let b_pre   = f_and_simpl (f_and_simpl inv e) vrnt_eq_k in
   let b_pre   = Fsubst.f_subst smem b_pre in
@@ -281,7 +281,7 @@ let t_equiv_while_disj_r side vrnt inv tc =
   let term_condition = f_imps_simpl [inv;f_int_le vrnt f_i0] (f_not_simpl e) in
   let post = f_and term_condition post in
   let modi = s_write env c in
-  let post = generalize_mod env (EcMemory.memory m_side) modi post in
+  let post = generalize_mod env (f_mem m_side) modi post in
   let post = f_and_simpl inv post in
   let concl =
     match side with
@@ -299,8 +299,8 @@ let t_equiv_while_r inv tc =
   let (er, cr), sr = tc1_last_while tc es.es_sr in
   let ml = EcMemory.memory es.es_ml in
   let mr = EcMemory.memory es.es_mr in
-  let el = form_of_expr ml el in
-  let er = form_of_expr mr er in
+  let el = form_of_expr (Some es.es_ml) el in
+  let er = form_of_expr (Some es.es_mr) er in
   let sync_cond = f_iff_simpl el er in
 
   (* 1. The body preserves the invariant *)
@@ -312,8 +312,8 @@ let t_equiv_while_r inv tc =
   let post = f_imps_simpl [f_not_simpl el;f_not_simpl er; inv] es.es_po in
   let modil = s_write env cl in
   let modir = s_write env cr in
-  let post = generalize_mod env mr modir post in
-  let post = generalize_mod env ml modil post in
+  let post = generalize_mod env (f_mem es.es_mr) modir post in
+  let post = generalize_mod env (f_mem es.es_ml) modil post in
   let post = f_and_simpl b_post post in
   let concl = f_equivS_r { es with es_sl = sl; es_sr = sr; es_po = post; } in
 

@@ -67,7 +67,7 @@ let subst_pre env f fs m s =
   match fs.fs_anames with
   | Some lv ->
       let v = List.map (fun v -> f_pvloc f v m) lv in
-        PVM.add env (pv_arg f) m (f_tuple v) s
+        PVM.add env (pv_arg f) (destr_local m) (f_tuple v) s
   | None -> s
 
 (* ------------------------------------------------------------------ *)
@@ -78,9 +78,9 @@ let t_hoareF_fun_def_r tc =
   check_concrete !!tc env f;
   let (memenv, (fsig, fdef), env) = Fun.hoareS f env in
   let m = EcMemory.memory memenv in
-  let fres = odfl f_tt (omap (form_of_expr m) fdef.f_ret) in
+  let fres = odfl f_tt (omap (form_of_expr (Some memenv)) fdef.f_ret) in
   let post = PVM.subst1 env (pv_res f) m fres hf.hf_po in
-  let pre  = PVM.subst env (subst_pre env f fsig m PVM.empty) hf.hf_pr in
+  let pre  = PVM.subst env (subst_pre env f fsig (f_mem memenv) PVM.empty) hf.hf_pr in
   let concl' = f_hoareS memenv pre fdef.f_body post in
   FApi.xmutate1 tc `FunDef [concl']
 
@@ -105,9 +105,9 @@ let t_bdhoareF_fun_def_r tc =
   check_concrete !!tc env f;
   let (memenv, (fsig, fdef), env) = Fun.hoareS f env in
   let m = EcMemory.memory memenv in
-  let fres = odfl f_tt (omap (form_of_expr m) fdef.f_ret) in
+  let fres = odfl f_tt (omap (form_of_expr (Some memenv)) fdef.f_ret) in
   let post = PVM.subst1 env (pv_res f) m fres bhf.bhf_po in
-  let spre = subst_pre env f fsig m PVM.empty in
+  let spre = subst_pre env f fsig (f_mem memenv) PVM.empty in
   let pre = PVM.subst env spre bhf.bhf_pr in
   let bd  = PVM.subst env spre bhf.bhf_bd in
   let concl' = f_bdHoareS memenv pre fdef.f_body post bhf.bhf_cmp bd in
@@ -125,13 +125,13 @@ let t_equivF_fun_def_r tc =
   let (fsigr, fdefr) = eqsr in
   let ml = EcMemory.memory menvl in
   let mr = EcMemory.memory menvr in
-  let fresl = odfl f_tt (omap (form_of_expr ml) fdefl.f_ret) in
-  let fresr = odfl f_tt (omap (form_of_expr mr) fdefr.f_ret) in
+  let fresl = odfl f_tt (omap (form_of_expr (Some menvl)) fdefl.f_ret) in
+  let fresr = odfl f_tt (omap (form_of_expr (Some menvr)) fdefr.f_ret) in
   let s = PVM.add env (pv_res fl) ml fresl PVM.empty in
   let s = PVM.add env (pv_res fr) mr fresr s in
   let post = PVM.subst env s ef.ef_po in
-  let s = subst_pre env fl fsigl ml PVM.empty in
-  let s = subst_pre env fr fsigr mr s in
+  let s = subst_pre env fl fsigl (f_mem menvl) PVM.empty in
+  let s = subst_pre env fr fsigr (f_mem menvr) s in
   let pre = PVM.subst env s ef.ef_pr in
   let concl' = f_equivS menvl menvr pre fdefl.f_body fdefr.f_body post in
   FApi.xmutate1 tc `FunDef [concl']
@@ -158,7 +158,7 @@ module FunAbsLow = struct
   (* ------------------------------------------------------------------ *)
   let hoareF_abs_spec _pf env f inv =
     let (top, _, oi, _) = EcLowPhlGoal.abstract_info env f in
-    let fv = PV.fv env mhr inv in
+    let fv = PV.fv env (f_mem (mhr,None)) inv in
     PV.check_depend env fv top;
     let ospec o = f_hoareF inv o inv in
     let sg = List.map ospec oi.oi_calls in
@@ -167,7 +167,7 @@ module FunAbsLow = struct
   (* ------------------------------------------------------------------ *)
   let bdhoareF_abs_spec pf env f inv =
     let (top, _, oi, _) = EcLowPhlGoal.abstract_info env f in
-    let fv = PV.fv env mhr inv in
+    let fv = PV.fv env (f_mem (mhr,None)) inv in
 
     PV.check_depend env fv top;
     let ospec o =
@@ -184,11 +184,12 @@ module FunAbsLow = struct
     in
 
     let ml, mr = mleft, mright in
-    let fvl = PV.fv env ml inv in
-    let fvr = PV.fv env mr inv in
+    let fvl = PV.fv env (f_mem (ml,None)) inv in
+    let fvr = PV.fv env (f_mem (mr,None)) inv in
     PV.check_depend env fvl topl;
     PV.check_depend env fvr topr;
-    let eqglob = f_eqglob topl ml topr mr in
+    (* FIXME inv and eqglob are ill typed *)
+    let eqglob = f_eqglob topl (f_mem (ml,None)) topr (f_mem (mr,None)) in
 
     let ospec o_l o_r =
       let use =
@@ -203,13 +204,16 @@ module FunAbsLow = struct
       let fo_l = EcEnv.Fun.by_xpath o_l env in
       let fo_r = EcEnv.Fun.by_xpath o_r env in
 
+      let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) = 
+        EcEnv.Fun.equivF_memenv o_l o_r env in
+
       let eq_params =
         f_eqparams
-          o_l fo_l.f_sig.fs_arg fo_l.f_sig.fs_anames ml
-          o_r fo_r.f_sig.fs_arg fo_r.f_sig.fs_anames mr in
+          o_l fo_l.f_sig.fs_arg fo_l.f_sig.fs_anames (f_mem (ml, mtl1))
+          o_r fo_r.f_sig.fs_arg fo_r.f_sig.fs_anames (f_mem (mr, mtr1)) in
 
       let eq_res =
-        f_eqres o_l fo_l.f_sig.fs_ret ml o_r fo_r.f_sig.fs_ret mr in
+        f_eqres o_l fo_l.f_sig.fs_ret (f_mem (ml,mtl2)) o_r fo_r.f_sig.fs_ret (f_mem (mr,mtr2)) in
 
       let invs = if use then [eqglob; inv] else [inv] in
       let pre  = EcFol.f_ands (eq_params :: invs) in
@@ -219,12 +223,15 @@ module FunAbsLow = struct
 
     let sg = List.map2 ospec oil.oi_calls oir.oi_calls in
 
+    let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) = 
+      EcEnv.Fun.equivF_memenv fl fr env in
+
     let eq_params =
       f_eqparams
-        fl sigl.fs_arg sigl.fs_anames ml
-        fr sigr.fs_arg sigr.fs_anames mr in
+        fl sigl.fs_arg sigl.fs_anames (f_mem (ml,mtl1))
+        fr sigr.fs_arg sigr.fs_anames (f_mem (mr,mtr1)) in
 
-    let eq_res = f_eqres fl sigl.fs_ret ml fr sigr.fs_ret mr in
+    let eq_res = f_eqres fl sigl.fs_ret (f_mem (ml,mtl2)) fr sigr.fs_ret (f_mem (mr,mtr2)) in
     let lpre   = if oil.oi_in then [eqglob;inv] else [inv] in
     let pre    = f_ands (eq_params::lpre) in
     let post   = f_ands [eq_res; eqglob; inv] in
@@ -281,16 +288,18 @@ module UpToLow = struct
     in
 
     let ml, mr = mleft, mright in
-    let bad2 = Fsubst.f_subst_mem mhr mr bad in
+    (* FIXME : None *)
+    let bad2 = Fsubst.f_subst_mem mhr None mr bad in
     let allinv = f_ands [bad2; invP; invQ] in
-    let fvl = PV.fv env ml allinv in
-    let fvr = PV.fv env mr allinv in
+    let fvl = PV.fv env (f_mem (ml,None)) allinv in
+    let fvr = PV.fv env (f_mem (mr,None)) allinv in
 
     PV.check_depend env fvl topl;
     PV.check_depend env fvr topr;
 
     (* FIXME: check there is only global variable *)
-    let eqglob = f_eqglob topl ml topr mr in
+    (* FIXME: remove NONE *)
+    let eqglob = f_eqglob topl (f_mem (ml,None)) topr (f_mem (mr,None)) in
 
     let ospec o_l o_r =
       check_oracle_use pf env topl o_l;
@@ -299,23 +308,25 @@ module UpToLow = struct
 
       let fo_l = EcEnv.Fun.by_xpath o_l env in
       let fo_r = EcEnv.Fun.by_xpath o_r env in
+      let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) =
+        EcEnv.Fun.equivF_memenv o_l o_r env in
       let eq_params =
         f_eqparams
           o_l fo_l.f_sig.fs_arg fo_l.f_sig.fs_anames
-          ml o_r fo_r.f_sig.fs_arg fo_r.f_sig.fs_anames mr in
+          (f_mem (ml,mtl1)) o_r fo_r.f_sig.fs_arg fo_r.f_sig.fs_anames (f_mem (mr,mtr1)) in
 
       let eq_res =
-        f_eqres o_l fo_l.f_sig.fs_ret ml o_r fo_r.f_sig.fs_ret mr in
+        f_eqres o_l fo_l.f_sig.fs_ret (f_mem (ml,mtl2)) o_r fo_r.f_sig.fs_ret (f_mem (mr,mtr2)) in
 
       let pre   = EcFol.f_ands [EcFol.f_not bad2; eq_params; invP] in
       let post  = EcFol.f_if_simpl bad2 invQ (f_and eq_res invP) in
       let cond1 = f_equivF pre o_l o_r post in
       let cond2 =
-        let q = Fsubst.f_subst_mem ml EcFol.mhr invQ in
+        let q = Fsubst.f_subst_mem ml None EcFol.mhr invQ in
           f_forall[(mr, gtmem None)]
             (f_imp bad2 (f_bdHoareF q o_l q FHeq f_r1)) in
       let cond3 =
-        let q  = Fsubst.f_subst_mem mr EcFol.mhr invQ in
+        let q  = Fsubst.f_subst_mem mr None EcFol.mhr invQ in
         let bq = f_and bad q in
           f_forall [(ml, gtmem None)]
             (f_bdHoareF bq o_r bq FHeq f_r1) in
@@ -323,6 +334,8 @@ module UpToLow = struct
       [cond1; cond2; cond3]
     in
 
+    let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) =
+      EcEnv.Fun.equivF_memenv fl fr env in
     let sg = List.map2 ospec oil.oi_calls oir.oi_calls in
     let sg = List.flatten sg in
     let lossless_a = lossless_hyps env topl fl.x_sub in
@@ -330,10 +343,10 @@ module UpToLow = struct
 
     let eq_params =
       f_eqparams
-        fl sigl.fs_arg sigl.fs_anames ml
-        fr sigr.fs_arg sigr.fs_anames mr in
+        fl sigl.fs_arg sigl.fs_anames (f_mem (ml,mtl1))
+        fr sigr.fs_arg sigr.fs_anames (f_mem (mr,mtr1)) in
 
-    let eq_res = f_eqres fl sigl.fs_ret ml fr sigr.fs_ret mr in
+    let eq_res = f_eqres fl sigl.fs_ret (f_mem (ml,mtl2)) fr sigr.fs_ret (f_mem (mr,mtr2)) in
 
     let pre  = if oil.oi_in then [eqglob;invP] else [invP] in
     let pre  = f_if_simpl bad2 invQ (f_ands (eq_params::pre)) in
@@ -383,7 +396,7 @@ let t_fun_to_code_hoare_r tc =
   let f = hf.hf_f in
   let m, _ = Fun.hoareF_memenv f env in
   let m, st, r, ty = ToCodeLow.to_code env f m in
-  let s = PVM.add env (pv_res f) (fst m) (f_pvar r ty (fst m)) PVM.empty in
+  let s = PVM.add env (pv_res f) (fst m) (f_pvar r ty (f_mem m)) PVM.empty in
   let post = PVM.subst env s hf.hf_po in
   let concl = f_hoareS m hf.hf_pr st post in
 
@@ -396,7 +409,7 @@ let t_fun_to_code_bdhoare_r tc =
   let f = hf.bhf_f in
   let m, _ = Fun.hoareF_memenv f env in
   let m, st, r, ty = ToCodeLow.to_code env f m in
-  let s = PVM.add env (pv_res f) (fst m) (f_pvar r ty (fst m)) PVM.empty in
+  let s = PVM.add env (pv_res f) (fst m) (f_pvar r ty (f_mem m)) PVM.empty in
   let post = PVM.subst env s hf.bhf_po in
   let concl = f_bdHoareS m hf.bhf_pr st post hf.bhf_cmp hf.bhf_bd in
 
@@ -411,8 +424,8 @@ let t_fun_to_code_equiv_r tc =
   let ml, sl, rl, tyl = ToCodeLow.to_code env fl ml in
   let mr, sr, rr, tyr = ToCodeLow.to_code env fr mr in
   let s = PVM.empty in
-  let s = PVM.add env (pv_res fl) (fst ml) (f_pvar rl tyl (fst ml)) s in
-  let s = PVM.add env (pv_res fr) (fst mr) (f_pvar rr tyr (fst mr)) s in
+  let s = PVM.add env (pv_res fl) (fst ml) (f_pvar rl tyl (f_mem ml)) s in
+  let s = PVM.add env (pv_res fr) (fst mr) (f_pvar rr tyr (f_mem mr)) s in
   let post  = PVM.subst env s ef.ef_po in
   let concl = f_equivS ml mr ef.ef_pr sl sr post in
 
@@ -426,8 +439,8 @@ let t_fun_to_code_eager_r tc =
   let ml, sl, rl, tyl = ToCodeLow.to_code env fl ml in
   let mr, sr, rr, tyr = ToCodeLow.to_code env fr mr in
   let s = PVM.empty in
-  let s = PVM.add env (pv_res fl) (fst ml) (f_pvar rl tyl (fst ml)) s in
-  let s = PVM.add env (pv_res fr) (fst mr) (f_pvar rr tyr (fst mr)) s in
+  let s = PVM.add env (pv_res fl) (fst ml) (f_pvar rl tyl (f_mem ml)) s in
+  let s = PVM.add env (pv_res fr) (fst mr) (f_pvar rr tyr (f_mem mr)) s in
   let post  = PVM.subst env s eg.eg_po in
   let concl = 
     f_equivS ml mr eg.eg_pr (s_seq eg.eg_sl sl) (s_seq sr eg.eg_sr) post in

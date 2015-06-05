@@ -20,6 +20,8 @@ module TTC = EcProofTyping
 module Low = struct
   (* ------------------------------------------------------------------ *)
   let transitivity_side_cond hyps prml prmr poml pomr p q p1 q1 pomt p2 q2 =
+    assert false
+(*
     let env = LDecl.toenv hyps in
     let cond1 =
       let fv1 = PV.fv env mright p1 in
@@ -37,7 +39,7 @@ module Low = struct
       let q2 = Fsubst.f_subst_mem mleft  m2 q2 in
       f_forall_mems [poml;(m2,pomt);pomr] (f_imps [q1;q2] q) in
     (cond1, cond2)
-
+*)
   (* ------------------------------------------------------------------ *)
   let t_equivS_trans_r (mt, c2) (p1, q1) (p2, q2) tc =
     let hyps = FApi.tc1_hyps tc in

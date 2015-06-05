@@ -41,6 +41,12 @@ let _ = EcPException.register (fun fmt exn ->
 type 'a eqtest = env -> 'a -> 'a -> bool
 
 module EqTest = struct
+
+  (* ------------------------------------------------------------------ *)
+  let for_xp_norm env p1 p2 =
+       EcPath.x_equal p1 p2
+    || EcPath.x_equal (NormMp.norm_xfun env p1) (NormMp.norm_xfun env p2)
+
   let rec for_type env t1 t2 =
     ty_equal t1 t2 || for_type_r env t1 t2
 
@@ -79,6 +85,13 @@ module EqTest = struct
     | _, Tconstr(p2,lt2) when Ty.defined p2 env ->
         for_type env t1 (Ty.unfold p2 lt2 env)
 
+    | Tmem None, Tmem None -> true
+
+    | Tmem (Some mt1), Tmem (Some mt2) ->
+      (for_xp_norm env mt1.mt_path mt2.mt_path &&
+       EcSymbols.Msym.equal (fun (p1,ty1) (p2,ty2) -> p1 = p2 && for_type env ty1 ty2) 
+       mt1.mt_vars mt2.mt_vars)
+
     | _, _ -> false
 
   (* ------------------------------------------------------------------ *)
@@ -97,11 +110,6 @@ module EqTest = struct
       (p1.pv_kind = p2.pv_kind &&
           EcPath.x_equal
             (NormMp.norm_pvar env p1).pv_name (NormMp.norm_pvar env p2).pv_name)
-
-  (* ------------------------------------------------------------------ *)
-  let for_xp_norm env p1 p2 =
-       EcPath.x_equal p1 p2
-    || EcPath.x_equal (NormMp.norm_xfun env p1) (NormMp.norm_xfun env p2)
 
   (* ------------------------------------------------------------------ *)
   let for_mp_norm env p1 p2 =
@@ -363,7 +371,7 @@ let rec h_red ri env hyps f =
                   subst bds cargs)
               subst bds pargs in
 
-          let body = EcFol.form_of_expr EcFol.mhr body in
+          let body = EcFol.form_of_expr None body in
           let body =
             EcFol.Fsubst.subst_tvar
               (EcTypes.Tvar.init (List.map fst op.EcDecl.op_tparams) tys) body in
@@ -500,18 +508,6 @@ let check_alpha_equal ri hyps f1 f2 =
       List.fold_left2 add_local (env,subst) lid1 lid2
     | _, _ -> error() in
 
-  let check_memtype env mt1 k1 mt2 k2 =
-    ensure (k1 = k2);
-    match mt1, mt2 with
-    | None, None -> ()
-    | Some lmt1, Some lmt2 ->
-      let xp1, xp2 = EcMemory.lmt_xpath lmt1, EcMemory.lmt_xpath lmt2 in
-      ensure (EqTest.for_xp_norm env xp1 xp2);
-      let m1, m2 = EcMemory.lmt_bindings lmt1, EcMemory.lmt_bindings lmt2 in
-      ensure (EcSymbols.Msym.equal
-                (fun (p1,ty1) (p2,ty2) ->
-                  p1 = p2 && EqTest.for_type env ty1 ty2) m1 m2)
-    | _, _ -> error () in
   (* TODO all declaration in env, do it also in add local *)
   let check_binding (env, subst) (x1,gty1) (x2,gty2) =
     let gty2 = Fsubst.gty_subst subst gty2 in
@@ -526,12 +522,7 @@ let check_alpha_equal ri hyps f1 f2 =
       Mod.bind_local x1 p1 r1 env,
       if id_equal x1 x2 then subst
       else Fsubst.f_bind_mod subst x2 (EcPath.mident x1)
-    | GTmem   (me1,k1), GTmem (me2,k2)  ->
-     
-      check_memtype env me1 k1 me2 k2;
-      env,
-      if id_equal x1 x2 then subst
-      else Fsubst.f_bind_mem subst x2 x1
+   
     | _, _ -> error () in
   let check_bindings env subst bd1 bd2 =
     List.fold_left2 check_binding (env,subst) bd1 bd2 in
@@ -540,9 +531,7 @@ let check_alpha_equal ri hyps f1 f2 =
     match (Mid.find_def f2 id2 subst.fs_loc).f_node with
     | Flocal id2 -> ensure (EcIdent.id_equal id1 id2)
     | _ -> assert false in
-  let check_mem subst m1 m2 =
-    let m2 = Mid.find_def m2 m2 subst.fs_mem in
-    ensure (EcIdent.id_equal m1 m2) in
+
   let check_pv env subst pv1 pv2 =
     let pv2 = pv_subst (EcPath.x_substm subst.fs_sty.ts_p subst.fs_mp) pv2 in
     ensure (EqTest.for_pv_norm env pv1 pv2) in
@@ -579,11 +568,11 @@ let check_alpha_equal ri hyps f1 f2 =
     | Flocal id1, Flocal id2 -> check_local subst id1 f2 id2
 
     | Fpvar(p1,m1), Fpvar(p2,m2) ->
-      check_mem subst m1 m2;
+      aux env subst m1 m2;
       check_pv env subst p1 p2
 
     | Fglob(p1,m1), Fglob(p2,m2) ->
-      check_mem subst m1 m2;
+      aux env subst m1 m2;
       check_mp env subst p1 p2
 
     | Fop(p1, ty1), Fop(p2, ty2) when EcPath.p_equal p1 p2 ->
@@ -622,7 +611,8 @@ let check_alpha_equal ri hyps f1 f2 =
       aux_ld gtdistr env subst hs1.muh_po hs2.muh_po
 
     | Fintegr ig1, Fintegr ig2 ->
-      check_mem subst ig1.ig_mu ig2.ig_mu;      
+      let (_,mt2),_ = ig2.ig_fo in
+      check_local subst ig1.ig_mu (f_local ig2.ig_mu (tdistr (tmem mt2))) ig2.ig_mu;      
       aux_ld gtmem env subst ig1.ig_fo ig2.ig_fo;
       
     | FbdHoareF hf1, FbdHoareF hf2 ->
@@ -662,7 +652,7 @@ let check_alpha_equal ri hyps f1 f2 =
       check_s env subst eg1.eg_sr eg2.eg_sr
 
     | Fpr pr1, Fpr pr2 ->
-      check_mem subst pr1.pr_mem pr2.pr_mem;
+      check_local subst pr1.pr_mem (f_local pr2.pr_mem (tmem None)) pr2.pr_mem;
       check_xp env subst pr1.pr_fun pr2.pr_fun;
       aux env subst pr1.pr_args pr2.pr_args;
       aux env subst pr1.pr_event pr2.pr_event

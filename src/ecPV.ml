@@ -199,11 +199,16 @@ module PVM = struct
   let rec subst env (s : subst) = 
     Hf.memo_rec 107 (fun aux f ->
       match f.f_node with
+      | Flocal id -> assert (not (Mid.mem id s)); f
       | Fpvar(pv,m) -> 
-          (try find env pv m s with Not_found -> f)
+        assert (is_local m);
+        let m = destr_local m in
+        (try find env pv m s with Not_found -> f)
       | Fglob(mp,m) ->
+
         let f' = EcEnv.NormMp.norm_glob env m mp in
         if f_equal f f' then
+          let m = assert (is_local m); destr_local m in
           (try find_glob env mp m s with Not_found -> f)
         else aux f'
       | FequivF _ ->
@@ -274,7 +279,7 @@ module PV = struct
     { fv with s_pv = Mnpv.add (pvm env pv) ty fv.s_pv }
 
   let add_glob env mp fv = 
-    let f = NormMp.norm_glob env mhr mp in
+    let f = NormMp.norm_glob env (f_local mhr (tmem None)) mp in
     let rec aux fv f = 
       match f.f_node with
       | Ftuple fs -> List.fold_left aux fv fs
@@ -324,9 +329,9 @@ module PV = struct
       | Fif(f1,f2,f3) -> aux env (aux env (aux env fv f1) f2) f3
       | Flet(_,f1,f2) -> aux env (aux env fv f1) f2
       | Fpvar(x,m') -> 
-        if EcIdent.id_equal m m' then add env x f.f_ty fv else fv
+        if f_equal m m' then add env x f.f_ty fv else fv
       | Fglob (mp,m') ->
-        if EcIdent.id_equal m m' then 
+        if f_equal m m' then 
           let f' = NormMp.norm_glob env m mp in
           if f_equal f f' then add_glob env mp fv
           else aux env fv f'
@@ -754,21 +759,21 @@ module Mpv2 = struct
       match sform_of_form f with
       | SFtrue -> eqs
       | SFeq ({f_node = Fpvar(pvl,ml');f_ty = ty}, { f_node = Fpvar(pvr,mr') })
-          when EcIdent.id_equal ml ml' && EcIdent.id_equal mr mr' ->
+          when f_equal ml ml' && f_equal mr mr' ->
         add env ty pvl pvr eqs
       | SFeq ({ f_node = Fpvar(pvr,mr')},{f_node = Fpvar(pvl,ml');f_ty = ty})
-          when EcIdent.id_equal ml ml' && EcIdent.id_equal mr mr' ->
+          when f_equal ml ml' && f_equal mr mr' ->
         add env ty pvl pvr eqs
       | SFeq(({f_node = Fglob(mpl, ml')} as f1),
              ({f_node = Fglob(mpr, mr')} as f2))
-          when EcIdent.id_equal ml ml' && EcIdent.id_equal mr mr' -> 
+          when f_equal ml ml' && f_equal mr mr' -> 
         let f1' = NormMp.norm_glob env ml mpl in
         let f2' = NormMp.norm_glob env mr mpr in
         if f_equal f1 f1' && f_equal f2 f2' then add_glob env mpl mpr eqs
         else aux (f_eq f1' f2') eqs
       | SFeq(({f_node = Fglob(mpr, mr')} as f2),
              ({f_node = Fglob(mpl, ml')} as f1))
-          when EcIdent.id_equal ml ml' && EcIdent.id_equal mr mr' -> 
+          when f_equal ml ml' && f_equal mr mr' -> 
         let f1' = NormMp.norm_glob env ml mpl in
         let f2' = NormMp.norm_glob env mr mpr in
         if f_equal f1 f1' && f_equal f2 f2' then add_glob env mpl mpr eqs 
@@ -806,16 +811,16 @@ module Mpv2 = struct
       | Flocal id1, Flocal id2 when 
           opt_equal EcIdent.id_equal (Some id1) (Mid.find_opt id2 local) -> eqs 
       | Fpvar(pv1,m1), Fpvar(pv2,m2) 
-          when EcIdent.id_equal ml m1 && EcIdent.id_equal mr m2 ->
+          when f_equal ml m1 && f_equal mr m2 ->
           add env f1.f_ty pv1 pv2 eqs
       | Fpvar(pv2,m2), Fpvar(pv1,m1) 
-          when EcIdent.id_equal ml m1 && EcIdent.id_equal mr m2 ->
+          when f_equal ml m1 && f_equal mr m2 ->
           add env f1.f_ty pv1 pv2 eqs
       | Fglob(_,m2), Fglob(_,m1) 
-        when EcIdent.id_equal ml m1 && EcIdent.id_equal mr m2 -> 
+        when f_equal ml m1 && f_equal mr m2 -> 
         add_eq local eqs f2 f1
       | Fglob(mp1,m1), Fglob(mp2,m2) 
-        when EcIdent.id_equal ml m1 && EcIdent.id_equal mr m2 -> 
+        when f_equal ml m1 && f_equal mr m2 -> 
         let f1' = NormMp.norm_glob env ml mp1 in
         let f2' = NormMp.norm_glob env mr mp2 in
         if f_equal f1 f1' && f_equal f2 f2' then add_glob env mp1 mp2 eqs 
@@ -947,8 +952,9 @@ let is_in_refl env lv eqo =
   | LvTuple lr -> List.exists (fun (pv,_) -> PV.mem_pv env pv eqo) lr
   
 let add_eqs_refl env eqo e = 
-  let f = form_of_expr mhr e in
-  let fv = PV.fv env mhr f in
+  (* FIXME it is durty *)
+  let f = form_of_expr (Some (mhr, None)) e in
+  let fv = PV.fv env (f_local mhr (tmem None)) f in
   PV.union fv eqo
 
 let remove_refl env lv eqo =
@@ -1048,6 +1054,7 @@ and eqobs_inF_refl env f' eqo =
 let check_module_in env mp mt =
   let sig_ = ModTy.sig_of_mt env mt in
   let params = sig_.mis_params in
+  let mhr = f_local mhr (tmem None) in
   let global = PV.fv env mhr (NormMp.norm_glob env mhr mp) in
   let env = List.fold_left 
     (fun env (id,mt) -> 

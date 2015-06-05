@@ -91,7 +91,7 @@ module PV : sig
   val mem_pv   : env -> prog_var -> t -> bool
   val mem_glob : env -> mpath -> t -> bool
 
-  val fv : env -> EcIdent.t -> form -> t
+  val fv : env -> form -> form -> t
 
   val pp : env -> Format.formatter -> t -> unit
 
@@ -135,9 +135,9 @@ exception EqObsInError
 
 module Mpv2 : sig
   type t 
-  val to_form : EcIdent.t -> EcIdent.t -> t -> form -> form
-  val of_form : env -> EcIdent.t -> EcIdent.t -> form -> t
-  val needed_eq : env -> EcIdent.t -> EcIdent.t -> form -> t
+  val to_form : form -> form -> t -> form -> form
+  val of_form : env -> form -> form -> form -> t
+  val needed_eq : env -> form -> form -> form -> t
   val union   : t -> t -> t
   val subset   : t -> t -> bool
   val equal    : t -> t -> bool

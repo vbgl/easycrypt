@@ -84,7 +84,6 @@ end
 (* -------------------------------------------------------------------- *)
 type mevmap = {
   evm_form : form            evmap;
-  evm_mem  : EcMemory.memory evmap;
   evm_mod  : EcPath.mpath    evmap;
 }
 
@@ -92,11 +91,10 @@ type mevmap = {
 module MEV : sig
   type item = [
     | `Form of form
-    | `Mem  of EcMemory.memory
     | `Mod  of EcPath.mpath
   ]
 
-  type kind = [ `Form | `Mem | `Mod ]
+  type kind = [ `Form | `Mod ]
 
   val empty     : mevmap
   val of_idents : ident list -> kind -> mevmap

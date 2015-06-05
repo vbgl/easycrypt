@@ -8,7 +8,6 @@ open EcBigInt
 open EcPath
 open EcTypes
 open EcModules
-open EcMemory
 
 (* -------------------------------------------------------------------- *)
 include module type of struct include EcCoreFol end
@@ -17,18 +16,18 @@ include module type of struct include EcCoreFol end
 val f_losslessF: xpath -> form
 
 val f_eqparams:
-     xpath -> EcTypes.ty -> variable list option -> memory
-  -> xpath -> EcTypes.ty -> variable list option -> memory
+     xpath -> EcTypes.ty -> variable list option -> form
+  -> xpath -> EcTypes.ty -> variable list option -> form
   -> form
 
 val f_eqres:
-     xpath -> EcTypes.ty -> memory
-  -> xpath -> EcTypes.ty -> memory
+     xpath -> EcTypes.ty -> form
+  -> xpath -> EcTypes.ty -> form
   -> form
 
 val f_eqglob:
-     mpath -> memory
-  -> mpath -> memory
+     mpath -> form
+  -> mpath -> form
   -> form
 
 (* soft-constructors - ordering *)
@@ -154,8 +153,8 @@ val is_logical_op : path -> bool
 type sform =
   | SFint   of zint
   | SFlocal of EcIdent.t
-  | SFpvar  of EcTypes.prog_var * memory
-  | SFglob  of mpath * memory
+  | SFpvar  of EcTypes.prog_var * form
+  | SFglob  of mpath * form
 
   | SFif    of form * form * form
   | SFlet   of lpattern * form * form

@@ -34,14 +34,12 @@ type pt_ev_arg = {
 
 and pt_ev_arg_r =
 | PVAFormula of EcFol.form
-| PVAMemory  of EcMemory.memory * [`Mem | `Distr]
 | PVAModule  of (EcPath.mpath * EcModules.module_sig)
 | PVASub     of pt_ev
 
 (* Arguments typing *)
 val trans_pterm_arg_value : pt_env -> ?name:symbol -> ppt_arg located -> pt_ev_arg
 val trans_pterm_arg_mod   : pt_env -> ppt_arg located -> pt_ev_arg
-val trans_pterm_arg_mem   : pt_env -> ?name:symbol -> ppt_arg located -> pt_ev_arg
 
 (* Proof-terms typing *)
 val process_pterm_cut             : prcut:('a -> form) -> pt_env -> 'a ppt_head -> pt_ev
@@ -114,7 +112,6 @@ type prept = [
 
 and prept_arg =  [
   | `F   of form
-  | `Mem of EcMemory.memory * [`Mem | `Distr]
   | `Mod of (EcPath.mpath * EcModules.module_sig)
   | `Sub of prept
   | `H_

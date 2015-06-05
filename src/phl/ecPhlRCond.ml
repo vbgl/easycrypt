@@ -24,7 +24,7 @@ module Low = struct
             Format.fprintf fmt
               "the %ith instruction is not a conditionnal" at_pos)
     in
-    let e = form_of_expr m e in
+    let e = form_of_expr (Some m) e in
     let e = if b then e else f_not e in
 
     (stmt head, e, stmt (head @ s @ tail))
@@ -32,8 +32,7 @@ module Low = struct
   (* ------------------------------------------------------------------ *)
   let t_hoare_rcond_r b at_pos tc =
     let hs = tc1_as_hoareS tc in
-    let m  = EcMemory.memory hs.hs_m in
-    let hd,e,s = gen_rcond !!tc b m at_pos hs.hs_s in
+    let hd,e,s = gen_rcond !!tc b hs.hs_m at_pos hs.hs_s in
     let concl1  = f_hoareS_r { hs with hs_s = hd; hs_po = e } in
     let concl2  = f_hoareS_r { hs with hs_s = s } in
     FApi.xmutate1 tc `RCond [concl1; concl2]
@@ -41,8 +40,7 @@ module Low = struct
   (* ------------------------------------------------------------------ *)
   let t_bdhoare_rcond_r b at_pos tc =
     let bhs = tc1_as_bdhoareS tc in
-    let m  = EcMemory.memory bhs.bhs_m in
-    let hd,e,s = gen_rcond !!tc b m at_pos bhs.bhs_s in
+    let hd,e,s = gen_rcond !!tc b bhs.bhs_m at_pos bhs.bhs_s in
     let concl1  = f_hoareS bhs.bhs_m bhs.bhs_pr hd e in
     let concl2  = f_bdHoareS_r { bhs with bhs_s = s } in
     FApi.xmutate1 tc `RCond [concl1; concl2]
@@ -54,11 +52,11 @@ module Low = struct
       match side with
       | `Left  -> es.es_ml,es.es_mr, es.es_sl
       | `Right -> es.es_mr,es.es_ml, es.es_sr in
-    let hd,e,s = gen_rcond !!tc b EcFol.mhr at_pos s in
+    let hd,e,s = gen_rcond !!tc b (EcFol.mhr,snd m) at_pos s in
     let mo' = EcIdent.create "&m" in
     let s1 = Fsubst.f_subst_id in
-    let s1 = Fsubst.f_bind_mem s1 (EcMemory.memory m) EcFol.mhr in
-    let s1 = Fsubst.f_bind_mem s1 (EcMemory.memory mo) mo' in
+    let s1 = Fsubst.f_bind_mem s1 (EcMemory.memory m) (snd m) EcFol.mhr in
+    let s1 = Fsubst.f_bind_mem s1 (EcMemory.memory mo) (snd mo) mo' in
     let pre1 = Fsubst.f_subst s1 es.es_pr in
     let concl1 =
       f_forall_mems [mo', EcMemory.memtype mo]

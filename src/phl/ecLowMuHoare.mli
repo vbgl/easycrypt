@@ -5,7 +5,6 @@ open EcTypes
 open EcEnv
 open EcFol
 open EcModules
-open EcMemory
 
 (* -------------------------------------------------------------------- *)
 val lmd_app : (EcIdent.t * memtype) -> lmd_form -> lmd_form

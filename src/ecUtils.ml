@@ -149,6 +149,12 @@ let fst_map (f : 'a -> 'c) ((x, y) : 'a * 'b) =
 let snd_map (f : 'b -> 'c) ((x, y) : 'a * 'b) =
   (x, f y)
 
+let fst_app (f : 'a -> 'c) ((x, _y) : 'a * 'b) =
+  f x
+
+let snd_app (f : 'b -> 'c) ((_x, y) : 'a * 'b) =
+  f y
+
 let pair_equal tx ty (x1, y1) (x2, y2) =
   (tx x1 x2) && (ty y1 y2)
 

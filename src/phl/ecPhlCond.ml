@@ -68,13 +68,13 @@ let t_muhoare_cond pr1 po1 pr2 po2 tc =
 let t_hoare_cond tc =
   let hs = tc1_as_hoareS tc in
   let (e,_,_) = fst (tc1_first_if tc hs.hs_s) in
-  LowInternal.t_gen_cond None (form_of_expr (EcMemory.memory hs.hs_m) e) tc
+  LowInternal.t_gen_cond None (form_of_expr (Some hs.hs_m) e) tc
 
 (* -------------------------------------------------------------------- *)
 let t_bdhoare_cond tc =
   let bhs = tc1_as_bdhoareS tc in
   let (e,_,_) = fst (tc1_first_if tc bhs.bhs_s) in
-  LowInternal.t_gen_cond None (form_of_expr (EcMemory.memory bhs.bhs_m) e) tc
+  LowInternal.t_gen_cond None (form_of_expr (Some bhs.bhs_m) e) tc
 
 (* -------------------------------------------------------------------- *)
 let rec t_equiv_cond side tc =
@@ -87,17 +87,17 @@ let rec t_equiv_cond side tc =
         match s with
         | `Left ->
           let (e,_,_) = fst (tc1_first_if tc es.es_sl) in
-          form_of_expr (EcMemory.memory es.es_ml) e
+          form_of_expr (Some es.es_ml) e
         | `Right ->
           let (e,_,_) = fst (tc1_first_if tc es.es_sr) in
-          form_of_expr (EcMemory.memory es.es_mr) e
+          form_of_expr (Some es.es_mr) e
       in LowInternal.t_gen_cond side e tc
 
   | None ->
       let el,_,_ = fst (tc1_first_if tc es.es_sl) in
       let er,_,_ = fst (tc1_first_if tc es.es_sr) in
-      let el     = form_of_expr (EcMemory.memory es.es_ml) el in
-      let er     = form_of_expr (EcMemory.memory es.es_mr) er in
+      let el     = form_of_expr (Some es.es_ml) el in
+      let er     = form_of_expr (Some es.es_mr) er in
       let fiff   =
         f_forall_mems
           [es.es_ml;es.es_mr]
@@ -110,7 +110,8 @@ let rec t_equiv_cond side tc =
 
       let t_aux =
         let rwpt = { pt_head = PTLocal hiff;
-                     pt_args = [pamemory m1; pamemory m2; PASub None]; } in
+                     pt_args = [pamemory (m1,snd es.es_ml); pamemory (m2, snd es.es_mr); 
+                                PASub None]; } in
 
 
         FApi.t_seqs [t_intros_i [m1]    ; EcPhlSkip.t_skip;

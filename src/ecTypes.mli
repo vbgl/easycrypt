@@ -50,6 +50,7 @@ val ttuple  : ty list -> ty
 val tconstr : EcPath.path -> ty list -> ty
 val tfun    : ty -> ty -> ty
 val tglob   : EcPath.mpath -> ty 
+val tmem    : memtype -> ty
 
 (* -------------------------------------------------------------------- *)
 val tunit   : ty
@@ -62,6 +63,15 @@ val toarrow : ty list -> ty -> ty
 
 val flatten_ty : ty -> ty list
 
+val is_tmem : ty -> bool
+val destr_tmem : ty -> memtype
+
+val is_tdmem : ty -> bool
+val destr_tdmem : ty -> memtype
+
+
+val is_tlocalmem : ty -> bool
+val destr_tlocalmem : ty -> local_memtype
 (* -------------------------------------------------------------------- *)
 exception FoundUnivar
 

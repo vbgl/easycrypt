@@ -10,8 +10,8 @@ open EcLowPhlGoal
 let lmd_app (id,mt) ((id',mt'), body as f) =
    assert (EcMemory.mt_equal mt mt');
    if EcIdent.id_equal id id' then f
-   else
-     let body =  Fsubst.f_subst_mem id' id body in
+   else 
+     let body =  Fsubst.f_subst_mem id' mt id body in
      (id,mt), body
 
 (* -------------------------------------------------------------------- *)
@@ -103,10 +103,11 @@ let do_on_mu onld mu f =
 
   aux f
 
+
 (* -------------------------------------------------------------------- *)
-let mu_restr mu pos b f =
+let mu_restr mu pos b f = 
   let lmd_restr ((m,mt), f) =
-    let b = form_of_expr m b in
+    let b = form_of_expr (Some (m,mt)) b in
     let b = if pos then b else f_not b in
     (m,mt), f_real_mul (f_real_of_bool b) f in
   do_on_mu lmd_restr mu f
@@ -122,7 +123,7 @@ exception NoWpMuhoare
 let rec pt_muhoare_i env m i f =
   match i.i_node with
   | Sasgn (lv,e) ->
-    let let1 = lv_subst m lv (form_of_expr m e) in
+    let let1 = lv_subst m lv (form_of_expr (Some m) e) in
     mk_let_of_lv_substs env ([let1],f)
   | Srnd (lv,d) ->
     let ty_distr = d.e_ty in
@@ -130,12 +131,12 @@ let rec pt_muhoare_i env m i f =
     let x_id  = EcIdent.create (symbol_of_lv lv ^ "_") in
     let x = f_local x_id ty in
     let fun_ = f_lambda [x_id, GTty ty] (subst_form_lv env m lv x f) in
-    f_muf ty fun_ (form_of_expr m d)
+    f_muf ty fun_ (form_of_expr (Some m) d)
 
   | Sif(b,s1,s2) ->
     let f1 = pt_muhoare env m s1 f in
     let f2 = pt_muhoare env m s2 f in
-    let b = form_of_expr m b in
+    let b = form_of_expr (Some m) b in
     let rb = f_real_of_bool b in
     let rnb = f_real_of_bool (f_not b) in
     f_real_add (f_real_mul rb f1) (f_real_mul rnb f2)
@@ -146,14 +147,14 @@ and pt_muhoare env m s f =
 
 (* -------------------------------------------------------------------- *)
 let wp_muhoare env s ((mu,mt), po) =
-  let onld ((m,mt),f) = (m,mt), pt_muhoare env m s f in
+  let onld ((m,mt),f) = (m,mt), pt_muhoare env (m,mt) s f in
   ((mu,mt), do_on_mu onld mu po)
 
 (* -------------------------------------------------------------------- *)
-let wp_ret env mt' pvres e ((mu,_), po) =
-  let onld ((m,_), f) =
-    let let1 = lv_subst m (LvVar (pvres, e.e_ty)) (form_of_expr m e) in
-    (m,mt'), mk_let_of_lv_substs env ([let1],f) in
+let wp_ret env mt' pvres e ((mu,_), po) = 
+  let onld (m, f) = 
+    let let1 = lv_subst m (LvVar (pvres, e.e_ty)) (form_of_expr (Some m) e) in
+    (fst m,mt'), mk_let_of_lv_substs env ([let1],f) in
   (mu,mt'), do_on_mu onld mu po
 
 (* -------------------------------------------------------------------- *)
@@ -162,10 +163,10 @@ let wp_pre env mt' f fs ((mu,_), pr) =
     match fs.fs_anames with
     | None -> fun ((m,_), f) -> ((m,mt'), f)
     | Some lv ->
-      fun ((m,_), f1) ->
-        let v = List.map (fun v -> f_pvloc f v m) lv in
+      fun ((m,mt), f1) ->
+        let v = List.map (fun v -> f_pvloc f v (f_mem (m,mt))) lv in
         let tv = (f_tuple v) in
-        let let1 = lv_subst m (LvVar (pv_arg f, tv.f_ty)) tv in
+        let let1 = lv_subst (m,mt) (LvVar (pv_arg f, tv.f_ty)) tv in
         (m, mt'), mk_let_of_lv_substs env ([let1],f1) in
   (mu,mt'), do_on_mu onld mu pr
 

@@ -38,8 +38,8 @@ let wp_equiv_disj_rnd_r side tc =
   let x_id = EcIdent.create (symbol_of_lv lv) in
   let x    = f_local x_id ty_distr in
 
-  let distr = EcFol.form_of_expr (EcMemory.memory m) distr in
-  let post  = subst_form_lv env (EcMemory.memory m) lv x es.es_po in
+  let distr = EcFol.form_of_expr (Some m) distr in
+  let post  = subst_form_lv env m lv x es.es_po in
   let post  = f_imp (f_in_supp x distr) post in
   let post  = f_forall_simpl [(x_id,GTty ty_distr)] post in
   let post  = f_anda (f_eq (f_weight ty_distr distr) f_r1) post in
@@ -62,8 +62,8 @@ let wp_equiv_rnd_r bij tc =
   and xR_id = EcIdent.create (symbol_of_lv lvR ^ "R") in
   let xL = f_local xL_id tyL in
   let xR = f_local xR_id tyR in
-  let muL = EcFol.form_of_expr (EcMemory.memory es.es_ml) muL in
-  let muR = EcFol.form_of_expr (EcMemory.memory es.es_mr) muR in
+  let muL = EcFol.form_of_expr (Some es.es_ml) muL in
+  let muR = EcFol.form_of_expr (Some es.es_mr) muR in
 
   let tf, tfinv =
     match bij with
@@ -89,8 +89,8 @@ let wp_equiv_rnd_r bij tc =
   let cond_fbij_inv  = f_eq xR (f (finv xR)) in
 
   let post = es.es_po in
-  let post = subst_form_lv env (EcMemory.memory es.es_ml) lvL xL     post in
-  let post = subst_form_lv env (EcMemory.memory es.es_mr) lvR (f xL) post in
+  let post = subst_form_lv env es.es_ml lvL xL     post in
+  let post = subst_form_lv env es.es_mr lvR (f xL) post in
 
   let cond1 = f_imp (f_in_supp xR muR) cond_fbij_inv in
   let cond2 = f_imp (f_in_supp xR muR) (f_eq (f_mu_x muR xR) (f_mu_x muL (finv xR))) in
@@ -114,8 +114,8 @@ let t_hoare_rnd_r tc =
   let ty_distr = proj_distr_ty env (e_ty distr) in
   let x_id = EcIdent.create (symbol_of_lv lv) in
   let x = f_local x_id ty_distr in
-  let distr = EcFol.form_of_expr (EcMemory.memory hs.hs_m) distr in
-  let post = subst_form_lv env (EcMemory.memory hs.hs_m) lv x hs.hs_po in
+  let distr = EcFol.form_of_expr (Some hs.hs_m) distr in
+  let post = subst_form_lv env hs.hs_m lv x hs.hs_po in
   let post = f_imp (f_in_supp x distr) post in
   let post = f_forall_simpl [(x_id,GTty ty_distr)] post in
   let concl = f_hoareS_r {hs with hs_s=s; hs_po=post} in
@@ -140,12 +140,12 @@ let t_bdhoare_rnd_r tac_info tc =
   let bhs = tc1_as_bdhoareS tc in
   let (lv,distr),s = tc1_last_rnd tc bhs.bhs_s in
   let ty_distr = proj_distr_ty env (e_ty distr) in
-  let distr = EcFol.form_of_expr (EcMemory.memory bhs.bhs_m) distr in
+  let distr = EcFol.form_of_expr (Some bhs.bhs_m) distr in
   let m = fst bhs.bhs_m in
   let mk_event_cond event =
     let v_id = EcIdent.create "v" in
     let v = f_local v_id ty_distr in
-    let post_v = subst_form_lv env (EcMemory.memory bhs.bhs_m) lv v bhs.bhs_po in
+    let post_v = subst_form_lv env bhs.bhs_m lv v bhs.bhs_po in
     let event_v = f_app event [v] tbool in
     let v_in_supp = f_in_supp v distr in
     f_forall_simpl [v_id,GTty ty_distr]
@@ -162,7 +162,7 @@ let t_bdhoare_rnd_r tac_info tc =
     | FHeq -> f_eq
   in
   let is_post_indep =
-    let fv = EcPV.PV.fv env m bhs.bhs_po in
+    let fv = EcPV.PV.fv env (f_mem bhs.bhs_m) bhs.bhs_po in
     match lv with
       | LvVar (x,_) -> not (EcPV.PV.mem_pv env x fv)
       | LvTuple pvs ->
@@ -170,7 +170,7 @@ let t_bdhoare_rnd_r tac_info tc =
       | LvMap(_, x,_,_) -> not (EcPV.PV.mem_pv env x fv)
   in
   let is_bd_indep =
-    let fv_bd = PV.fv env mhr bhs.bhs_bd in
+    let fv_bd = PV.fv env (f_mem bhs.bhs_m) bhs.bhs_bd in
     let modif_s = s_write env s in
     PV.indep env modif_s fv_bd
   in

@@ -58,14 +58,11 @@ and pt_head =
 
 and pt_arg =
 | PAFormula of EcFol.form
-| PAMemory  of EcMemory.memory * [`Mem | `Distr ]
 | PAModule  of (EcPath.mpath * EcModules.module_sig)
 | PASub     of proofterm option
 
 (* -------------------------------------------------------------------- *)
 let paformula x = PAFormula x
-let pamemory  x = PAMemory  (x, `Mem)
-let pamemdistr x = PAMemory  (x, `Distr)
 let pamodule  x = PAModule  x
 
 let paglobal p tys =
@@ -74,6 +71,7 @@ let paglobal p tys =
 let palocal x =
   PASub (Some { pt_head = PTLocal x; pt_args = []; })
 
+let pamemory mmt = PAFormula (f_mem mmt)
 (* -------------------------------------------------------------------- *)
 type rwproofterm = {
   rpt_proof : proofterm;

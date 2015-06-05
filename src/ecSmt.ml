@@ -434,7 +434,6 @@ let trans_binding genv lenv (x, xty) =
   let wty = 
     match xty with
     | GTty ty -> trans_ty (genv, lenv) ty
-    | GTmem (_, `Mem) -> ty_mem
     | _ -> raise CanNotTranslate in
   let wvs = WTerm.create_vsymbol (preid x) wty in
   ({ lenv with le_lv = Mid.add x wvs lenv.le_lv }, wvs)
@@ -700,7 +699,7 @@ and trans_pvar ((genv, _) as env) pv ty mem =
         genv.te_task <- WTask.add_param_decl genv.te_task ls;
         Hx.add genv.te_xpath xp ls; ls
 
-  in WTerm.t_app_infer ls [trans_mem env mem]
+  in WTerm.t_app_infer ls [trans_form env mem]
 
 (* -------------------------------------------------------------------- *)
 and trans_glob ((genv, _) as env) mp mem = 
@@ -710,7 +709,7 @@ and trans_glob ((genv, _) as env) mp mem =
       assert (mp.EcPath.m_args = []);
 
       let id   = EcPath.mget_ident mp in 
-      let wmem = trans_mem env mem in 
+      let wmem = trans_form env mem in 
       let w3op = 
         match Hid.find_opt genv.te_lc id with
         | Some w3op -> w3op
@@ -826,7 +825,7 @@ and trans_fix (genv, lenv) o =
       | OPB_Leaf (locals, e) ->
           let ctors = List.rev ctors in
           let lenv, cvs = List.map_fold (trans_lvars genv) lenv locals in
-          let fe = EcCoreFol.form_of_expr EcCoreFol.mhr e in
+          let fe = EcCoreFol.form_of_expr None e in
           
           let we = trans_form (genv, lenv) fe in
 
@@ -903,7 +902,7 @@ and create_op ?(body = false) (genv : tenv) p =
     let decl =
       match body, op.op_kind with
       | true, OB_oper (Some (OP_Plain body)) ->
-          let body = EcFol.form_of_expr EcFol.mhr body in
+          let body = EcFol.form_of_expr None body in
           let wparams, wbody = trans_body (genv, lenv) wdom wcodom body in
           WDecl.create_logic_decl [WDecl.make_ls_defn ls wparams wbody]
 
@@ -966,18 +965,6 @@ let trans_hyp ((genv, _) as env) (x, ty) =
   | LD_hyp f -> 
       (* FIXME: Selection of hypothesis *)
       add_axiom env (preid x) f
-
-  | LD_mem    _ -> 
-      let wcodom = Some ty_mem in
-      let ls =  WTerm.create_lsymbol (preid x) [] wcodom in
-      let w3op = {
-        w3op_fo = `LDecl ls;
-        w3op_ta = (fun _ -> ([], wcodom));
-        w3op_ho = `HO_TODO (EcIdent.name x, [], wcodom);
-      } in
-        
-      genv.te_task <- WTask.add_param_decl genv.te_task ls;
-      Hid.add genv.te_lc x w3op
 
   | LD_modty  _ -> ()
 
@@ -1206,7 +1193,7 @@ module Frequency = struct
       end
     | LD_hyp f       -> 
       r_union rs (f_ops unwanted_op f)
-    | LD_mem _ | LD_modty _ | LD_abs_st _ -> 
+    | LD_modty _ | LD_abs_st _ -> 
       rs
 
   let f_ops_hyps unwanted_op = List.fold_left (f_ops_hyp unwanted_op)
@@ -1219,10 +1206,10 @@ module Frequency = struct
     | Some {op_kind = OB_pred (Some f) } -> 
       r_union rs (f_ops unwanted_op f)
     | Some {op_kind = OB_oper (Some (OP_Plain e)) } -> 
-      r_union rs (f_ops unwanted_op (form_of_expr mhr e))
+      r_union rs (f_ops unwanted_op (form_of_expr None e))
     | Some {op_kind = OB_oper (Some (OP_Fix e)) } ->
       let rec aux rs = function
-        | OPB_Leaf (_, e) -> r_union rs (f_ops unwanted_op (form_of_expr mhr e))
+        | OPB_Leaf (_, e) -> r_union rs (f_ops unwanted_op (form_of_expr None e))
         | OPB_Branch bs -> Parray.fold_left (fun rs b -> aux rs b.opb_sub) rs bs
       in
       aux rs e.opf_branches

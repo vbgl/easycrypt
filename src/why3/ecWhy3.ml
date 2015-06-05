@@ -1057,7 +1057,6 @@ let trans_pvloc env xp ty =
 
 let trans_pv env pv ty mem =
   let xp = pv.pv_name in
-  let mem = trans_lv env mem in
   let ty = trans_ty env ty in
   let v = 
     if is_loc pv then trans_pvloc env xp ty 
@@ -1196,13 +1195,9 @@ let merge_branches lb =
 
 let trans_gty env gty =
   match gty with
-  | GTty ty   -> env, trans_ty env ty
-  | GTmodty _ -> raise (CannotTranslate "binding of module")
-  | GTmem   (mt,k) -> 
-    assert (k = `Mem);
-    match mt with
-    | None -> env, ty_mem 
-    | Some lmt ->
+  | GTty ty   -> 
+    begin match ty.ty_node with
+    | Tmem (Some lmt) ->
       let xp = EcMemory.lmt_xpath lmt in 
       let tparams = List.map (fun _ -> ty_mod) xp.EcPath.x_top.EcPath.m_args in
       let xp = rm_xp_args xp in
@@ -1225,6 +1220,9 @@ let trans_gty env gty =
               logic_task = add_decl_with_tuples env.logic_task decl } in
       let env = Msym.fold add (EcMemory.lmt_bindings lmt) env in
       env, ty_mem
+    | _ -> env, trans_ty env ty
+    end
+  | GTmodty _ -> raise (CannotTranslate "binding of module")
 
 let trans_gtys env gtys =
   List.map_fold trans_gty env gtys
@@ -1385,12 +1383,13 @@ let trans_form env f =
 
 
     | Fpvar(pv,m) ->
+        let m = trans_form m in
         let pv = trans_pv !env pv f.f_ty m in
         pv
 
     | Fglob(mp,m) ->
       let mo = trans_glob !env mp in
-      let mem = trans_lv !env m in
+      let mem = trans_form m in
       get_var mo mem
 
     | Fpr pr ->
@@ -1467,7 +1466,7 @@ let trans_oper_body env path wparams ty body =
   let body = 
     match body with
     | OB_oper None -> None
-    | OB_oper (Some (OP_Plain  o))  -> Some (`Plain (EcCoreFol.form_of_expr EcCoreFol.mhr o))
+    | OB_oper (Some (OP_Plain  o))  -> Some (`Plain (EcCoreFol.form_of_expr None o))
     | OB_oper (Some (OP_Fix    o))  -> Some (`Fix o)
     | OB_oper (Some (OP_Constr _))  -> assert false
     | OB_oper (Some (OP_Record _))  -> assert false
@@ -1534,7 +1533,7 @@ let trans_oper_body env path wparams ty body =
                     env locals
                 in
 
-                let env, rb1, e = trans_form env (EcCoreFol.form_of_expr EcCoreFol.mhr e) in
+                let env, rb1, e = trans_form env (EcCoreFol.form_of_expr None e) in
 
                 let ptn =
                   let for1 (cl, vs) pty =
@@ -1731,7 +1730,7 @@ let check_goal ?notify me_of_mt env pi (hyps, concl) =
     try 
       match ld with
       | LD_var (ty,body) ->
-        let codom = trans_ty !env ty in
+        let env0, codom = trans_gty !env (GTty ty) in
         let pid = preid id in
         let ls = Term.create_fsymbol pid [] codom in
         let decl = match body with
@@ -1741,7 +1740,7 @@ let check_goal ?notify me_of_mt env pi (hyps, concl) =
             env := nenv;
             Decl.create_logic_decl [Decl.make_ls_defn ls [] (force_bool e)] in
         env := 
-          { !env with env_id = Mid.add id (t_app ls [] codom) !env.env_id;
+          { env0 with env_id = Mid.add id (t_app ls [] codom) !env.env_id;
             logic_task = add_decl_with_tuples !env.logic_task decl }
           
       | LD_hyp f ->
@@ -1752,7 +1751,7 @@ let check_goal ?notify me_of_mt env pi (hyps, concl) =
         env :=
           { !env with logic_task = add_decl_with_tuples !env.logic_task decl }
           
-      | LD_mem (mt,`Mem) ->
+(*      | LD_mem (mt,`Mem) ->
         let env0, _ = trans_gty !env (gtmem mt) in 
         let ls = Term.create_fsymbol (preid id) [] ty_mem in
         let decl = Decl.create_param_decl ls in
@@ -1760,7 +1759,7 @@ let check_goal ?notify me_of_mt env pi (hyps, concl) =
           { env0 with env_id = Mid.add id (t_app ls [] ty_mem) env0.env_id;
             logic_task = add_decl_with_tuples env0.logic_task decl }
 
-      | LD_mem (_mt,`Distr) -> assert false 
+      | LD_mem (_mt,`Distr) -> assert false *)
 
       | LD_modty (mt,restr) ->
         env := add_abs_mod me_of_mt !env id mt restr

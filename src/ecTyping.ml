@@ -59,6 +59,7 @@ type tyerror =
 | FreeTypeVariables
 | TypeVarNotAllowed
 | OnlyMonoTypeAllowed
+| TmemNotAllowed         of ty
 | UnboundTypeParameter   of symbol
 | UnknownTypeName        of qsymbol
 | UnknownTypeClass       of qsymbol
@@ -157,6 +158,10 @@ let pp_tyerror env fmt error =
       msg "%s, %s"
         "only monomorphic types are allowed"
         "you may have to add type annotations"
+
+  | TmemNotAllowed ty ->
+    msg "type of variable should not depend of memory %a"
+      pp_type ty
 
   | UnboundTypeParameter x ->
       msg "unbound type parameter: %s" x
@@ -476,6 +481,24 @@ let (_i_inuse, s_inuse, se_inuse) =
   in
     (i_inuse empty_uses, s_inuse empty_uses, se_inuse)
 
+
+(* -------------------------------------------------------------------- *)
+
+let rec as_tmem env ty = 
+  match ty.ty_node with
+  | Tmem _ -> true
+  | Tconstr(p,_) ->
+    let inp = 
+      let td = EcEnv.Ty.by_path p env in
+      match td.tyd_type with
+      | `Concrete ty   -> as_tmem env ty
+      | `Abstract _    -> false
+      | `Datatype tyd  ->
+        List.exists (snd_app (List.exists (as_tmem env))) tyd.tydt_ctors
+      | `Record (_, l) -> List.exists (snd_app (as_tmem env)) l in
+    inp || ty_sub_exists (as_tmem env) ty
+  | _ -> ty_sub_exists (as_tmem env) ty
+    
 (* -------------------------------------------------------------------- *)
 let select_local env (qs,s) = 
   if   qs = []
@@ -512,7 +535,7 @@ module OpSelect = struct
   type opctor = EcPath.path * EcTypes.ty list
 
   type 'a ctor = {
-    ct_pv : EcMemory.memory option -> pvctor ctargs  -> 'a;
+    ct_pv : form option -> pvctor ctargs  -> 'a;
     ct_op : opctor ctargs -> 'a;
     ct_lc : EcIdent.ident ctargs -> 'a;
   }
@@ -575,7 +598,8 @@ let gen_select_op
         | `Expr `InProc | `Form ->
             match EcEnv.Memory.get_active env, actonly with
             | None, true -> (None, [])
-            | me  , _    -> (  me, select_pv env me name ue tvi psig)
+            | me  , _    -> 
+              (me, select_pv env (omap destr_local me) name ue tvi psig)
       in
         (List.map (fpv me) pvs) @ (List.map fop ops)
 
@@ -1421,7 +1445,7 @@ let transexp (env : EcEnv.env) mode ue e =
           match ty.ty_node with
           | Tglob mp -> mp 
           | _ -> tyerror x.pl_loc env (UnknownProj (unloc x)) in
-        let f = NormMp.norm_glob env me mp in
+        let f = NormMp.norm_glob env (f_local me (tmem None)) mp in
         let lf = 
           match f.f_node with
           | Ftuple l -> l 
@@ -1956,9 +1980,11 @@ and fundef_add_symbol env symbols x =  (* for locals dup check *)
 
 and fundef_check_type subst_uni env (ty, loc) = 
   let ty = subst_uni ty in
-    if not (EcUid.Suid.is_empty (Tuni.fv ty)) then
-      tyerror loc env OnlyMonoTypeAllowed;
-    ty
+  if not (EcUid.Suid.is_empty (Tuni.fv ty)) then
+    tyerror loc env OnlyMonoTypeAllowed;
+  if as_tmem env ty then 
+    tyerror loc env (TmemNotAllowed ty);
+  ty
 
 and fundef_check_decl subst_uni env (decl, loc) =
   { decl with
@@ -2062,6 +2088,7 @@ and transinstr (env : EcEnv.env) ue (i : pinstr) =
 (* -------------------------------------------------------------------- *)
 and trans_pv env { pl_desc = x; pl_loc = loc } = 
   let side = EcEnv.Memory.get_active env in
+  let side = omap destr_local side in
   match EcEnv.Var.lookup_progvar_opt ?side x env with
   | None -> tyerror loc env (UnknownModVar x)
   | Some(pv,xty) -> 
@@ -2157,7 +2184,7 @@ let trans_form_or_pattern env (ps, ue) pf tt =
         let me =  
           match EcEnv.Memory.current env with
           | None -> tyerror f.pl_loc env NoActiveMemory
-          | Some me -> EcMemory.memory me
+          | Some me -> me
         in
           f_glob mp me
       
@@ -2199,7 +2226,8 @@ let trans_form_or_pattern env (ps, ue) pf tt =
 
     | PFeqveq (xs, om) ->
         let lookup me x =
-          match EcEnv.Var.lookup_progvar_opt ~side:me (unloc x) env with
+          let idme = destr_local me in
+          match EcEnv.Var.lookup_progvar_opt ~side:idme (unloc x) env with
           | None -> tyerror x.pl_loc env (UnknownVarOrOp (unloc x, []))
           | Some (x, ty) -> 
               match x with
@@ -2213,7 +2241,7 @@ let trans_form_or_pattern env (ps, ue) pf tt =
         let check_mem loc me = 
           match EcEnv.Memory.byid me env with
           | None -> tyerror loc env (UnknownMemName (0, EcIdent.name me))
-          | Some _ -> ()
+          | Some (id,mt) -> f_local id (tmem mt)
         in
 
         let qual (mq : pmsymbol option) (x : pqsymbol) =
@@ -2224,23 +2252,24 @@ let trans_form_or_pattern env (ps, ue) pf tt =
               { x with pl_desc = ((List.map (unloc |- fst) qs)@nm, name) }
         in
 
-         let do1 = function
+        let mleft  = check_mem f.pl_loc EcFol.mleft in
+        let mright = check_mem f.pl_loc EcFol.mright in
+        let do1 = function
           | GVvar x ->
-              let x1 = lookup EcFol.mleft  (qual (om |> omap fst) x) in
-              let x2 = lookup EcFol.mright (qual (om |> omap snd) x) in
-                unify_or_fail env ue x.pl_loc ~expct:x1.f_ty x2.f_ty;
-                f_eq x1 x2
-
+            let x1 = lookup mleft  (qual (om |> omap fst) x) in
+            let x2 = lookup mright (qual (om |> omap snd) x) in
+            unify_or_fail env ue x.pl_loc ~expct:x1.f_ty x2.f_ty;
+            f_eq x1 x2
+              
           | GVglob gp ->
-              let (mp, _) = trans_msymbol env gp in
-                let x1 = f_glob mp EcFol.mleft in
-                let x2 = f_glob mp EcFol.mright in
-                  unify_or_fail env ue gp.pl_loc ~expct:x1.f_ty x2.f_ty;
-                  f_eq x1 x2
+            let (mp, _) = trans_msymbol env gp in
+            let x1 = f_glob mp mleft in
+            let x2 = f_glob mp mright in
+            unify_or_fail env ue gp.pl_loc ~expct:x1.f_ty x2.f_ty;
+            f_eq x1 x2
         in
-          check_mem f.pl_loc EcFol.mleft;
-          check_mem f.pl_loc EcFol.mright;
-          EcFol.f_ands (List.map do1 xs)
+
+        EcFol.f_ands (List.map do1 xs)
 
     | PFapp ({pl_desc = PFident ({ pl_desc = name; pl_loc = loc }, tvi)}, pes) ->
         let tvi  = tvi |> omap (transtvi env ue) in  
@@ -2324,7 +2353,7 @@ let trans_form_or_pattern env (ps, ue) pf tt =
           match ty.ty_node with
           | Tglob mp -> mp 
           | _ -> tyerror x.pl_loc env (UnknownProj (unloc x)) in
-        let f = NormMp.norm_glob env me mp in
+        let f = NormMp.norm_glob env (f_local me (tmem None)) mp in
         let lf = 
           match f.f_node with
           | Ftuple l -> l 

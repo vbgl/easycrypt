@@ -9,24 +9,29 @@ open EcCoreGoal
 open EcLowPhlGoal
 
 (*-------------------------------------------------------------------- *)
-let build_sym ml mr pr po =
+let build_sym (ml,mtl) (mr, mtr) =
+  (* FIXME *)
   let s = Fsubst.f_subst_id in
-  let s = Fsubst.f_bind_mem s ml mr in
-  let s = Fsubst.f_bind_mem s mr ml in
+  let s = Fsubst.f_bind_mem s ml mtl mr in
+  let s = Fsubst.f_bind_mem s mr mtr ml in
   let s = Fsubst.f_subst s in
-  (s pr, s po)
+  s 
 
 (*-------------------------------------------------------------------- *)
 let t_equivF_sym tc =
   let ef    = tc1_as_equivF tc in
-  let pr,po = build_sym mleft mright ef.ef_pr ef.ef_po in
+  let ((_,mtl1),(_,mtr1)), ((_,mtl2),(_,mtr2)) =
+    EcEnv.Fun.equivF_memenv ef.ef_fl ef.ef_fr (FApi.tc1_env tc) in
+  let pr = build_sym (mleft, mtl1) (mright, mtr1) ef.ef_pr in
+  let po = build_sym (mleft, mtl2) (mright, mtr2) ef.ef_po in
   let cond  = f_equivF pr ef.ef_fr ef.ef_fl po in
   FApi.xmutate1 tc `EquivSym [cond]
 
 (*-------------------------------------------------------------------- *)
 let t_equivS_sym tc =
   let es    = tc1_as_equivS tc in
-  let pr,po = build_sym (fst es.es_ml) (fst es.es_mr) es.es_pr es.es_po in
+  let s = build_sym es.es_ml es.es_mr in
+  let pr, po = s es.es_pr, s es.es_po in
   let cond  = f_equivS_r {
     es_ml = fst es.es_ml, snd es.es_mr;
     es_mr = fst es.es_mr, snd es.es_ml;

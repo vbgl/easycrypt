@@ -62,11 +62,11 @@ exception MEError of meerror
 module Memory : sig
   val all         : env -> memenv list
   val set_active  : memory -> env -> env
-  val get_active  : env -> memory option
+  val get_active  : env -> form option
 
   val byid        : memory -> env -> memenv option
   val lookup      : int -> symbol -> env -> memenv option
-  val current     : env -> memenv option
+  val current     : env -> form option
   val push        : memenv -> env -> env
   val push_all    : memenv list -> env -> env
   val push_active : memenv -> env -> env
@@ -74,7 +74,6 @@ end
 
 (* -------------------------------------------------------------------- *)
 module MemDistr : sig
-  val all         : env -> memenv list
   val set_active  : memory -> env -> env
   val get_active  : env -> memory option
 
@@ -244,7 +243,7 @@ module NormMp : sig
   val get_restr  : env -> mpath -> use
   val use_mem_xp : xpath -> use -> bool
   val use_mem_gl : mpath -> use -> bool
-  val norm_glob  : env -> EcMemory.memory -> mpath -> form
+  val norm_glob  : env -> form (* memory *) -> mpath -> form
   val norm_tglob : env -> mpath -> EcTypes.ty
   val tglob_reducible : env -> mpath -> bool
   val is_abstract_fun : xpath -> env -> bool

@@ -104,13 +104,13 @@ module LowInternal = struct
     in
 
     let for_lvars vs =
-        let fresh pv = EcIdent.create (EcIdent.name (id_of_pv pv mem)) in
+        let fresh pv = EcIdent.create (EcIdent.name (id_of_pv pv (fst mem))) in
 
         let newids  = List.map (fst_map fresh) vs in
         let bds     = newids @ bds in
         let astuple = f_tuple (List.map (curry f_local) newids) in
         let pre     = subst_form_lv env mem lv astuple pre  in
-        let e_form  = EcFol.form_of_expr mem e in
+        let e_form  = EcFol.form_of_expr (Some mem) e in
         let e_form  = subst_form_lv env mem lv astuple e_form in
 
         let assoc =
@@ -184,21 +184,21 @@ module LowInternal = struct
         sp_asgn m env lv e (bds, assoc, pre)
 
     | Sif (e, s1, s2) ->
-      let e_form = EcFol.form_of_expr m e in
-      let pre_t  = build_sp m bds assoc (f_and_simpl e_form pre) in
-      let pre_f  = build_sp m bds assoc (f_and_simpl (f_not e_form) pre) in
+      let e_form = EcFol.form_of_expr (Some m) e in
+      let pre_t  = build_sp (f_mem m) bds assoc (f_and_simpl e_form pre) in
+      let pre_f  = build_sp (f_mem m) bds assoc (f_and_simpl (f_not e_form) pre) in
       let stmt_t, (bds_t, assoc_t, pre_t) = sp_stmt m env (bds,assoc,pre_t) s1.s_node in
       let stmt_f, (bds_f, assoc_f, pre_f) = sp_stmt m env (bds,assoc,pre_f) s2.s_node in
       if not (List.is_empty stmt_t && List.is_empty stmt_f) then raise No_sp;
-      let sp_t = build_sp m bds_t assoc_t pre_t in
-      let sp_f = build_sp m bds_f assoc_f pre_f in
+      let sp_t = build_sp (f_mem m) bds_t assoc_t pre_t in
+      let sp_f = build_sp (f_mem m) bds_f assoc_f pre_f in
       ([], [], f_or_simpl sp_t sp_f)
 
     | _ -> raise No_sp
 
   let sp_stmt m env stmt f =
     let stmt, (bds, assoc, pre) = sp_stmt m env ([], [], f) stmt in
-    let pre = build_sp m bds assoc pre in
+    let pre = build_sp (f_mem m) bds assoc pre in
     stmt, pre
 end
 
@@ -235,7 +235,7 @@ let t_sp_side pos tc =
   | FhoareS hs, (None | Some (Single _)) ->
       let pos = pos |> omap as_single in
       let stmt1, stmt2 = s_split pos hs.hs_s in
-      let stmt1, hs_pr = LI.sp_stmt (EcMemory.memory hs.hs_m) env stmt1 hs.hs_pr in
+      let stmt1, hs_pr = LI.sp_stmt hs.hs_m env stmt1 hs.hs_pr in
       check_sp_progress pos stmt1;
       let subgoal = f_hoareS_r { hs with hs_s = stmt (stmt1@stmt2); hs_pr } in
       FApi.xmutate1 tc `Sp [subgoal]
@@ -245,11 +245,11 @@ let t_sp_side pos tc =
       let stmt1, stmt2 = s_split pos bhs.bhs_s in
       begin
         let write_set = EcPV.s_write env (EcModules.stmt stmt1) in
-        let read_set  = EcPV.PV.fv env (EcMemory.memory bhs.bhs_m) bhs.bhs_bd in
+        let read_set  = EcPV.PV.fv env (f_mem bhs.bhs_m) bhs.bhs_bd in
         if not (EcPV.PV.indep env write_set read_set) then
           tc_error !!tc "the bound should not be modified by the statement targeted by [sp]"
       end;
-      let stmt1, bhs_pr = LI.sp_stmt (EcMemory.memory bhs.bhs_m) env stmt1 bhs.bhs_pr in
+      let stmt1, bhs_pr = LI.sp_stmt bhs.bhs_m env stmt1 bhs.bhs_pr in
       check_sp_progress pos stmt1;
       let subgoal = f_bdHoareS_r {bhs with bhs_s = stmt (stmt1@stmt2); bhs_pr; } in
       FApi.xmutate1 tc `Sp [subgoal]
@@ -263,8 +263,8 @@ let t_sp_side pos tc =
       let stmtR1, stmtR2 = s_split posR es.es_sr in
 
       let         es_pr = es.es_pr in
-      let stmtL1, es_pr = LI.sp_stmt (EcMemory.memory es.es_ml) env stmtL1 es_pr in
-      let stmtR1, es_pr = LI.sp_stmt (EcMemory.memory es.es_mr) env stmtR1 es_pr in
+      let stmtL1, es_pr = LI.sp_stmt es.es_ml env stmtL1 es_pr in
+      let stmtR1, es_pr = LI.sp_stmt es.es_mr env stmtR1 es_pr in
 
       check_sp_progress ~side:`Left  pos stmtL1;
       check_sp_progress ~side:`Right pos stmtR1;
