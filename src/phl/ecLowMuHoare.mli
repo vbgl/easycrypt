@@ -11,8 +11,8 @@ val lmd_app : (EcIdent.t * memtype) -> lmd_form -> lmd_form
 val lmd_forall_imp : lmd_form -> lmd_form -> form
 
 (* -------------------------------------------------------------------- *)
-val oplus : ident -> ident -> ident -> form -> form
-val curly : expr -> lmd_form -> lmd_form -> lmd_form
+val oplus : memtype -> ident -> ident -> ident -> form -> form
+val curly : env -> expr -> lmd_form -> lmd_form -> lmd_form
 
 (* -------------------------------------------------------------------- *)
 exception NoWpMuhoare

@@ -57,9 +57,9 @@ let t_muhoare_cond pr1 po1 pr2 po2 tc =
     let _, po1 = EcLowMuHoare.lmd_app (mu1, mt) po1 in
     let _, po2 = EcLowMuHoare.lmd_app (mu2, mt) po2 in
     f_forall [(mu1,gtdistr mt); (mu2,gtdistr mt)]
-      (f_imp po1 (f_imp po2 (EcLowMuHoare.oplus mu mu1 mu2 po))) in
+      (f_imp po1 (f_imp po2 (EcLowMuHoare.oplus mt mu mu1 mu2 po))) in
   
-  let po = EcLowMuHoare.curly e pr1 pr2 in
+  let po = EcLowMuHoare.curly (FApi.tc1_env tc) e pr1 pr2 in
   let concl4 = f_muhoareS_r { muh with muh_s = s; muh_po = po } in
 
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3; concl4 ]

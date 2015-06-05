@@ -9,6 +9,14 @@ exception Unexpected
 let unexpected () = raise Unexpected
 
 (* -------------------------------------------------------------------- *)
+exception DestrError of string
+
+let destr_error e = raise (DestrError e)
+
+let is_from_destr dt f =
+  try ignore (dt f); true with DestrError _ -> false
+
+(* -------------------------------------------------------------------- *)
 type 'data cb = Cb : 'a * ('data -> 'a -> unit) -> 'data cb
 
 (* -------------------------------------------------------------------- *)

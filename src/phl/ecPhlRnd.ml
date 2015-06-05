@@ -33,7 +33,7 @@ let wp_equiv_disj_rnd_r side tc =
 
   (* FIXME: exception when not rnds found *)
   let (lv, distr), s = tc1_last_rnd tc s in
-  let ty_distr = proj_distr_ty env (e_ty distr) in
+  let ty_distr = EcUnify.destr_tdistr env (e_ty distr) in
 
   let x_id = EcIdent.create (symbol_of_lv lv) in
   let x    = f_local x_id ty_distr in
@@ -56,8 +56,8 @@ let wp_equiv_rnd_r bij tc =
   let es = tc1_as_equivS tc in
   let (lvL, muL), sl' = tc1_last_rnd tc es.es_sl in
   let (lvR, muR), sr' = tc1_last_rnd tc es.es_sr in
-  let tyL = proj_distr_ty env (e_ty muL) in
-  let tyR = proj_distr_ty env (e_ty muR) in
+  let tyL = EcUnify.destr_tdistr env (e_ty muL) in
+  let tyR = EcUnify.destr_tdistr env (e_ty muR) in
   let xL_id = EcIdent.create (symbol_of_lv lvL ^ "L")
   and xR_id = EcIdent.create (symbol_of_lv lvR ^ "R") in
   let xL = f_local xL_id tyL in
@@ -111,7 +111,7 @@ let t_hoare_rnd_r tc =
   let env = FApi.tc1_env tc in
   let hs = tc1_as_hoareS tc in
   let (lv, distr), s = tc1_last_rnd tc hs.hs_s in
-  let ty_distr = proj_distr_ty env (e_ty distr) in
+  let ty_distr = EcUnify.destr_tdistr env (e_ty distr) in
   let x_id = EcIdent.create (symbol_of_lv lv) in
   let x = f_local x_id ty_distr in
   let distr = EcFol.form_of_expr (Some hs.hs_m) distr in
@@ -139,7 +139,7 @@ let t_bdhoare_rnd_r tac_info tc =
   let env = FApi.tc1_env tc in
   let bhs = tc1_as_bdhoareS tc in
   let (lv,distr),s = tc1_last_rnd tc bhs.bhs_s in
-  let ty_distr = proj_distr_ty env (e_ty distr) in
+  let ty_distr = EcUnify.destr_tdistr env (e_ty distr) in
   let distr = EcFol.form_of_expr (Some bhs.bhs_m) distr in
   let m = fst bhs.bhs_m in
   let mk_event_cond event =

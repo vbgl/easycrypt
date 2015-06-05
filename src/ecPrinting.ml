@@ -1426,25 +1426,6 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         (pp_form ppe) hs.hs_pr
         (pp_form ppe) hs.hs_po
 
-  | Fintegr ig -> begin
-      let pp_body fmt ig =
-        let m, f = ig.ig_fo in
-        let ppe  = PPEnv.push_mem ppe ~active:true m in      
-        pp_form ppe fmt f in
-
-      match        
-        match EcEnv.MemDistr.get_active ppe.PPEnv.ppe_env with
-        | Some mu -> EcIdent.id_equal mu ig.ig_mu
-        | None    -> false
-      with
-      | true  ->
-          Format.fprintf fmt "$[@[<hov 2>%a@]]" pp_body ig
-
-      | false ->
-          Format.fprintf fmt "$[@[<hov 2>%a |@ %a@]]"
-            pp_body ig (pp_distr ppe) ig.ig_mu
-  end
-
   | FequivF eqv ->
       let ppe =
         PPEnv.create_and_push_mems
@@ -2115,14 +2096,15 @@ module PPGoal = struct
           PPEnv.add_mods ~force:true ppe [id] p
 
       | EcBaseLogic.LD_var (ty,_) -> 
+        (* FIXME this is boring to do all this check *)
         let ppe = PPEnv.add_local ~force:true ppe id in
-        if is_tmem ty then 
-          let mt = destr_tmem ty in
+        if EcUnify.is_tmem ppe.PPEnv.ppe_env ty then 
+          let mt = EcUnify.destr_tmem ppe.PPEnv.ppe_env ty in
           if mt <> None then PPEnv.create_and_push_mem ppe (id, EcMemory.lmt_xpath (oget mt))
           else ppe
-        else if is_tdmem ty then 
-          let mt = destr_tdmem ty in
-          if mt <> None then PPEnv.create_and_push_mem ppe (id, EcMemory.lmt_xpath (oget mt))
+        else if EcUnify.is_tdmem ppe.PPEnv.ppe_env ty then 
+          let mt =  EcUnify.destr_tdmem ppe.PPEnv.ppe_env ty in
+          if mt <> None then PPEnv.create_and_push_distr ppe (id, EcMemory.lmt_xpath (oget mt))
           else ppe
         else ppe
 

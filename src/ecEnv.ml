@@ -1163,127 +1163,6 @@ let ipath_of_xpath (p : xpath) =
 
   | _ -> None
 
-
-(* -------------------------------------------------------------------- *)
-type meerror =
-| UnknownMemory of [`Symbol of symbol | `Memory of memory | `MemDistr of memory]
-
-exception MEError of meerror
-
-(* -------------------------------------------------------------------- *)
-module Local = struct
-  type t = varbind
-
-  let bind_local name ty env =
-    let s = EcIdent.name name in
-    { env with
-      env_locals = MMsym.add s (name, ty) env.env_locals }
-      
-  let bind_locals bindings env = 
-    List.fold_left
-    (fun env (name, ty) -> bind_local name ty env)
-    env bindings    
-end
-
-module Memory = struct
-  let all env =
-    (* FIXME: we should normalize the type potentially *)
-    MMsym.fold (fun _ l all ->
-      List.fold_left (fun all (id,ty) ->
-        if is_tmem ty then (id, destr_tmem ty)::all else all) all l)  
-      env.env_locals []
-
-  let byid (me : memory) (env : env) =
-    let memories = MMsym.all (EcIdent.name me) env.env_locals in
-    let memories =
-      List.filter
-        (fun (id,ty) -> EcIdent.id_equal me id && is_tmem ty)
-        memories
-    in
-    match memories with
-    | []     -> None
-    | (m,ty) :: _ -> Some (m, destr_tmem ty)
-
-  let lookup (g : int) (me : symbol) (env : env) =
-    let mems = MMsym.all me env.env_locals in
-    let mems = List.filter (fun (_id,ty) -> is_tmem ty) mems in
-    try  
-      let id,ty = List.nth mems g in
-      Some(id, destr_tmem ty)
-    with Failure _ -> None
-
-  let set_active (me : memory) (env : env) =
-    match byid me env with
-    | None   -> raise (MEError (UnknownMemory (`Memory me)))
-    | Some (m,mt) -> { env with env_actmem = Some (f_local m (tmem mt)) }
-
-  let get_active (env : env) =
-    env.env_actmem
-
-  let current (env : env) = get_active env
-
-  let push ((id,mt): EcMemory.memenv) (env : env) =
-    Local.bind_local id (tmem mt) env 
-      
-  let push_all memenvs env =
-    List.fold_left
-      (fun env m -> push m env)
-      env memenvs
-
-  let push_active memenv env =
-    set_active (EcMemory.memory memenv)
-      (push memenv env)
-end
-
-(* -------------------------------------------------------------------- *)
-module MemDistr = struct
-
-  let byid (me : memory) (env : env) =
-    (* FIXME: we should check that m is realy a memory i.e check its type) *)
-    let memories = MMsym.all (EcIdent.name me) env.env_locals in
-    let memories =
-      List.filter
-        (fun (id,ty) -> EcIdent.id_equal me id && is_tdmem ty)
-        memories
-    in
-    match memories with
-    | []     -> None
-    | (m,ty) :: _ -> Some (m, destr_tdmem ty)
-      
-  let lookup (g : int) (me : symbol) (env : env) =
-    let mems = MMsym.all me env.env_locals in
-    let mems = List.filter (fun (_id,ty) -> is_tdmem ty) mems in
-    try  
-      let id,ty = List.nth mems g in
-      Some(id, destr_tdmem ty)
-    with Failure _ -> None  
-
-  let set_active (me : memory) (env : env) =
-    match byid me env with
-    | None   -> raise (MEError (UnknownMemory (`MemDistr me)))
-    | Some _ -> { env with env_actdistr = Some me }
-
-  let get_active (env : env) =
-    env.env_actdistr
-
-  let current (env : env) =
-    match env.env_actdistr with
-    | None    -> None
-    | Some me -> Some (oget (byid me env))
-
-  let push ((id,mt) : EcMemory.memenv) (env : env) =
-    Local.bind_local id (tdistr (tmem mt)) env 
-
-  let push_all memenvs env =
-    List.fold_left
-      (fun env m -> push m env)
-      env memenvs
-
-  let push_active memenv env =
-    set_active (EcMemory.memory memenv)
-      (push memenv env)
-end
-
 (* -------------------------------------------------------------------- *)
 let try_lf f =
   try  Some (f ())
@@ -1341,53 +1220,6 @@ module TypeClass = struct
 
   let get_instances env = env.env_tci
 end
-
-(* -------------------------------------------------------------------- *)
-module BaseRw = struct
-  type t = Sp.t 
-    
-  let by_path_opt (p: EcPath.path) (env:env) = 
-    let ip = IPPath p in
-    Mip.find_opt ip env.env_rwbase
-
-  let by_path (p:EcPath.path) env = 
-    match by_path_opt p env with
-    | None -> lookup_error (`Path p)
-    | Some obj -> obj
-
-  let lookup qname env =
-    let _ip, p = MC.lookup_rwbase qname env in
-    p, by_path p env
-
-  let lookup_opt name env =
-    try_lf (fun () -> lookup name env)   
-
-  let is_base name env = 
-    match lookup_opt name env with
-    | None -> false
-    | Some _ -> true
-
-  let bind name env = 
-    let p = EcPath.pqname (root env) name in
-    let env = MC.bind_rwbase name p env in
-    let ip = IPPath p in
-    { env with 
-      env_rwbase = Mip.add ip Sp.empty env.env_rwbase;
-      env_item   = CTh_baserw name :: env.env_item
-    }
-
-  let bind_addrw p l env =
-    { env with
-      env_rwbase = 
-        Mip.change 
-          (omap (fun s -> List.fold_left (fun s r -> Sp.add r s) s l)) 
-          (IPPath p)
-          env.env_rwbase;
-      env_item = CTh_addrw(p,l) :: env.env_item
-    }
-    
-end
-
 (* -------------------------------------------------------------------- *)
 module Ty = struct
   type t = EcDecl.tydecl
@@ -1488,6 +1320,180 @@ module Ty = struct
           env_rb   = rb @ env.env_rb;
           env_item = CTh_type (name, ty) :: env.env_item; }
 end
+
+
+
+(* -------------------------------------------------------------------- *)
+module Local = struct
+  type t = varbind
+
+  let bind_local name ty env =
+    let s = EcIdent.name name in
+    { env with
+      env_locals = MMsym.add s (name, ty) env.env_locals }
+      
+  let bind_locals bindings env = 
+    List.fold_left
+    (fun env (name, ty) -> bind_local name ty env)
+    env bindings    
+end
+
+(* -------------------------------------------------------------------- *)
+type meerror =
+| UnknownMemory of [`Symbol of symbol | `Memory of memory | `MemDistr of memory]
+
+exception MEError of meerror
+
+
+module Memory = struct
+
+  let all env =
+    MMsym.fold (fun _ l all ->
+      List.fold_left (fun all (id,ty) ->
+        let ty = Ty.hnorm ty env in
+        if is_tmem ty then (id, destr_tmem ty)::all 
+        else all) all l)  
+      env.env_locals []
+
+  let byid (me : memory) (env : env) =
+    let memories = MMsym.all (EcIdent.name me) env.env_locals in
+    let memories =
+      List.filter
+        (fun (id,ty) -> 
+          EcIdent.id_equal me id && is_tmem (Ty.hnorm ty env))
+        memories
+    in
+    match memories with
+    | []     -> None
+    | (m,ty) :: _ -> Some (m, destr_tmem (Ty.hnorm ty env))
+
+  let lookup (g : int) (me : symbol) (env : env) =
+    let mems = MMsym.all me env.env_locals in
+    let mems = List.filter (fun (_id,ty) -> is_tmem (Ty.hnorm ty env)) mems in
+    try  
+      let id,ty = List.nth mems g in
+      Some(id, destr_tmem (Ty.hnorm ty env))
+    with Failure _ -> None
+
+  let set_active (me : memory) (env : env) =
+    match byid me env with
+    | None   -> raise (MEError (UnknownMemory (`Memory me)))
+    | Some (m,mt) -> { env with env_actmem = Some (f_local m (tmem mt)) }
+
+  let get_active (env : env) =
+    env.env_actmem
+
+  let current (env : env) = get_active env
+
+  let push ((id,mt): EcMemory.memenv) (env : env) =
+    Local.bind_local id (tmem mt) env 
+      
+  let push_all memenvs env =
+    List.fold_left
+      (fun env m -> push m env)
+      env memenvs
+
+  let push_active memenv env =
+    set_active (EcMemory.memory memenv)
+      (push memenv env)
+end
+
+(* -------------------------------------------------------------------- *)
+module MemDistr = struct
+
+  let byid (me : memory) (env : env) =
+    (* FIXME: we should check that m is realy a memory i.e check its type) *)
+    let memories = MMsym.all (EcIdent.name me) env.env_locals in
+    let memories =
+      List.filter
+        (fun (id,ty) -> EcIdent.id_equal me id && is_tdmem (Ty.hnorm ty env))
+        memories
+    in
+    match memories with
+    | []     -> None
+    | (m,ty) :: _ -> Some (m, destr_tdmem (Ty.hnorm ty env))
+      
+  let lookup (g : int) (me : symbol) (env : env) =
+    let mems = MMsym.all me env.env_locals in
+    let mems = List.filter (fun (_id,ty) -> is_tdmem (Ty.hnorm ty env)) mems in
+    try  
+      let id,ty = List.nth mems g in
+      Some(id, destr_tdmem (Ty.hnorm ty env))
+    with Failure _ -> None  
+
+  let set_active (me : memory) (env : env) =
+    match byid me env with
+    | None   -> raise (MEError (UnknownMemory (`MemDistr me)))
+    | Some _ -> { env with env_actdistr = Some me }
+
+  let get_active (env : env) =
+    env.env_actdistr
+
+  let current (env : env) =
+    match env.env_actdistr with
+    | None    -> None
+    | Some me -> Some (oget (byid me env))
+
+  let push ((id,mt) : EcMemory.memenv) (env : env) =
+    Local.bind_local id (tdistr (tmem mt)) env 
+
+  let push_all memenvs env =
+    List.fold_left
+      (fun env m -> push m env)
+      env memenvs
+
+  let push_active memenv env =
+    set_active (EcMemory.memory memenv)
+      (push memenv env)
+end
+
+
+(* -------------------------------------------------------------------- *)
+module BaseRw = struct
+  type t = Sp.t 
+    
+  let by_path_opt (p: EcPath.path) (env:env) = 
+    let ip = IPPath p in
+    Mip.find_opt ip env.env_rwbase
+
+  let by_path (p:EcPath.path) env = 
+    match by_path_opt p env with
+    | None -> lookup_error (`Path p)
+    | Some obj -> obj
+
+  let lookup qname env =
+    let _ip, p = MC.lookup_rwbase qname env in
+    p, by_path p env
+
+  let lookup_opt name env =
+    try_lf (fun () -> lookup name env)   
+
+  let is_base name env = 
+    match lookup_opt name env with
+    | None -> false
+    | Some _ -> true
+
+  let bind name env = 
+    let p = EcPath.pqname (root env) name in
+    let env = MC.bind_rwbase name p env in
+    let ip = IPPath p in
+    { env with 
+      env_rwbase = Mip.add ip Sp.empty env.env_rwbase;
+      env_item   = CTh_baserw name :: env.env_item
+    }
+
+  let bind_addrw p l env =
+    { env with
+      env_rwbase = 
+        Mip.change 
+          (omap (fun s -> List.fold_left (fun s r -> Sp.add r s) s l)) 
+          (IPPath p)
+          env.env_rwbase;
+      env_item = CTh_addrw(p,l) :: env.env_item
+    }
+    
+end
+
 
 
 (* -------------------------------------------------------------------- *)

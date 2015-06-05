@@ -95,7 +95,7 @@ let alias_stmt env id (pf, _) me i =
     let (me, pv) = dopv ty in
     (me, [i_asgn (LvVar (pv, ty), e); i_asgn (lv, e_var pv ty)])
   | Srnd (lv, e) ->
-    let ty       = proj_distr_ty env e.e_ty in
+    let ty       = EcUnify.destr_tdistr env e.e_ty in
     let (me, pv) = dopv ty in
     (me, [i_rnd (LvVar (pv, ty), e); i_asgn (lv, e_var pv ty)])
   | Scall (Some lv, f, args) ->

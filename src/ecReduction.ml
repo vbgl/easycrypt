@@ -610,10 +610,6 @@ let check_alpha_equal ri hyps f1 f2 =
       aux_ld gtdistr env subst hs1.muh_pr hs2.muh_pr;
       aux_ld gtdistr env subst hs1.muh_po hs2.muh_po
 
-    | Fintegr ig1, Fintegr ig2 ->
-      let (_,mt2),_ = ig2.ig_fo in
-      check_local subst ig1.ig_mu (f_local ig2.ig_mu (tdistr (tmem mt2))) ig2.ig_mu;      
-      aux_ld gtmem env subst ig1.ig_fo ig2.ig_fo;
       
     | FbdHoareF hf1, FbdHoareF hf2 ->
       ensure (hf1.bhf_cmp = hf2.bhf_cmp);

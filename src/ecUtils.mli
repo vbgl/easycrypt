@@ -9,6 +9,13 @@ exception Unexpected
 val unexpected : unit -> 'a
 
 (* -------------------------------------------------------------------- *)
+exception DestrError of string
+
+val destr_error : string -> 'a
+
+val is_from_destr : ('a -> 'b) -> 'a -> bool
+
+(* -------------------------------------------------------------------- *)
 type 'data cb = Cb : 'a * ('data -> 'a -> unit) -> 'data cb
 
 (* -------------------------------------------------------------------- *)

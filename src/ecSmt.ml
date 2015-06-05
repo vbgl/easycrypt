@@ -591,7 +591,6 @@ let rec trans_form ((genv, lenv) as env : tenv * lenv) (fp : form) =
   | FbdHoareF _ | FbdHoareS _
   | FequivF   _ | FequivS   _
   | FmuhoareF _ | FmuhoareS _ -> trans_gen env fp
-  | Fintegr _ -> trans_gen env fp (* B: FIXME *)
 
 and trans_form_b env f = Cast.force_bool (trans_form env f)
 
@@ -1177,7 +1176,8 @@ module Frequency = struct
       | Fpr pr -> 
         sf := Sx.add pr.pr_fun !sf; 
         doit pr.pr_event; doit pr.pr_args 
-      | Fintegr _ -> () (* B:FIXME *) in
+    in
+
                  
     doit f;
     if not (Sx.is_empty !sf) then sp := Sp.add CI_Distr.p_mu !sp; 

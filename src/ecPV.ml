@@ -342,7 +342,7 @@ module PV = struct
       | Fproj(e,_)  -> aux env fv e
       | FhoareF _  | FhoareS _ | FbdHoareF _  | FbdHoareS _ 
       | FequivF _ | FequivS _ | FeagerF _ | Fpr _ 
-      | FmuhoareF _ | FmuhoareS _ | Fintegr _ -> assert false 
+      | FmuhoareF _ | FmuhoareS _ -> assert false 
     in
     aux env empty f
 

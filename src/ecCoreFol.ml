@@ -73,7 +73,6 @@ and f_node =
 
   | FmuhoareF of muhoareF
   | FmuhoareS of muhoareS
-  | Fintegr  of integral
 
 and lmd_form = (EcIdent.t * memtype) * form
 
@@ -452,7 +451,6 @@ module Hsform = Why3.Hashcons.Make (struct
     | Fpr       pr  -> pr_hash pr
     | FmuhoareF hf  -> muhf_hash hf
     | FmuhoareS hs  -> muh_hash hs
-    | Fintegr   ig  -> ig_hash ig
 
   let fv_mlr = Sid.add mleft (Sid.singleton mright)
 
@@ -535,12 +533,6 @@ module Hsform = Why3.Hashcons.Make (struct
         let fv3 = EcModules.s_fv ph.muh_s in
         fv_union (fv_union fv1 fv2) fv3
  
-    | Fintegr ig -> 
-      let fv1 = Mid.remove (fst (fst ig.ig_fo)) (f_fv (snd ig.ig_fo)) in
-      fv_add ig.ig_mu fv1 
- 
-
-
 
   let tag n f =
     let fv = fv_union (fv_node f.f_node) f.f_ty.ty_fv in
@@ -695,15 +687,12 @@ let f_eqs fs1 fs2 =
 (* -------------------------------------------------------------------- *)
 let f_hoareS_r hs = mk_form (FhoareS hs) tbool
 let f_hoareF_r hf = mk_form (FhoareF hf) tbool
-let f_integr_r ig     = mk_form (Fintegr ig) treal
 
 let f_hoareS hs_m hs_pr hs_s hs_po =
   f_hoareS_r { hs_m; hs_pr; hs_s; hs_po; }
 
 let f_hoareF hf_pr hf_f hf_po =
   f_hoareF_r { hf_pr; hf_f; hf_po; }
-
-let f_integr ig_fo ig_mu = f_integr_r { ig_fo; ig_mu }
 
 (* -------------------------------------------------------------------- *)
 let f_muhoareS_r hs = mk_form (FmuhoareS hs) tbool
@@ -861,10 +850,6 @@ module FSmart = struct
   let f_muhoareS (fp, bhs) bhs' =
     if muh_equal bhs bhs' then fp else f_muhoareS_r bhs'
 
-  let f_integr (fp, pr) pr' =
-    if ig_equal pr pr' then fp else f_integr_r pr'
-
-      
 end
 
 (* -------------------------------------------------------------------- *)
@@ -983,10 +968,6 @@ let f_map gt g fp =
       { ph with muhf_pr = (fst ph.muhf_pr, g (snd ph.muhf_pr));
         muhf_po = (fst ph.muhf_po, g (snd ph.muhf_po)); }
 
-  | Fintegr ph ->
-    FSmart.f_integr (fp, ph) 
-      { ph with ig_fo = (fst ph.ig_fo, g (snd ph.ig_fo)) } 
-
 (* -------------------------------------------------------------------- *)
 let f_iter g f =
   match f.f_node with
@@ -1014,7 +995,6 @@ let f_iter g f =
     
   | FmuhoareS  ph  -> g (snd (ph.muh_pr)); g (snd (ph.muh_po))
   | FmuhoareF  ph  -> g (snd (ph.muhf_pr)); g (snd (ph.muhf_po))
-  | Fintegr   ph  -> g (snd (ph.ig_fo))
 
 (* -------------------------------------------------------------------- *)
 let form_exists g f =
@@ -1042,7 +1022,6 @@ let form_exists g f =
   | Fpr       pr  -> g pr.pr_args || g pr.pr_event
   | FmuhoareF  ph  -> g (snd ph.muhf_pr) || g (snd ph.muhf_po) 
   | FmuhoareS  ph  -> g (snd ph.muh_pr) || g (snd ph.muh_po) 
-  | Fintegr  ph  ->  g (snd ph.ig_fo)
 
 (* -------------------------------------------------------------------- *)
 let form_forall g f =
@@ -1068,9 +1047,9 @@ let form_forall g f =
   | FequivS   es  -> g es.es_pr   && g es.es_po
   | FeagerF   eg  -> g eg.eg_pr   && g eg.eg_po
   | Fpr       pr  -> g pr.pr_args && g pr.pr_event
-  | FmuhoareF  ph  -> g (snd ph.muhf_pr) && g (snd ph.muhf_po) 
-  | FmuhoareS  ph  -> g (snd ph.muh_pr) && g (snd ph.muh_po) 
-  | Fintegr   ph  -> g (snd ph.ig_fo)
+  | FmuhoareF  ph -> g (snd ph.muhf_pr) && g (snd ph.muhf_po) 
+  | FmuhoareS  ph -> g (snd ph.muh_pr) && g (snd ph.muh_po) 
+
 
 (* -------------------------------------------------------------------- *)
 let f_ops f =
@@ -1080,11 +1059,6 @@ let f_ops f =
     | Fop (p, _) -> aout := Sp.add p !aout
     | _ -> f_iter doit f
   in doit f; !aout
-
-(* -------------------------------------------------------------------- *)
-exception DestrError of string
-
-let destr_error e = raise (DestrError e)
 
 (* -------------------------------------------------------------------- *)
 let destr_forall1 f =
@@ -1259,8 +1233,6 @@ let destr_nots form =
   in aux true form
 
 (* -------------------------------------------------------------------- *)
-let is_from_destr dt f =
-  try ignore (dt f); true with DestrError _ -> false
 
 let is_true      f = f_equal f f_true
 let is_false     f = f_equal f f_false
@@ -1629,14 +1601,6 @@ module Fsubst = struct
       let muh_s  = EcModules.s_subst es mh.muh_s in
       FSmart.f_muhoareS (fp,mh) { muh_pr; muh_po; muh_s }
       
-    | Fintegr ig ->
-      let ig_fo = subst_bindmem ~tx `Mem s ig.ig_fo in
-      let ig_mu  = 
-        try destr_local (Mid.find ig.ig_mu s.fs_loc)
-        with Not_found -> ig.ig_mu
-      in
-      FSmart.f_integr (fp,ig) { ig_fo; ig_mu }
-
     | _ -> f_map s.fs_ty (f_subst ~tx s) fp)
 
   and subst_bindmem ~tx k s ((id,ty),f) = 

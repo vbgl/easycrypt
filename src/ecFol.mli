@@ -64,8 +64,9 @@ val f_mu_x    : form -> form -> form
 val f_weight  : EcTypes.ty -> form -> form
 
 val f_real_of_bool : form -> form
-val f_muf : EcTypes.ty -> form -> form -> form
-
+val f_muf_ty : EcTypes.ty -> form -> form -> form
+val f_muf    : EcEnv.env -> form -> form -> form
+val f_integr   : lmd_form -> EcIdent.t -> form 
 (* common functions *)
 val f_identity : ?name:EcSymbols.symbol -> EcTypes.ty -> form
 
@@ -113,10 +114,6 @@ val f_real_div_simpl : form -> form -> form
 
 (* -------------------------------------------------------------------- *)
 val destr_exists_prenex : form -> bindings * form
-
-(* -------------------------------------------------------------------- *)
-(* projects 'a Distr type into 'a *)
-val proj_distr_ty : EcEnv.env -> ty -> ty
 
 (* -------------------------------------------------------------------- *)
 type op_kind = [
@@ -183,3 +180,7 @@ type sform =
   | SFother of form
 
 val sform_of_form : form -> sform
+
+
+(* ---------------------------------------------------------------------- *)
+val get_lambda1 : EcEnv.env -> form -> EcIdent.t * ty * form

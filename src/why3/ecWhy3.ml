@@ -1379,8 +1379,6 @@ let trans_form env f =
     | FequivS _   -> raise (CannotTranslate "FequivS")
     | FmuhoareF _  -> raise (CannotTranslate "FmuhoareF")
     | FmuhoareS _  -> raise (CannotTranslate "FmuhoareS")
-    | Fintegr _  -> raise (CannotTranslate "Fintegr")
-
 
     | Fpvar(pv,m) ->
         let m = trans_form m in

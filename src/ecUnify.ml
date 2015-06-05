@@ -462,3 +462,35 @@ let select_op ?(filter = fun _ -> true) tvi env name ue psig =
 
   in
     List.pmap select (EcEnv.Op.all ~check:filter name env)
+
+(* -------------------------------------------------------------------- *)
+
+let destr_tfun   env ty = 
+  match (EcEnv.Ty.hnorm ty env).ty_node with
+  | Tfun(t1,t2) -> t1, t2
+  | _           -> destr_error "destr_tfun"
+
+let destr_tmem   env ty =
+  match (EcEnv.Ty.hnorm ty env).ty_node with
+  | Tmem mt -> mt
+  | _       -> destr_error "destr_tmem"
+
+let rec destr_tdistr env ty =
+  match ty.ty_node with
+  | Tconstr(p,[ty]) when EcPath.p_equal p EcCoreLib.CI_Distr.p_distr -> ty
+  | Tconstr(p,tys) when EcEnv.Ty.defined p env -> 
+    destr_tdistr env (EcEnv.Ty.unfold p tys env)
+  | _ -> destr_error "destr_tdistr"
+
+let destr_tdmem env ty = destr_tmem env (destr_tdistr env ty)
+
+
+let is_tfun env ty = is_from_destr (destr_tfun env) ty
+let is_tmem env ty = is_from_destr (destr_tmem env) ty
+let is_tdistr env ty = is_from_destr (destr_tdistr env) ty
+let is_tdmem env ty = is_from_destr (destr_tdmem env) ty
+
+let tfun_dom     env ty = fst (destr_tfun env ty)
+let tfun_dommem  env ty =
+  destr_tmem env (tfun_dom env ty)
+

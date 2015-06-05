@@ -73,7 +73,6 @@ and f_node =
 
   | FmuhoareF of muhoareF
   | FmuhoareS of muhoareS
-  | Fintegr   of integral
  
 and lmd_form = (EcIdent.t * memtype) * form
 
@@ -245,8 +244,6 @@ val f_muhoareF   : lmd_form -> EcPath.xpath -> lmd_form ->form
 val f_muhoareS_r : muhoareS -> form
 val f_muhoareS   : lmd_form -> EcModules.stmt -> lmd_form -> form
 
-val f_integr_r : integral -> form
-val f_integr   : lmd_form -> EcIdent.t -> form 
 (* soft-constructors - unit *)
 val f_tt : form
 
@@ -330,11 +327,6 @@ module FSmart : sig
   val f_eagerF   : (form * eagerF   ) -> eagerF    -> form
   val f_pr       : (form * pr       ) -> pr       -> form
 end
-
-(* -------------------------------------------------------------------- *)
-exception DestrError of string
-
-val destr_error : string -> 'a
 
 (* -------------------------------------------------------------------- *)
 val destr_local     : form -> EcIdent.t

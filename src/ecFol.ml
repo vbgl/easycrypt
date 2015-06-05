@@ -106,25 +106,27 @@ let fop_mu      ty = f_op EcCoreLib.CI_Distr.p_mu      [ty] (toarrow [tdistr ty;
 let f_in_supp f1 f2 = f_app (fop_in_supp f1.f_ty) [f1; f2] tbool
 let f_mu_x    f1 f2 = f_app (fop_mu_x f2.f_ty) [f1; f2] treal
 
-let proj_distr_ty env ty = 
-   match (EcEnv.Ty.hnorm ty env).ty_node with
-  | Tconstr(_,lty) when List.length lty = 1  -> 
-    List.hd lty
-  | _ -> assert false 
-
-let f_mu  env f1 f2 = f_app (fop_mu (proj_distr_ty env f1.f_ty)) [f1; f2] treal
+let f_mu_ty ty f1 f2 = f_app (fop_mu ty) [f1;f2] treal
+let f_mu   env f1 f2 = f_mu_ty (EcUnify.destr_tdistr env f1.f_ty) f1 f2
 
 let fop_weight ty = f_op EcCoreLib.CI_Distr.p_weight [ty] (tfun (tdistr ty) treal) (* CORELIB *)
 let f_weight ty d = f_app (fop_weight ty) [d] treal
 
 let fop_real_of_bool = 
   f_op EcCoreLib.CI_Distr.p_real_of_bool [tbool] treal (* CORELIB *)
+
+let f_real_of_bool f = f_app fop_real_of_bool [f] treal
+
 let fop_muf ty = 
  f_op EcCoreLib.CI_Distr.p_muf [toarrow [ty] treal; tdistr ty] treal (* CORELIB *)
-  
-let f_real_of_bool f = f_app fop_real_of_bool [f] treal
-let f_muf ty f1 f2 = f_app (fop_muf ty) [f1;f2] treal
 
+let f_muf_ty ty f1 f2 = f_app (fop_muf ty) [f1;f2] treal
+let f_muf   env f1 f2 = f_muf_ty (EcUnify.tfun_dom env f1.f_ty) f1 f2
+
+let f_integr ((m,lmt),f) mu = 
+  let ty = tmem lmt in
+  f_muf_ty ty (f_lambda [m,GTty ty] f) (f_local mu (tdistr ty))
+ 
 (* -------------------------------------------------------------------- *)
 let f_losslessF f = f_bdHoareF f_true f f_true FHeq f_r1
 
@@ -625,6 +627,7 @@ let rec sform_of_form fp =
  * - p1 => E x p2 -> [x] (p1 => p2)
  * - E x p1 => p2 -> [] (E x p1 => p2)
  *)
+(* Did we really need this function ? *)
 let destr_exists_prenex f =
   let disjoint bds1 bds2 =
     List.for_all
@@ -669,4 +672,16 @@ let destr_exists_prenex f =
     match prenex_exists [] f with
     | [] , _ -> destr_error "exists"
     | bds, f -> (bds, f)
+
+
+(* -------------------------------------------------------------------- *)
+
+let get_lambda1 env f = 
+  match decompose_lambda f with
+  |         [], _ ->
+    let x = EcIdent.create "x" in
+    let t,ty = EcUnify.destr_tfun env f.f_ty in
+    x, t, f_app f [f_local x t] ty
+  | (x,t):: bd, b -> x, gty_as_ty t, f_lambda bd b
+      
 

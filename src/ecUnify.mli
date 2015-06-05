@@ -47,3 +47,22 @@ val tfun_expected : unienv -> EcTypes.ty list -> EcTypes.ty
 val select_op :
      ?filter:(operator -> bool) -> tvi -> EcEnv.env -> qsymbol -> unienv
   -> dom -> ((EcPath.path * ty list) * ty * unienv) list
+
+(* -------------------------------------------------------------------- *)
+
+val destr_tfun   : EcEnv.env -> ty -> ty * ty
+val destr_tmem   : EcEnv.env -> ty -> memtype
+val destr_tdistr : EcEnv.env -> ty -> ty
+val destr_tdmem  : EcEnv.env -> ty -> memtype
+
+val is_tfun   : EcEnv.env -> ty -> bool
+val is_tmem   : EcEnv.env -> ty -> bool
+val is_tdistr : EcEnv.env -> ty -> bool
+val is_tdmem  : EcEnv.env -> ty -> bool
+
+val tfun_dom     : EcEnv.env -> ty -> ty
+val tfun_dommem  : EcEnv.env -> ty -> memtype
+
+
+
+

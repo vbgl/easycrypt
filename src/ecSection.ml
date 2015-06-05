@@ -170,7 +170,7 @@ let rec on_mpath_form cb (f : EcFol.form) =
     | EcFol.Fpr       pr           -> on_mpath_pr  cb pr
     | EcFol.FmuhoareF hf           -> on_mpath_muhf cb hf
     | EcFol.FmuhoareS hs           -> on_mpath_muh cb hs
-    | EcFol.Fintegr   ig           -> on_mpath_ig  cb ig
+
   and on_mpath_hf cb hf =
     on_mpath_form cb hf.EcFol.hf_pr;
     on_mpath_form cb hf.EcFol.hf_po;
@@ -196,10 +196,6 @@ let rec on_mpath_form cb (f : EcFol.form) =
     on_mpath_memenv cb (fst hf.EcFol.muhf_pr);
     on_mpath_memenv cb (fst hf.EcFol.muhf_po)
 
-  and on_mpath_ig cb ig =
-    on_mpath_form cb (snd ig.EcFol.ig_fo);
-    on_mpath_memenv cb (fst ig.EcFol.ig_fo)
-    
   and on_mpath_ef cb ef =
     on_mpath_form cb ef.EcFol.ef_pr;
     on_mpath_form cb ef.EcFol.ef_po;

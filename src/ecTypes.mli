@@ -63,15 +63,17 @@ val toarrow : ty list -> ty -> ty
 
 val flatten_ty : ty -> ty list
 
+(* Do not use those functions use the corresponding in EcUnify *)
 val is_tmem : ty -> bool
 val destr_tmem : ty -> memtype
 
 val is_tdmem : ty -> bool
 val destr_tdmem : ty -> memtype
-
-
 val is_tlocalmem : ty -> bool
 val destr_tlocalmem : ty -> local_memtype
+
+(* End do not use *)
+
 (* -------------------------------------------------------------------- *)
 exception FoundUnivar
 
