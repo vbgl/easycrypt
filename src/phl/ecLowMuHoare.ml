@@ -72,7 +72,7 @@ let oplus mt mu mu1 mu2 f =
   aux f
 
 (* -------------------------------------------------------------------- *)
-let do_on_mu onld mu f =
+let do_on_mu onld (mu,mt') f =
 
   let check_binding (id,_) = EcIdent.id_equal id mu in
 
@@ -83,14 +83,16 @@ let do_on_mu onld mu f =
       List.exists
         (fun (id,ty) -> if id = None then false else check_binding (oget id,ty))
         bs in
+  let tmt' = tmem mt' in
+  let loc_mu = f_local mu (tdistr tmt') in
   let rec aux f =
     if Mid.mem mu f.f_fv then
       match f.f_node with
-      | Fapp({f_node = Fop(op, _)} as muf, [f1; {f_node = Flocal mu'} as f']) 
+      | Fapp({f_node = Fop(op, _)}, [f1; {f_node = Flocal mu'}]) 
           when EcIdent.id_equal mu mu' &&
           EcPath.p_equal op EcCoreLib.CI_Distr.p_muf ->
         let f1 = aux f1 in
-        f_app muf [onld f1; f'] f.f_ty
+        f_muf_ty tmt' (onld f1) loc_mu
  
       | Flocal mu' -> assert (not (EcIdent.id_equal mu mu')); f
 
@@ -118,17 +120,17 @@ let get_lambda1_mem env f =
   m, mt, f
 
  
-let mu_restr env mu pos b f = 
+let mu_restr env (mu, mt) pos b f = 
   let ldm_restr f =
     let m, mt, f = get_lambda1_mem env f in
     let b = form_of_expr (Some (m,mt)) b in
     let b = if pos then b else f_not b in
     f_lambda [m,gtmem mt] (f_real_mul (f_real_of_bool b) f) in
-  do_on_mu ldm_restr mu f
+  do_on_mu ldm_restr (mu,mt) f
 
-let curly env b ((mu,mt),f1) f2 = 
-  let _, f2 = lmd_app (mu,mt) f2 in
-  (mu,mt), f_and (mu_restr env mu true b f1) (mu_restr env mu false b f2) 
+let curly env b (mumt,f1) f2 = 
+  let _, f2 = lmd_app mumt f2 in
+  mumt, f_and (mu_restr env mumt true b f1) (mu_restr env mumt false b f2) 
 
 (* -------------------------------------------------------------------- *)
 exception NoWpMuhoare
@@ -163,7 +165,7 @@ let wp_muhoare env s ((mu,mt), po) =
   let onld f = 
     let m, mt, f = get_lambda1_mem env f in
     f_lambda [m, gtmem mt] (pt_muhoare env (m,mt) s f) in
-  ((mu,mt), do_on_mu onld mu po)
+  ((mu,mt), do_on_mu onld (mu,mt) po)
 
 (* -------------------------------------------------------------------- *)
 let wp_ret env mt' pvres e ((mu,_), po) = 
@@ -172,7 +174,7 @@ let wp_ret env mt' pvres e ((mu,_), po) =
     let mmt = (m,mt) in
     let let1 = lv_subst mmt (LvVar (pvres, e.e_ty)) (form_of_expr (Some mmt) e) in
     f_lambda [m, gtmem mt'] (mk_let_of_lv_substs env ([let1],f)) in
-  (mu,mt'), do_on_mu onld mu po
+  (mu,mt'), do_on_mu onld (mu,mt') po
 
 (* -------------------------------------------------------------------- *)
 let wp_pre env mt' f fs ((mu,_), pr) = 
@@ -191,7 +193,7 @@ let wp_pre env mt' f fs ((mu,_), pr) =
         let tv = (f_tuple v) in
         let let1 = lv_subst (m,mt) (LvVar (pv_arg f, tv.f_ty)) tv in
         f_lambda [m, gmt'] (mk_let_of_lv_substs env ([let1],f1)) in
-  (mu,mt'), do_on_mu onld mu pr
+  (mu,mt'), do_on_mu onld (mu,mt') pr
 
 (* -------------------------------------------------------------------- *)
 let max_wp s =

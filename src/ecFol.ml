@@ -118,7 +118,7 @@ let fop_real_of_bool =
 let f_real_of_bool f = f_app fop_real_of_bool [f] treal
 
 let fop_muf ty = 
- f_op EcCoreLib.CI_Distr.p_muf [toarrow [ty] treal; tdistr ty] treal (* CORELIB *)
+ f_op EcCoreLib.CI_Distr.p_muf [ty] (toarrow [toarrow [ty] treal; tdistr ty] treal) (* CORELIB *)
 
 let f_muf_ty ty f1 f2 = f_app (fop_muf ty) [f1;f2] treal
 let f_muf   env f1 f2 = f_muf_ty (EcUnify.tfun_dom env f1.f_ty) f1 f2

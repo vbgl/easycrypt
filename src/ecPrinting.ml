@@ -622,7 +622,15 @@ let is_binop name =
 (* -------------------------------------------------------------------- *)
 let rec pp_type_r ppe outer fmt ty =
   match ty.ty_node with
-  | Tmem _ -> Format.fprintf fmt "memory"
+  | Tmem mt -> 
+    let l = Msym.bindings (EcMemory.mt_bindings mt) in
+    let pp_id fmt (s, (_,ty)) = 
+        Format.fprintf fmt "%a:%a" 
+          EcSymbols.pp_symbol s (pp_type_r ppe (min_op_prec, `NonAssoc)) ty in
+    Format.fprintf fmt "memory (*@[<hov 2>%a@]*)"
+      (pp_list ";@ "pp_id) l
+      
+
   | Tglob m -> Format.fprintf fmt "(glob %a)" (pp_topmod ppe) m
 
   | Tunivar x -> pp_tyunivar ppe fmt x
@@ -1395,7 +1403,10 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
       pp_opapp ppe f_ty pp_form_r outer fmt (`Form, negop, tys, [f1; f2])
 
   | Fapp ({f_node = Fop (p, tys)}, args) ->
-      pp_opapp ppe f_ty pp_form_r outer fmt (`Form, p, tys, args)
+(*    let pp_form_r (ppe : PPEnv.t) outer fmt f =
+      Format.fprintf fmt "%a(*%a*)" 
+        (pp_form_r ppe outer) f (pp_type ppe) f.f_ty in *)
+    pp_opapp ppe f_ty pp_form_r outer fmt (`Form, p, tys, args)
 
   | Fapp (e, args) ->
       pp_app ppe (pp_form_r, pp_form_r) outer fmt (e, args)

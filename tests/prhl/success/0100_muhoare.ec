@@ -14,24 +14,22 @@ module M = {
   }
 }.
 
-axiom muf_bool (f:bool -> real) : muf f {0,1} = f true + f false.
+axiom muf_bool (f:bool -> real) : muf f {0,1} = 
+   1%r/2%r * f true + 1%r/2%r * f false.
+
 axiom muf_congr (f1 f2:'a -> real) (d:'a distr) :
    (forall x, f1 x = f2 x) => muf f1 d = muf f2 d.
 
 lemma test1 : muhoare [M.main : 
-     $[b2r true] = 1%r ==> $[b2r (M.x = 3)] = 1%r /\ $[b2r res] = 1%r/2%r].
-(* FIXME: $[b2r true | mu] ---> $[b2r true] *)
+     $[1%r] = 1%r ==> $[b2r (M.x = 3)] = 1%r /\ $[b2r res] = 1%r/2%r].
 proof.
   proc.
   wp 1 => /=.
   wp.
   skip.
   move=> mu Hll.
-  split.
-  rewrite -Hll.
-  (* Pourquoi congr marge pas *)
-  admit.
-  admit.
+  by rewrite muf_c Hll muf_bool muf_c Hll muf_bool.
 qed.
+
 
   
