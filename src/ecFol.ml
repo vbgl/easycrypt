@@ -113,7 +113,7 @@ let fop_weight ty = f_op EcCoreLib.CI_Distr.p_weight [ty] (tfun (tdistr ty) trea
 let f_weight ty d = f_app (fop_weight ty) [d] treal
 
 let fop_real_of_bool = 
-  f_op EcCoreLib.CI_Distr.p_real_of_bool [tbool] treal (* CORELIB *)
+  f_op EcCoreLib.CI_Distr.p_real_of_bool [] (toarrow [tbool] treal) (* CORELIB *)
 
 let f_real_of_bool f = f_app fop_real_of_bool [f] treal
 
