@@ -404,10 +404,16 @@ proof. rewrite /b2r;case b1 => //= _;ringeq. qed.
 lemma b2r_not (b:bool): b2r (!b) = 1%r - b2r b.
 proof. by rewrite /b2r;case b. qed.
 
-
 (* intergral of f in a distribution d *)
 op muf : ('a -> real) -> 'a distr -> real.
 
+lemma muf_congr (f1 f2: 'a -> real) (d1 d2:'a distr): 
+  d1 = d2 =>
+  (forall a, f1 a = f2 a) =>
+  muf f1 d1 = muf f2 d2.
+proof. by move=> -> Hf;congr; rewrite -fun_ext. qed.
+
+(* TODO mu should be defined in term of muf *)
 axiom muf_r2b (P: 'a -> bool) (d:'a distr) : 
   mu d P = muf (fun a => b2r (P a)) d.
 
@@ -446,5 +452,6 @@ proof. by rewrite -muf_mulc_l. qed.
 lemma muf_0 (d:'a distr) :
   muf (fun x => 0%r) d = 0%r.
 proof. by rewrite muf_c. qed.
+
 
 

@@ -122,7 +122,7 @@ let do_on_mu env onld ?mt' f =
     else f
   in
 
-  f_lambda [ mu, GTty tmt'] (aux f)
+  f_lambda [ mu, GTty (tdistr tmt')] (aux f)
   
 let get_lambda1_mem env f = 
   let m, mty, f = get_lambda1 env f in
