@@ -11,7 +11,7 @@ open EcCoreGoal
 (* -------------------------------------------------------------------- *)
 (* FIXME: add t_low* to all these tactics                               *)
 
-val conseq_muhoare : lmd_form -> lmd_form -> lmd_form -> lmd_form -> form * form
+val conseq_muhoare : EcEnv.env -> form -> form -> form -> form -> form * form
 
 (* -------------------------------------------------------------------- *)
 val t_equivF_conseq      : form -> form -> FApi.backward

@@ -6,25 +6,32 @@ open EcFol
 open EcModules
 open EcLowPhlGoal
 
+
+(* FIXME move this *)
+let p_imp env p1 p2 = 
+  let x,ty,p1 = get_lambda1 env p1 in
+  f_lambda [x,GTty ty] (f_imp p1 (f_app_simpl p2 [f_local x ty] tbool))
+
+let p_and env p1 p2 = 
+  let x,ty,p1 = get_lambda1 env p1 in
+  f_lambda [x,GTty ty] (f_and p1 (f_app_simpl p2 [f_local x ty] tbool))
+
+let p_forall_imp env p1 p2 = 
+  f_pred2forall env (p_imp env p1 p2)
+
+(*
 (* -------------------------------------------------------------------- *)
 let lmd_app (id,mt) ((id',mt'), body as f) =
+  
    assert (EcMemory.mt_equal mt mt');
    if EcIdent.id_equal id id' then f
    else 
      let body =  Fsubst.f_subst_mem id' mt id body in
      (id,mt), body
+*)
 
 (* -------------------------------------------------------------------- *)
-let lmd_imp (b,f1) f2 =
-  let _, f2 = lmd_app b f2 in
-  b, f_imp f1 f2
-
-(* -------------------------------------------------------------------- *)
-let lmd_forall_imp f1 f2 = f_forall_distr (lmd_imp f1 f2)
-
-
-(* -------------------------------------------------------------------- *)
-let oplus mt mu mu1 mu2 f =
+let oplus ty mu mu1 mu2 f =
   let is_mu (id,_) = EcIdent.id_equal id mu in
   let check_mu1mu2 (id,_) =
     assert (not (EcIdent.id_equal id mu1));
@@ -39,7 +46,7 @@ let oplus mt mu mu1 mu2 f =
       List.exists
         (fun (id,ty) -> if id = None then false else check_binding (oget id,ty))
         bs in
-  let ty = tdistr (tmem mt) in
+
   let mu1 = f_local mu1 ty in
   let mu2 = f_local mu2 ty in
 
@@ -68,12 +75,16 @@ let oplus mt mu mu1 mu2 f =
     | FmuhoareF _ | FmuhoareS _ -> assert false (* can be implemented *)
     | _ -> f_map (fun ty -> ty) aux f in
 
-
   aux f
 
 (* -------------------------------------------------------------------- *)
-let do_on_mu onld (mu,mt') f =
+let do_on_mu env onld ?mt' f =
 
+  let mu, ty, f = get_lambda1 env f in
+  let mt = EcUnify.destr_tdmem env ty in
+  let tmt' = tmem (odfl mt mt') in
+  let loc_mu = f_local mu (tdistr tmt') in 
+ 
   let check_binding (id,_) = EcIdent.id_equal id mu in
 
   let check_pattern = function
@@ -83,8 +94,7 @@ let do_on_mu onld (mu,mt') f =
       List.exists
         (fun (id,ty) -> if id = None then false else check_binding (oget id,ty))
         bs in
-  let tmt' = tmem mt' in
-  let loc_mu = f_local mu (tdistr tmt') in
+ 
   let rec aux f =
     if Mid.mem mu f.f_fv then
       match f.f_node with
@@ -112,25 +122,23 @@ let do_on_mu onld (mu,mt') f =
     else f
   in
 
-  aux f
+  f_lambda [ mu, GTty tmt'] (aux f)
   
 let get_lambda1_mem env f = 
   let m, mty, f = get_lambda1 env f in
   let mt = EcUnify.destr_tmem env mty in
   m, mt, f
-
  
-let mu_restr env (mu, mt) pos b f = 
+let mu_restr env pos b f = 
   let ldm_restr f =
     let m, mt, f = get_lambda1_mem env f in
     let b = form_of_expr (Some (m,mt)) b in
     let b = if pos then b else f_not b in
     f_lambda [m,gtmem mt] (f_real_mul (f_real_of_bool b) f) in
-  do_on_mu ldm_restr (mu,mt) f
+  do_on_mu env ldm_restr f
 
-let curly env b (mumt,f1) f2 = 
-  let _, f2 = lmd_app mumt f2 in
-  mumt, f_and (mu_restr env mumt true b f1) (mu_restr env mumt false b f2) 
+let curly env b f1 f2 = 
+    p_and env (mu_restr env true b f1) (mu_restr env false b f2) 
 
 (* -------------------------------------------------------------------- *)
 exception NoWpMuhoare
@@ -161,23 +169,23 @@ and pt_muhoare env m s f =
   List.fold_right (pt_muhoare_i env m) s.s_node f
 
 (* -------------------------------------------------------------------- *)
-let wp_muhoare env s ((mu,mt), po) =
+let wp_muhoare env s po =
   let onld f = 
     let m, mt, f = get_lambda1_mem env f in
     f_lambda [m, gtmem mt] (pt_muhoare env (m,mt) s f) in
-  ((mu,mt), do_on_mu onld (mu,mt) po)
+  do_on_mu env onld po
 
 (* -------------------------------------------------------------------- *)
-let wp_ret env mt' pvres e ((mu,_), po) = 
+let wp_ret env mt' pvres e po = 
   let onld f = 
     let m, mt, f = get_lambda1_mem env f in
     let mmt = (m,mt) in
     let let1 = lv_subst mmt (LvVar (pvres, e.e_ty)) (form_of_expr (Some mmt) e) in
     f_lambda [m, gtmem mt'] (mk_let_of_lv_substs env ([let1],f)) in
-  (mu,mt'), do_on_mu onld (mu,mt') po
+  do_on_mu env onld ~mt' po
 
 (* -------------------------------------------------------------------- *)
-let wp_pre env mt' f fs ((mu,_), pr) = 
+let wp_pre env mt' f fs pr = 
   let gmt' = gtmem mt' in
   let onld = 
     match fs.fs_anames with
@@ -193,7 +201,7 @@ let wp_pre env mt' f fs ((mu,_), pr) =
         let tv = (f_tuple v) in
         let let1 = lv_subst (m,mt) (LvVar (pv_arg f, tv.f_ty)) tv in
         f_lambda [m, gmt'] (mk_let_of_lv_substs env ([let1],f1)) in
-  (mu,mt'), do_on_mu onld (mu,mt') pr
+  do_on_mu env onld ~mt' pr
 
 (* -------------------------------------------------------------------- *)
 let max_wp s =

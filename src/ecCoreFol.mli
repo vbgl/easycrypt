@@ -74,23 +74,16 @@ and f_node =
   | FmuhoareF of muhoareF
   | FmuhoareS of muhoareS
  
-and lmd_form = (EcIdent.t * memtype) * form
-
 and muhoareF = {
-  muhf_pr : lmd_form;
+  muhf_pr : form; (* : (pre mem f) distr -> bool *)
   muhf_f  : EcPath.xpath;
-  muhf_po : lmd_form;
+  muhf_po : form; (* : (post mem f) distr -> bool *)
 }
 
 and muhoareS = {
-  muh_pr : lmd_form;
+  muh_pr : form; 
   muh_s  : stmt;
-  muh_po : lmd_form;
-}
-
-and integral = {
-  ig_fo : lmd_form;
-  ig_mu : EcIdent.t;
+  muh_po : form;
 }
 
 and eagerF = {
@@ -203,7 +196,6 @@ val f_exists : bindings -> form -> form
 val f_forall : bindings -> form -> form
 val f_lambda : bindings -> form -> form
 
-val f_forall_distr : lmd_form -> form
 val f_forall_mems : (EcIdent.t * memtype) list -> form -> form
 
 (* soft-constructors - hoare *)
@@ -239,10 +231,10 @@ val f_pr   : memory -> xpath -> form -> form -> form
 
 (* soft-constructors - mu hoare *)
 val f_muhoareF_r : muhoareF -> form
-val f_muhoareF   : lmd_form -> EcPath.xpath -> lmd_form ->form
+val f_muhoareF   : form -> EcPath.xpath -> form ->form
 
 val f_muhoareS_r : muhoareS -> form
-val f_muhoareS   : lmd_form -> EcModules.stmt -> lmd_form -> form
+val f_muhoareS   : form -> EcModules.stmt -> form -> form
 
 (* soft-constructors - unit *)
 val f_tt : form

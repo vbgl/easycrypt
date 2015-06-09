@@ -183,18 +183,15 @@ let rec on_mpath_form cb (f : EcFol.form) =
     on_mpath_memenv cb hs.EcFol.hs_m
 
   and on_mpath_muh cb hs =
-    on_mpath_form cb (snd hs.EcFol.muh_pr);
-    on_mpath_form cb (snd hs.EcFol.muh_po);
-    on_mpath_stmt cb hs.EcFol.muh_s;
-    on_mpath_memenv cb (fst hs.EcFol.muh_pr);
-    on_mpath_memenv cb (fst hs.EcFol.muh_po)
+    on_mpath_form cb hs.EcFol.muh_pr;
+    on_mpath_form cb hs.EcFol.muh_po;
+    on_mpath_stmt cb hs.EcFol.muh_s
 
   and on_mpath_muhf cb hf =
-    on_mpath_form cb (snd hf.EcFol.muhf_pr);
-    on_mpath_form cb (snd hf.EcFol.muhf_po);
+    on_mpath_form cb hf.EcFol.muhf_pr;
+    on_mpath_form cb hf.EcFol.muhf_po;
     cb hf.EcFol.muhf_f.x_top;
-    on_mpath_memenv cb (fst hf.EcFol.muhf_pr);
-    on_mpath_memenv cb (fst hf.EcFol.muhf_po)
+
 
   and on_mpath_ef cb ef =
     on_mpath_form cb ef.EcFol.ef_pr;

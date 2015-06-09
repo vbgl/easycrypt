@@ -123,9 +123,9 @@ let fop_muf ty =
 let f_muf_ty ty f1 f2 = f_app (fop_muf ty) [f1;f2] treal
 let f_muf   env f1 f2 = f_muf_ty (EcUnify.tfun_dom env f1.f_ty) f1 f2
 
-let f_integr ((m,lmt),f) mu = 
-  let ty = tmem lmt in
-  f_muf_ty ty (f_lambda [m,GTty ty] f) (f_local mu (tdistr ty))
+let f_integr env f mu = 
+  let ty = EcUnify.tfun_dom env f.f_ty in
+  f_muf_ty ty f (f_local mu (tdistr ty))
  
 (* -------------------------------------------------------------------- *)
 let f_losslessF f = f_bdHoareF f_true f f_true FHeq f_r1
@@ -685,3 +685,18 @@ let get_lambda1 env f =
   | (x,t):: bd, b -> x, gty_as_ty t, f_lambda bd b
       
 
+let open_mu_binding env f = 
+  let mu,ty,f = get_lambda1 env f in
+  let mt = EcUnify.destr_tdmem env ty in
+  (mu,mt),f
+
+let close_mu_binding (mu,mt) f =
+  f_lambda [mu, GTty (tdistr (tmem mt))] f
+
+let f_pred2forall env f = 
+  let x,t,f = get_lambda1 env f in
+  f_forall [x,GTty t] f
+
+
+  
+    

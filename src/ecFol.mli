@@ -64,9 +64,9 @@ val f_mu_x    : form -> form -> form
 val f_weight  : EcTypes.ty -> form -> form
 
 val f_real_of_bool : form -> form
-val f_muf_ty : EcTypes.ty -> form -> form -> form
-val f_muf    : EcEnv.env -> form -> form -> form
-val f_integr   : lmd_form -> EcIdent.t -> form 
+val f_muf_ty  : EcTypes.ty -> form -> form -> form
+val f_muf     : EcEnv.env  -> form -> form -> form
+val f_integr  : EcEnv.env  -> form -> EcIdent.t -> form 
 (* common functions *)
 val f_identity : ?name:EcSymbols.symbol -> EcTypes.ty -> form
 
@@ -84,6 +84,8 @@ val f_lets_simpl : (EcTypes.lpattern * form) list -> form -> form
 val f_forall_simpl : bindings -> form -> form
 val f_exists_simpl : bindings -> form -> form
 val f_quant_simpl  : quantif -> bindings -> form -> form
+val f_pred2forall  : EcEnv.env -> form -> form
+
 val f_app_simpl    : form -> form list -> EcTypes.ty -> form
 
 val f_not_simpl  : form -> form
@@ -183,4 +185,7 @@ val sform_of_form : form -> sform
 
 
 (* ---------------------------------------------------------------------- *)
-val get_lambda1 : EcEnv.env -> form -> EcIdent.t * ty * form
+val get_lambda1       : EcEnv.env -> form -> EcIdent.t * ty * form
+val open_mu_binding   : EcEnv.env -> form -> (EcIdent.t * memtype) * form
+val close_mu_binding  : EcIdent.t * memtype -> form -> form
+

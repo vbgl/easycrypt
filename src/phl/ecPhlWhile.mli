@@ -13,7 +13,7 @@ val t_hoare_while      : form -> backward
 val t_bdhoare_while    : form -> form -> backward
 val t_equiv_while_disj : side -> form -> form -> backward
 val t_equiv_while      : form -> backward
-val t_muhoare_while    : lmd_form -> backward
+val t_muhoare_while    : form -> backward
 
 (* -------------------------------------------------------------------- *)
 val process_while : oside -> while_info -> backward

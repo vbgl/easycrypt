@@ -5,6 +5,7 @@
 
 (* -------------------------------------------------------------------- *)
 open EcUtils
+open EcTypes
 open EcFol
 open EcEnv
 
@@ -44,22 +45,23 @@ end
 (* mix of the if rule + conseq rule + seq rule *)
 
 let t_muhoare_cond pr1 po1 pr2 po2 tc = 
+  let env = FApi.tc1_env tc in
   let muh = tc1_as_muhoareS tc in 
   let (e,s1,s2), s = tc1_last_if tc muh.muh_s in
+  (* FIXME: ensure that pr1 po1 pr2 po2 have the expected type *)
   let concl1 = f_muhoareS_r {muh_pr = pr1; muh_s = s1; muh_po = po1;} in
   let concl2 = f_muhoareS_r {muh_pr = pr2; muh_s = s2; muh_po = po2;} in
-  assert (EcMemory.mt_equal (snd (fst pr1)) (snd (fst muh.muh_pr)));
-  assert (EcMemory.mt_equal (snd (fst pr2)) (snd (fst muh.muh_pr)));
   let concl3 = 
-    let (mu,mt), po = muh.muh_po in
+    let mu,ty,po = get_lambda1 env muh.muh_po in
     let mu1 = EcIdent.create "mu1" in
     let mu2 = EcIdent.create "mu2" in
-    let _, po1 = EcLowMuHoare.lmd_app (mu1, mt) po1 in
-    let _, po2 = EcLowMuHoare.lmd_app (mu2, mt) po2 in
-    f_forall [(mu1,gtdistr mt); (mu2,gtdistr mt)]
-      (f_imp po1 (f_imp po2 (EcLowMuHoare.oplus mt mu mu1 mu2 po))) in
+     
+    f_forall [(mu1,GTty ty); (mu2,GTty ty)]
+      (f_imp (f_app_simpl po1 [f_local mu1 ty] tbool)
+         (f_imp (f_app_simpl po2 [f_local mu2 ty] tbool)
+            (EcLowMuHoare.oplus ty mu mu1 mu2 po))) in
   
-  let po = EcLowMuHoare.curly (FApi.tc1_env tc) e pr1 pr2 in
+  let po = EcLowMuHoare.curly env e pr1 pr2 in
   let concl4 = f_muhoareS_r { muh with muh_s = s; muh_po = po } in
 
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3; concl4 ]
@@ -133,12 +135,13 @@ let rec t_equiv_cond side tc =
                    [t_aux; t_clear hiff]]))
           tc
 
-let process_muhoare_cond ((pr1, po1),(pr2,po2)) tc = 
+let process_muhoare_cond ((pr1, po1),(pr2,po2)) tc =
+  let doit (mumt,f) = close_mu_binding mumt f in
   let pr1 = EcProofTyping.tc1_process_phl_ld_formula tc pr1 in
   let po1 = EcProofTyping.tc1_process_phl_ld_formula tc po1 in
   let pr2 = EcProofTyping.tc1_process_phl_ld_formula tc pr2 in
   let po2 = EcProofTyping.tc1_process_phl_ld_formula tc po2 in
-  t_muhoare_cond pr1 po1 pr2 po2 tc  
+  t_muhoare_cond (doit pr1) (doit po1) (doit pr2) (doit po2) tc  
   
 (* -------------------------------------------------------------------- *)
 let process_cond info tc =

@@ -89,7 +89,10 @@ let tc1_process_phl_ld_form ?side tc ty pf =
     | FbdHoareS hs, None        -> `Mem hs.bhs_m
     | FequivS   es, Some `Left  -> `Mem (mhr, snd es.es_ml)
     | FequivS   es, Some `Right -> `Mem (mhr, snd es.es_mr)
-    | FmuhoareS hs, None        -> `Distr (fst (hs.muh_pr))
+    | FmuhoareS hs, None        -> 
+      let env = FApi.tc1_env tc in
+      let (m,mt), _ = open_mu_binding env hs.muh_pr in
+      `Distr(m, mt)
     | _, _ -> assert false
   in
 

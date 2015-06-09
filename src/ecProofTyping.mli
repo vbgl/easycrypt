@@ -48,7 +48,7 @@ val tc1_process_pattern  : tcenv1 -> pformula -> ptnenv * form
 (* Same as previous functions, but for PHL contexts *)
 val tc1_process_phl_form     : ?side:side -> tcenv1 -> ty -> pformula -> form
 val tc1_process_phl_formula  : ?side:side -> tcenv1 -> pformula -> form
-val tc1_process_phl_ld_formula : ?side:side -> tcenv1 -> pformula -> lmd_form
+val tc1_process_phl_ld_formula : ?side:side -> tcenv1 -> pformula -> EcMemory.memenv * form
 val tc1_process_phl_exp      : tcenv1 -> oside -> ty option -> pexpr -> expr
 
 val tc1_process_prhl_form    : tcenv1 -> ty -> pformula -> form

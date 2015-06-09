@@ -74,23 +74,16 @@ and f_node =
   | FmuhoareF of muhoareF
   | FmuhoareS of muhoareS
 
-and lmd_form = (EcIdent.t * memtype) * form
-
 and muhoareF = {
-  muhf_pr : lmd_form; 
+  muhf_pr : form; (* : (pre mem f) distr -> bool *)
   muhf_f  : EcPath.xpath;
-  muhf_po : lmd_form;
+  muhf_po : form; (* : (post mem f) distr -> bool *)
 }
 
 and muhoareS = {
-  muh_pr : lmd_form;
+  muh_pr : form; 
   muh_s  : stmt;
-  muh_po : lmd_form;
-}
-
-and integral = {
-  ig_fo : lmd_form;
-  ig_mu : EcIdent.t;
+  muh_po : form;
 }
    
 and eagerF = {
@@ -282,24 +275,15 @@ let pr_equal pr1 pr2 =
 
 
 let muhf_equal ph1 ph2 = 
-     EcMemory.me_equal (fst ph1.muhf_pr) (fst ph2.muhf_pr)
-  && f_equal (snd ph1.muhf_pr) (snd ph2.muhf_pr)
-  && EcMemory.me_equal (fst ph1.muhf_po) (fst ph2.muhf_po)
-  && f_equal (snd ph1.muhf_po) (snd ph2.muhf_po)
-  && EcPath.x_equal   ph1.muhf_f ph2.muhf_f
+     f_equal        ph1.muhf_pr ph2.muhf_pr
+  && f_equal        ph1.muhf_po ph2.muhf_po
+  && EcPath.x_equal ph1.muhf_f ph2.muhf_f
 
 let muh_equal ph1 ph2 = 
-     EcMemory.me_equal (fst ph1.muh_pr) (fst ph2.muh_pr)
-  && f_equal (snd ph1.muh_pr) (snd ph2.muh_pr)
-  && EcMemory.me_equal (fst ph1.muh_po) (fst ph2.muh_po)
-  && f_equal (snd ph1.muh_po) (snd ph2.muh_po)
-  && EcModules.s_equal   ph1.muh_s ph2.muh_s
+     f_equal           ph1.muh_pr ph2.muh_pr
+  && f_equal           ph1.muh_po ph2.muh_po
+  && EcModules.s_equal ph1.muh_s ph2.muh_s
 
-let ig_equal ig1 ig2 = 
-     EcMemory.me_equal (fst ig1.ig_fo) (fst ig2.ig_fo)
-  && f_equal (snd ig1.ig_fo) (snd ig2.ig_fo)
-  && EcIdent.id_equal ig1.ig_mu ig2.ig_mu
-  
 (* -------------------------------------------------------------------- *)
 let hf_hash hf =
   Why3.Hashcons.combine2
@@ -344,16 +328,11 @@ let pr_hash pr =
 
 let muhf_hash hf = 
   Why3.Hashcons.combine2 
-    (f_hash (snd hf.muhf_pr)) (f_hash (snd hf.muhf_po)) (EcPath.x_hash hf.muhf_f)
+    (f_hash hf.muhf_pr) (f_hash hf.muhf_po) (EcPath.x_hash hf.muhf_f)
 
 let muh_hash hf = 
   Why3.Hashcons.combine2 
-    (f_hash (snd hf.muh_pr)) (f_hash (snd hf.muh_po)) (EcModules.s_hash hf.muh_s)
-
-let ig_hash ig = 
-  Why3.Hashcons.combine 
-    (f_hash (snd ig.ig_fo)) (EcIdent.id_hash ig.ig_mu)
-
+    (f_hash hf.muh_pr) (f_hash hf.muh_po) (EcModules.s_hash hf.muh_s)
 
 (* -------------------------------------------------------------------- *)
 module Hsform = Why3.Hashcons.Make (struct
@@ -523,15 +502,11 @@ module Hsform = Why3.Hashcons.Make (struct
         fv_union (f_fv pr.pr_args) (fv_add pr.pr_mem fv)
 
     | FmuhoareF ph -> 
-        let fv1 = Mid.remove (fst (fst ph.muhf_pr)) (f_fv (snd ph.muhf_pr)) in
-        let fv2 = Mid.remove (fst (fst ph.muhf_po)) (f_fv (snd ph.muhf_po)) in
-        EcPath.x_fv (fv_union fv1 fv2) ph.muhf_f 
+        EcPath.x_fv (fv_union (f_fv ph.muhf_pr) (f_fv ph.muhf_po)) ph.muhf_f 
 
     | FmuhoareS ph -> 
-        let fv1 = Mid.remove (fst (fst ph.muh_pr)) (f_fv (snd ph.muh_pr)) in
-        let fv2 = Mid.remove (fst (fst ph.muh_po)) (f_fv (snd ph.muh_po)) in
-        let fv3 = EcModules.s_fv ph.muh_s in
-        fv_union (fv_union fv1 fv2) fv3
+        fv_union (fv_union (f_fv ph.muh_pr) (f_fv ph.muh_po)) 
+          (EcModules.s_fv ph.muh_s)
  
 
   let tag n f =
@@ -629,9 +604,6 @@ let f_lambda b  f     = f_quant Llambda b f
 
 let f_forall_mems bds f =
   f_forall (List.map (fun (m, mt) -> (m, gtmem mt)) bds) f
-
-let f_forall_distr ((id,mt), f) = 
-  f_forall [id, gtdistr mt] f
 
 (* -------------------------------------------------------------------- *)
 let ty_fbool1 = toarrow (List.make 1 tbool) tbool
@@ -960,13 +932,11 @@ let f_map gt g fp =
 
   | FmuhoareS ph ->
     FSmart.f_muhoareS (fp, ph) 
-      { ph with muh_pr = (fst ph.muh_pr, g (snd ph.muh_pr));
-        muh_po = (fst ph.muh_po, g (snd ph.muh_po)); }
+      { ph with muh_pr = g ph.muh_pr; muh_po = g ph.muh_po; }
 
   | FmuhoareF ph ->
     FSmart.f_muhoareF (fp, ph) 
-      { ph with muhf_pr = (fst ph.muhf_pr, g (snd ph.muhf_pr));
-        muhf_po = (fst ph.muhf_po, g (snd ph.muhf_po)); }
+      { ph with muhf_pr = g ph.muhf_pr; muhf_po = g ph.muhf_po; }
 
 (* -------------------------------------------------------------------- *)
 let f_iter g f =
@@ -993,8 +963,8 @@ let f_iter g f =
   | FeagerF   eg  -> g eg.eg_pr; g eg.eg_po
   | Fpr       pr  -> g pr.pr_args; g pr.pr_event
     
-  | FmuhoareS  ph  -> g (snd (ph.muh_pr)); g (snd (ph.muh_po))
-  | FmuhoareF  ph  -> g (snd (ph.muhf_pr)); g (snd (ph.muhf_po))
+  | FmuhoareS  ph  -> g ph.muh_pr; g ph.muh_po
+  | FmuhoareF  ph  -> g ph.muhf_pr; g ph.muhf_po
 
 (* -------------------------------------------------------------------- *)
 let form_exists g f =
@@ -1012,16 +982,16 @@ let form_exists g f =
   | Ftuple   es           -> List.exists g es
   | Fproj    (e, _)       -> g e
 
-  | FhoareF   hf  -> g hf.hf_pr   || g hf.hf_po
-  | FhoareS   hs  -> g hs.hs_pr   || g hs.hs_po
-  | FbdHoareF bhf -> g bhf.bhf_pr || g bhf.bhf_po
-  | FbdHoareS bhs -> g bhs.bhs_pr || g bhs.bhs_po
-  | FequivF   ef  -> g ef.ef_pr   || g ef.ef_po
-  | FequivS   es  -> g es.es_pr   || g es.es_po
-  | FeagerF   eg  -> g eg.eg_pr   || g eg.eg_po
-  | Fpr       pr  -> g pr.pr_args || g pr.pr_event
-  | FmuhoareF  ph  -> g (snd ph.muhf_pr) || g (snd ph.muhf_po) 
-  | FmuhoareS  ph  -> g (snd ph.muh_pr) || g (snd ph.muh_po) 
+  | FhoareF   hf  -> g hf.hf_pr    || g hf.hf_po
+  | FhoareS   hs  -> g hs.hs_pr    || g hs.hs_po
+  | FbdHoareF bhf -> g bhf.bhf_pr  || g bhf.bhf_po
+  | FbdHoareS bhs -> g bhs.bhs_pr  || g bhs.bhs_po
+  | FequivF   ef  -> g ef.ef_pr    || g ef.ef_po
+  | FequivS   es  -> g es.es_pr    || g es.es_po
+  | FeagerF   eg  -> g eg.eg_pr    || g eg.eg_po
+  | Fpr       pr  -> g pr.pr_args  || g pr.pr_event
+  | FmuhoareF  ph  -> g ph.muhf_pr || g ph.muhf_po
+  | FmuhoareS  ph  -> g ph.muh_pr  || g ph.muh_po
 
 (* -------------------------------------------------------------------- *)
 let form_forall g f =
@@ -1047,8 +1017,8 @@ let form_forall g f =
   | FequivS   es  -> g es.es_pr   && g es.es_po
   | FeagerF   eg  -> g eg.eg_pr   && g eg.eg_po
   | Fpr       pr  -> g pr.pr_args && g pr.pr_event
-  | FmuhoareF  ph -> g (snd ph.muhf_pr) && g (snd ph.muhf_po) 
-  | FmuhoareS  ph -> g (snd ph.muh_pr) && g (snd ph.muh_po) 
+  | FmuhoareF ph  -> g ph.muhf_pr && g ph.muhf_po
+  | FmuhoareS ph  -> g ph.muh_pr  && g ph.muh_po 
 
 
 (* -------------------------------------------------------------------- *)
@@ -1589,29 +1559,23 @@ module Fsubst = struct
       FSmart.f_pr (fp, pr) { pr_mem; pr_fun; pr_args; pr_event; }
 
     | FmuhoareF mh ->
-      let muhf_pr = subst_bindmem ~tx `Distr s mh.muhf_pr in
-      let muhf_po = subst_bindmem ~tx `Distr s mh.muhf_po in
+      let muhf_pr = f_subst ~tx s mh.muhf_pr in
+      let muhf_po = f_subst ~tx s mh.muhf_po in
       let muhf_f  = EcPath.x_substm s.fs_sty.ts_p s.fs_mp mh.muhf_f in
       FSmart.f_muhoareF  (fp,mh) { muhf_pr; muhf_po; muhf_f }
  
     | FmuhoareS mh ->
-      let muh_pr = subst_bindmem ~tx `Distr s mh.muh_pr in
-      let muh_po = subst_bindmem ~tx `Distr s mh.muh_po in
-      let es = e_subst_init s.fs_freshen s.fs_sty.ts_p s.fs_ty s.fs_opdef s.fs_mp in
+      let muh_pr = f_subst ~tx s mh.muh_pr in
+      let muh_po = f_subst ~tx s mh.muh_po in
+      let es = 
+        e_subst_init s.fs_freshen s.fs_sty.ts_p s.fs_ty s.fs_opdef s.fs_mp in
       let muh_s  = EcModules.s_subst es mh.muh_s in
       FSmart.f_muhoareS (fp,mh) { muh_pr; muh_po; muh_s }
       
     | _ -> f_map s.fs_ty (f_subst ~tx s) fp)
 
-  and subst_bindmem ~tx k s ((id,ty),f) = 
-    let s, (id', gty') = add_binding s (id, gtmemordistr ty k) in
-    let f'    = f_subst ~tx s f in
-    let ty'   = gty_as_memordistr gty' in
-    (id', ty'), f'
-
   and f_subst_op ~tx freshen fty tys args (tyids, e) =
     (* FIXME: factor this out *)
-    (* FIXME: is [mhr] good as a default? *)
 
     let e =
       let sty = Tvar.init tyids tys in

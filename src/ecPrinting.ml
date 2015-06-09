@@ -1218,6 +1218,14 @@ let rec pp_bindings ppe bds =
   | (x, gty) :: bds -> pp_bindings_aux ppe (merge ([x], gty) bds)
 
 (* -------------------------------------------------------------------- *)
+
+let enter_pred_memdistr ppe f = 
+  let env = ppe.PPEnv.ppe_env in
+  let m, ty, f = get_lambda1 env f in
+  let lmt = EcUnify.destr_tdmem env ty in
+  let ppe = PPEnv.push_distr ppe ~active:true (m,lmt) in
+  ppe, f
+
 let string_of_hcmp = function
   | FHle -> "<="
   | FHeq -> "="
@@ -1489,12 +1497,10 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         (pp_form_r ppe (fst outer, (max_op_prec,`NonAssoc))) hs.bhs_bd
 
   | FmuhoareF hf ->
-      let ppe_pr = PPEnv.push_distr ppe ~active:true (fst hf.muhf_pr) in
-      let ppe_po = PPEnv.push_distr ppe ~active:true (fst hf.muhf_po) in
       Format.fprintf fmt "muhoare[@[<hov 2>@ %a :@ @[%a ==>@ %a@]@]]"
         (pp_funname ppe) hf.muhf_f
-        (pp_form ppe_pr) (snd hf.muhf_pr)
-        (pp_form ppe_po) (snd hf.muhf_po)
+        (pp_ldform ppe)  hf.muhf_pr
+        (pp_ldform ppe)  hf.muhf_po
 
   | FmuhoareS hs ->
       Format.fprintf fmt "muhoare[@[<hov 2>@ %a :@ @[%a ==>@ %a@]@]]"
@@ -1530,8 +1536,8 @@ and pp_form_r (ppe : PPEnv.t) outer fmt f =
 and pp_form ppe fmt f =
   pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt f
 
-and pp_ldform ppe fmt (m, f) = 
-  let ppe = PPEnv.push_distr ppe ~active:true m in
+and pp_ldform ppe fmt f = 
+  let ppe, f = enter_pred_memdistr ppe f in
   pp_form ppe fmt f 
 
 (* -------------------------------------------------------------------- *)
@@ -2020,9 +2026,9 @@ let pp_muhoareS (ppe : PPEnv.t) fmt hs =
   let ppnode = collect2_s hs.muh_s.s_node [] in
   let ppnode = c_ppnode ~width:80 ppe ppnode
   in
-    Format.fprintf fmt "Context : %a@\n%!" (pp_funname ppe) 
+(*    Format.fprintf fmt "Context : %a@\n%!" (pp_funname ppe) 
       (EcMemory.xpath (fst hs.muh_pr));
-    Format.fprintf fmt "@\n%!";
+    Format.fprintf fmt "@\n%!"; *)
     Format.fprintf fmt "%a@\n%!" (pp_ldform ppe) hs.muh_pr;
     Format.fprintf fmt "@\n%!";
     Format.fprintf fmt "%a" (pp_node `Left) ppnode;

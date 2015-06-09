@@ -2460,9 +2460,11 @@ let trans_form_or_pattern env (ps, ue) pf tt =
         let post' = transf qenv post in
         unify_or_fail penv ue pre.pl_loc  ~expct:tbool pre' .f_ty;
         unify_or_fail qenv ue post.pl_loc ~expct:tbool post'.f_ty;
-        let get env = oget (EcEnv.MemDistr.current env) in
-        let pre' = get penv, pre' in
-        let post' = get qenv, post' in
+        let get env p = 
+          let x, mt = oget (EcEnv.MemDistr.current env) in
+          f_lambda [x,GTty (tdistr (tmem mt))] p in
+        let pre'  = get penv pre' in
+        let post' = get qenv post' in
         f_muhoareF pre' fpath post'
 
     | PFintegr(f,mu) ->
@@ -2478,11 +2480,12 @@ let trans_form_or_pattern env (ps, ue) pf tt =
           | None -> tyerror s.pl_loc env (UnknownDistrName(0,s.pl_desc))
           | Some mu -> mu
           end in
-      let bind = (EcCoreFol.mhr, mt) in       (* FIXME mhr *)
+      let m = EcCoreFol.mhr in
+      let bind = (m, mt) in       (* FIXME mhr *)
       let env' = EcEnv.Memory.push_active bind env in
       let f' = transf env' f in
       unify_or_fail env' ue f.pl_loc  ~expct:treal f'.f_ty;
-      f_integr (bind, f') mu
+      f_integr env (f_lambda [m, GTty (tmem mt)] f') mu
       
 
 

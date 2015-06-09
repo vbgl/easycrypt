@@ -320,7 +320,8 @@ let t_equiv_while_r inv tc =
   FApi.xmutate1 tc `While [b_concl; concl]
 
 (* -------------------------------------------------------------------- *)
-let t_muhoare_while (inv : lmd_form) tc =
+let t_muhoare_while (inv : form) tc =
+  (* FIXME: check the type of inv *)
   let mus = tc1_as_muhoareS tc in
   let (e, c), s = tc1_last_while tc mus.muh_s in
 
@@ -395,7 +396,8 @@ let process_while side winfos tc =
   | FmuhoareS _ -> begin
       match side, vrnt with
       | None, None ->
-          t_muhoare_while (TTC.tc1_process_phl_ld_formula tc phi) tc
+        let mumt,f = TTC.tc1_process_phl_ld_formula tc phi in
+        t_muhoare_while (close_mu_binding mumt f) tc
 
       | _ -> tc_error !!tc "invalid arguments"
           

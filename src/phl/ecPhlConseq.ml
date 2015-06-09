@@ -43,18 +43,21 @@ let bd_goal pe fcmp fbd cmp bd =
                  {pr1} _ {po1} 
 *)
 
-let conseq_muhoare pr1 po1 pr2 po2 = 
-  lmd_forall_imp pr1 pr2, lmd_forall_imp po2 po1
+let conseq_muhoare env pr1 po1 pr2 po2 = 
+  (* FIXME: check that the type are compatible *)
+  p_forall_imp env pr1 pr2, p_forall_imp env po2 po1
  
 let t_muhoareF_conseq pr po tc = 
   let muh = tc1_as_muhoareF tc in
-  let concl1, concl2 = conseq_muhoare muh.muhf_pr muh.muhf_po pr po in
+  let concl1, concl2 = 
+    conseq_muhoare (FApi.tc1_env tc) muh.muhf_pr muh.muhf_po pr po in
   let concl3 = f_muhoareF_r {muh with muhf_pr = pr;muhf_po = po } in
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
 
 let t_muhoareS_conseq pr po tc = 
   let muh = tc1_as_muhoareS tc in
-  let concl1, concl2 = conseq_muhoare muh.muh_pr muh.muh_po pr po in
+  let concl1, concl2 = 
+    conseq_muhoare (FApi.tc1_env tc) muh.muh_pr muh.muh_po pr po in
   let concl3 = f_muhoareS_r {muh with muh_pr = pr; muh_po = po } in
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
   
@@ -892,14 +895,21 @@ let process_conseq notmod (info1, info2, info3) tc =
          in `Form(env, env, es.es_pr, es.es_po, fmake)
 
        | FmuhoareS hs ->
-         let mupr = fst hs.muh_pr and mupo = fst hs.muh_po in
+         let env = FApi.tc1_env tc in
+         let mupr,_ = open_mu_binding env hs.muh_pr in
          let penv = LDecl.push_active_distr mupr hyps in
+         let pro_pr tc env f = 
+           close_mu_binding mupr (TTC.pf_process_formula tc env f) in
+
+         let mupo,_ = open_mu_binding env hs.muh_po in
          let qenv = LDecl.push_active_distr mupo hyps in
+         let pro_po tc env f = 
+           close_mu_binding mupo (TTC.pf_process_formula tc env f) in
+
          let fmake pre post bd =
            ensure_none bd; 
            f_muhoareS_r {hs with muh_pr = pre; muh_po = post } in
-         let pro_pr tc env f = mupr, TTC.pf_process_formula tc env f in
-         let pro_po tc env f = mupo, TTC.pf_process_formula tc env f in
+
          `LDForm (penv, qenv, hs.muh_pr, hs.muh_po, fmake, (pro_pr, pro_po))
 
        | _ -> tc_error !!tc "conseq: not a phl/prhl judgement"

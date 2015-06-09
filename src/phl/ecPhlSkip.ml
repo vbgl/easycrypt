@@ -21,7 +21,7 @@ module LowInternal = struct
 
     if not (List.is_empty muh.muh_s.s_node) then
       tc_error !!tc "instruction list is not empty";
-    let concl = lmd_forall_imp muh.muh_pr muh.muh_po in
+    let concl = p_forall_imp (FApi.tc1_env tc) muh.muh_pr muh.muh_po in
     FApi.xmutate1 tc `Skip [concl]
 
   let t_muhoare_skip = FApi.t_low0 "hoare-skip" t_muhoare_skip_r
