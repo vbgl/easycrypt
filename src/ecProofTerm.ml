@@ -245,9 +245,9 @@ let pf_find_occurence (pt : pt_env) ~ptn subject =
     in
 
     try
-      if not (Mid.set_disjoint bds tp.f_fv) then
+(*      if not (Mid.set_disjoint bds tp.f_fv) then
         `Continue
-      else begin
+      else *) begin
         pf_form_match pt ~ptn tp;
         raise E.MatchFound
       end
