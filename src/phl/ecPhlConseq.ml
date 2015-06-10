@@ -46,7 +46,7 @@ let bd_goal pe fcmp fbd cmp bd =
 let conseq_muhoare env pr1 po1 pr2 po2 = 
   (* FIXME: check that the type are compatible *)
   p_forall_imp env pr1 pr2, p_forall_imp env po2 po1
- 
+
 let t_muhoareF_conseq pr po tc = 
   let muh = tc1_as_muhoareF tc in
   let concl1, concl2 = 
@@ -60,6 +60,57 @@ let t_muhoareS_conseq pr po tc =
     conseq_muhoare (FApi.tc1_env tc) muh.muh_pr muh.muh_po pr po in
   let concl3 = f_muhoareS_r {muh with muh_pr = pr; muh_po = po } in
   FApi.xmutate1 tc `Conseq [concl1; concl2; concl3]
+
+(*  {pr} _ {po1}      {pr} _ {po2}   
+    -------------------------------
+           {pr} _ {po1 /\ }               *)
+
+let check_po_and tc po = 
+  let env = FApi.tc1_env tc in
+  let mu,ty,po = get_lambda1 env po in
+  (* FIXME: should work module reduction *)
+  if not (is_and po) then tc_error !!tc
+      "can not reconize a conjonction in the post condition";
+  let p1,p2 = destr_and po in
+  f_lambda [mu,GTty ty] p1, f_lambda [mu,GTty ty] p2
+
+let t_muhoare_and get mk tc = 
+  let muh, po = get tc in
+  let po1, po2 = check_po_and tc po in
+  let concl1 = mk muh po1 in
+  let concl2 = mk muh po2 in
+  FApi.xmutate1 tc `ConseqAnd [concl1; concl2]
+
+let t_muhoareS_and = 
+  let get_po tc = 
+     let muh = tc1_as_muhoareS tc in
+     muh, muh.muh_po in
+  let mk muh po = f_muhoareS_r {muh with muh_po = po} in
+  t_muhoare_and get_po mk 
+
+let t_muhoareF_and = 
+  let get_po tc = 
+    let muh = tc1_as_muhoareF tc in
+    muh, muh.muhf_po in
+  let mk muh po = f_muhoareF_r {muh with muhf_po = po} in
+  t_muhoare_and get_po mk
+
+let t_muhoare_conseq_and t_conseq t_and pr1 pr2 po1 po2 tc = 
+  let env = FApi.tc1_env tc in
+  (t_conseq (p_and env pr1 pr2) (p_and env po1 po2) @+ [
+    t_id;
+    t_id;
+    t_and @+[ 
+      t_conseq pr1 po1 @! t_logic_trivial;
+      t_conseq pr2 po2 @! t_logic_trivial; 
+    ]
+  ]) tc
+
+let t_muhoareS_conseq_and = 
+  t_muhoare_conseq_and t_muhoareS_conseq t_muhoareS_and
+
+let t_muhoareF_conseq_and = 
+  t_muhoare_conseq_and t_muhoareF_conseq t_muhoareF_and
   
 (* -------------------------------------------------------------------- *)
 let t_hoareF_conseq pre post tc =
@@ -817,6 +868,36 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
     let f2 = f_hoareF f_true ef.ef_fl f_true in
     t_hi_conseq notmod f1 (Some (None, f2)) f3 tc
 
+  (* ------------------------------------------------------------------ *)
+  (* muhoareS / muhoareS / ⊥ / ⊥                                        *)
+  | FmuhoareS _, Some ((_, {f_node = FmuhoareS hs}) as nf1), None, None ->
+    (* FIXME what should be not modify *)
+    let tac = t_muhoareS_conseq in
+    t_on1 2 (t_apply_r nf1) (tac hs.muh_pr hs.muh_po tc)
+
+  | FmuhoareF _, Some ((_, {f_node = FmuhoareF hs}) as nf1), None, None ->
+    (* FIXME what should be not modify *)
+    let tac = t_muhoareF_conseq in
+    t_on1 2 (t_apply_r nf1) (tac hs.muhf_pr hs.muhf_po tc)
+
+  (* ------------------------------------------------------------------ *)
+  (* muhoareS / muhoareS / muhoareS / ⊥                                 *)
+  | FmuhoareS _, Some ((_, {f_node = FmuhoareS hs1}) as nf1), 
+                 Some ((_, {f_node = FmuhoareS hs2}) as nf2), None ->
+    (* FIXME what should be not modify *)
+    (t_muhoareS_conseq_and 
+      hs1.muh_pr hs2.muh_pr hs1.muh_po hs2.muh_po @+ 
+      [ t_id; t_id; 
+        t_apply_r nf1; t_apply_r nf2 ]) tc
+
+  | FmuhoareF _, Some ((_, {f_node = FmuhoareF hs1}) as nf1), 
+                 Some ((_, {f_node = FmuhoareF hs2}) as nf2), None ->
+    (* FIXME what should be not modify *)
+    (t_muhoareF_conseq_and 
+      hs1.muhf_pr hs2.muhf_pr hs1.muhf_po hs2.muhf_po @+ 
+      [ t_id; t_id;
+        t_apply_r nf1; t_apply_r nf2]) tc
+
   | _ ->
     let rec pp_f f =
       match f.f_node with
@@ -826,6 +907,8 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
       | FhoareS   _ -> "hoareS"
       | FbdHoareF _ -> "phoareF"
       | FbdHoareS _ -> "phoareS"
+      | FmuhoareF _ -> "muhoareF"
+      | FmuhoareS _ -> "muhoareS"
       | _           -> "?"
 
     and pp_o f =
@@ -912,6 +995,24 @@ let process_conseq notmod (info1, info2, info3) tc =
 
          `LDForm (penv, qenv, hs.muh_pr, hs.muh_po, fmake, (pro_pr, pro_po))
 
+       | FmuhoareF hs ->
+         let env = FApi.tc1_env tc in
+         let mupr,_ = open_mu_binding env hs.muhf_pr in
+         let penv = LDecl.push_active_distr mupr hyps in
+         let pro_pr tc env f = 
+           close_mu_binding mupr (TTC.pf_process_formula tc env f) in
+
+         let mupo,_ = open_mu_binding env hs.muhf_po in
+         let qenv = LDecl.push_active_distr mupo hyps in
+         let pro_po tc env f = 
+           close_mu_binding mupo (TTC.pf_process_formula tc env f) in
+
+         let fmake pre post bd =
+           ensure_none bd; 
+           f_muhoareF_r {hs with muhf_pr = pre; muhf_po = post } in
+
+         `LDForm (penv, qenv, hs.muhf_pr, hs.muhf_po, fmake, (pro_pr, pro_po))
+
        | _ -> tc_error !!tc "conseq: not a phl/prhl judgement"
     in
 
@@ -929,36 +1030,36 @@ let process_conseq notmod (info1, info2, info3) tc =
   in
 
   let process_cut2 side ((pre, post), bd) =
-    let penv, qenv, gpre, gpost, fmake =
+    let entry = 
       match concl.f_node with
       | FhoareS hs ->
         let env = LDecl.push_active hs.hs_m hyps in
         let fmake pre post bd =
-          ensure_none bd; f_hoareS_r { hs with hs_pr = pre; hs_po = post; }
-        in (env, env, hs.hs_pr, hs.hs_po, fmake)
+          ensure_none bd; f_hoareS_r { hs with hs_pr = pre; hs_po = post; } in
+        `Form(env, env, hs.hs_pr, hs.hs_po, fmake)
 
       | FhoareF hf ->
         let penv, qenv = LDecl.hoareF hf.hf_f hyps in
         let fmake pre post bd = ensure_none bd; f_hoareF pre hf.hf_f post in
-        (penv, qenv, hf.hf_pr, hf.hf_po, fmake)
-
+        `Form(penv, qenv, hf.hf_pr, hf.hf_po, fmake)
+          
       | FbdHoareS bhs ->
         let env = LDecl.push_active bhs.bhs_m hyps in
         let fmake pre post bd =
-          ensure_none bd; f_hoareS bhs.bhs_m pre bhs.bhs_s post
-        in (env, env, bhs.bhs_pr, bhs.bhs_po, fmake)
+          ensure_none bd; f_hoareS bhs.bhs_m pre bhs.bhs_s post in
+        `Form(env, env, bhs.bhs_pr, bhs.bhs_po, fmake)
 
       | FbdHoareF bhf ->
         let penv, qenv = LDecl.hoareF bhf.bhf_f hyps in
         let fmake pre post bd = 
           ensure_none bd; f_hoareF pre bhf.bhf_f post in
-        (penv, qenv, bhf.bhf_pr, bhf.bhf_po, fmake)
+        `Form(penv, qenv, bhf.bhf_pr, bhf.bhf_po, fmake)
 
       | FequivF ef ->
         let f = sideif side ef.ef_fl ef.ef_fr in
         let penv, qenv = LDecl.hoareF f hyps in
         let fmake pre post bd = ensure_none bd; f_hoareF pre f post in
-        (penv, qenv, f_true, f_true, fmake)
+        `Form(penv, qenv, f_true, f_true, fmake)
 
       | FequivS es ->
         let f = sideif side es.es_sl es.es_sr in
@@ -978,16 +1079,58 @@ let process_conseq notmod (info1, info2, info3) tc =
           | _, Some (cmp, bd) ->
             let cmp = odfl FHeq cmp in
               f_bdHoareS m pre f post cmp bd
-        in (env, env, f_true, f_true, fmake)
+        in 
+        `Form(env, env, f_true, f_true, fmake)
 
+      | FmuhoareS hs ->
+        let env = FApi.tc1_env tc in
+        let mupr,_ = open_mu_binding env hs.muh_pr in
+        let penv = LDecl.push_active_distr mupr hyps in
+        let pro_pr tc env f = 
+          close_mu_binding mupr (TTC.pf_process_formula tc env f) in
+        
+        let mupo,_ = open_mu_binding env hs.muh_po in
+        let qenv = LDecl.push_active_distr mupo hyps in
+        let pro_po tc env f = 
+          close_mu_binding mupo (TTC.pf_process_formula tc env f) in
+        
+        let fmake pre post bd =
+          ensure_none bd; 
+          f_muhoareS_r {hs with muh_pr = pre; muh_po = post } in
+        
+        `LDForm (penv, qenv, hs.muh_pr, hs.muh_po, fmake, (pro_pr, pro_po)) 
+
+      | FmuhoareF hs ->
+        let env = FApi.tc1_env tc in
+        let mupr,_ = open_mu_binding env hs.muhf_pr in
+        let penv = LDecl.push_active_distr mupr hyps in
+        let pro_pr tc env f = 
+          close_mu_binding mupr (TTC.pf_process_formula tc env f) in
+        
+        let mupo,_ = open_mu_binding env hs.muhf_po in
+        let qenv = LDecl.push_active_distr mupo hyps in
+        let pro_po tc env f = 
+          close_mu_binding mupo (TTC.pf_process_formula tc env f) in
+        
+        let fmake pre post bd =
+          ensure_none bd; 
+          f_muhoareF_r {hs with muhf_pr = pre; muhf_po = post } in
+        
+        `LDForm (penv, qenv, hs.muhf_pr, hs.muhf_po, fmake, (pro_pr, pro_po))
+          
       | _ -> tc_error !!tc "conseq: not a phl/prhl judgement"
     in
-
-    let pre  = pre  |> omap (TTC.pf_process_formula !!tc penv) |> odfl gpre  in
-    let post = post |> omap (TTC.pf_process_formula !!tc qenv) |> odfl gpost in
-    let bd   = bd   |> omap (snd_map (TTC.pf_process_form !!tc penv treal)) in
-
-    fmake pre post bd
+    match entry with
+    | `Form(penv, qenv, gpre, gpost, fmake) -> 
+      let pre  = pre |> omap (TTC.pf_process_formula !!tc penv) |> odfl gpre  in
+      let post = post|> omap (TTC.pf_process_formula !!tc qenv) |> odfl gpost in
+      let bd   = bd  |> omap (snd_map (TTC.pf_process_form !!tc penv treal)) in
+      fmake pre post bd
+    | `LDForm(penv,qenv,gpre, gpost, fmake,(pro_pr, pro_po)) -> 
+      let pre  = pre |> omap (pro_pr !!tc penv) |> odfl gpre  in
+      let post = post|> omap (pro_po !!tc qenv) |> odfl gpost in
+      let bd   = bd  |> omap (snd_map (TTC.pf_process_form !!tc penv treal)) in
+      fmake pre post bd
 
   in
 

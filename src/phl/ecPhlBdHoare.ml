@@ -44,6 +44,9 @@ let t_hoare_bd_hoare tc =
 
   | FhoareF _ -> t_bdhoare_of_hoareF tc
   | FhoareS _ -> t_bdhoare_of_hoareS tc
+ 
+  | FmuhoareS _ -> t_hoare_of_muhoareS tc
+  | FmuhoareF _ -> t_hoare_of_muhoareF tc
 
   | _ -> tc_error !!tc "a hoare or phoare judgment was expected"
 

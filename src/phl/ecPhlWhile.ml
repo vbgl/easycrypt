@@ -320,6 +320,7 @@ let t_equiv_while_r inv tc =
   FApi.xmutate1 tc `While [b_concl; concl]
 
 (* -------------------------------------------------------------------- *)
+(* Rule : WHILE-G1 *)
 let t_muhoare_while (inv : form) tc =
   (* FIXME: check the type of inv *)
   let mus = tc1_as_muhoareS tc in
@@ -334,6 +335,11 @@ let t_muhoare_while (inv : form) tc =
   let cond3 = f_muhoareS inv (s_assert ne) mus.muh_po in
 
   FApi.xmutate1 tc `While [cond1; cond2; cond3]
+
+(* Rule : WHILE-RWB *)
+
+
+(* Rule : WHILE-RWU *)
 
 (* -------------------------------------------------------------------- *)
 let t_hoare_while           = FApi.t_low1 "hoare-while"   t_hoare_while_r
