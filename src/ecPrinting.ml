@@ -1357,16 +1357,19 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
       Format.fprintf fmt "%a" BI.pp_print n
 
   | Flocal id ->
-      pp_local ppe fmt id
+      pp_local ppe fmt id 
 
   | Fpvar (x, i) -> begin
     match EcEnv.Memory.get_active ppe.PPEnv.ppe_env with
     | Some i' when f_equal i' i ->
         Format.fprintf fmt "%a" (pp_pv ppe) x
     | _ ->
-      let i = destr_local i in
-      let ppe = PPEnv.enter_by_memid ppe i in
-      Format.fprintf fmt "%a{%a}" (pp_pv ppe) x (pp_mem ppe) i
+      let i' = destr_local i in
+      let ppe = PPEnv.enter_by_memid ppe i' in
+(*      Format.fprintf fmt "%a{%a(*%a*)}" (pp_pv ppe) x (pp_mem ppe) i' 
+             (pp_type ppe) i.f_ty *)
+      Format.fprintf fmt "%a{%a}" (pp_pv ppe) x (pp_mem ppe) i' 
+
     end
 
   | Fglob (mp, i) -> begin

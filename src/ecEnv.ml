@@ -1637,7 +1637,7 @@ module Fun = struct
     let fd, memenv = actmem_body EcCoreFol.mhr path fun_ in
     memenv, fd, Memory.push_active memenv env
 
-  let mu = EcIdent.create "#mu"
+  let mu = EcIdent.create "mu"
   let muhoareF path env =
     let (_,pre), (_,post) = hoareF_memenv path env in
     MemDistr.push_active (mu,pre) env, MemDistr.push_active (mu,post) env

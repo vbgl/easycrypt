@@ -633,8 +633,8 @@ fident:
 
 (* -------------------------------------------------------------------- *)
 pside_:
-| x=LIDENT     { (0, Printf.sprintf "&%s" x) }
-| x=word       { (0, Printf.sprintf "&%d" x) }
+| x=LIDENT     { (0, Printf.sprintf "%s" x) }
+| x=word       { (0, Printf.sprintf "%d" x) }
 | ADD x=pside_ { (1 + fst x, snd x) }
 
 pside:
@@ -936,6 +936,19 @@ sform_u(P):
 
 | SAMPLE LBRACKET f=form_r(P) RBRACKET
    { PFintegr (f, None) }
+
+| SAMPLE AT LBRACKET f=form_r(P) RBRACKET 
+   {
+     let id = 
+       mk_loc f.pl_loc 
+         (PFident (mk_loc f.pl_loc EcCoreLib.s_real_of_int, None)) in
+     let z = mk_loc f.pl_loc (PFint EcBigInt.zero) in
+     let zr = mk_loc f.pl_loc (PFapp (id, [z])) in
+     let nf = mk_loc f.pl_loc (pfapp_symb f.pl_loc "[!]" None [f]) in
+     let nf = mk_loc f.pl_loc (pfapp_symb f.pl_loc "b2r" None [nf]) in
+     let i = mk_loc f.pl_loc (PFintegr (nf, None)) in
+     pfapp_symb f.pl_loc "=" None [i; zr]
+   }
 
 | HOARE LBRACKET hb=hoare_body(P) RBRACKET { hb }
 
