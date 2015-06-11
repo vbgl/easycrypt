@@ -1159,7 +1159,11 @@ let is_op_iff      p = EcPath.p_equal EcCoreLib.CI_Bool.p_iff p
 let is_op_eq       p = EcPath.p_equal EcCoreLib.CI_Bool.p_eq  p
 
 (* -------------------------------------------------------------------- *)
+let destr_op    = function { f_node = Fop(op,tys) } -> op, tys | _ -> destr_error "op"
 let destr_app   = function { f_node = Fapp (f, fs) } -> (f, fs) | f -> (f, [])
+let destr_op_app f = 
+  let fo,args = destr_app f in destr_op fo, args
+
 let destr_tuple = function { f_node = Ftuple fs } -> fs | _ -> destr_error "tuple"
 let destr_local = function { f_node = Flocal id } -> id | _ -> destr_error "local"
 
@@ -1172,6 +1176,7 @@ let _destr2 ~name pred form =
   match destr_app form with
   | { f_node = Fop (p, _) }, [f1; f2] when pred p -> (f1, f2)
   | _ -> destr_error name
+
 
 let destr_not = _destr1 ~name:"not" is_op_not
 let destr_and = _destr2 ~name:"and" is_op_and_any

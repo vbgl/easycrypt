@@ -12,7 +12,7 @@ open EcPV
 
 open EcCoreGoal
 open EcLowPhlGoal
-
+open EcLowMuHoare
 module Sx  = EcPath.Sx
 module TTC = EcProofTyping
 
@@ -323,6 +323,7 @@ let t_equiv_while_r inv tc =
 (* Rule : WHILE-G1 *)
 let t_muhoare_while (inv : form) tc =
   (* FIXME: check the type of inv *)
+  let env = FApi.tc1_env tc in
   let mus = tc1_as_muhoareS tc in
   let (e, c), s = tc1_last_while tc mus.muh_s in
 
@@ -330,9 +331,11 @@ let t_muhoare_while (inv : form) tc =
   let enot = e_op EcCoreLib.CI_Bool.p_not [] (toarrow [tbool] tbool) in
   let ne   = e_app enot [e] tbool in
 
-  let cond1 = f_muhoareS mus.muh_pr s inv in
-  let cond2 = f_muhoareS inv (s_if (e, c, s_empty)) inv in
-  let cond3 = f_muhoareS inv (s_assert ne) mus.muh_po in
+
+  let cond1 = f_muhoareS inv (s_if (e, c, s_empty)) inv in
+  (* let cond2 = f_muhoareS inv (s_assert ne) mus.muh_po in *)
+  let cond2 = p_forall_imp env inv (mu_restr env false e mus.muh_po) in
+  let cond3 = f_muhoareS mus.muh_pr s inv in
 
   FApi.xmutate1 tc `While [cond1; cond2; cond3]
 

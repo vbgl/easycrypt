@@ -15,7 +15,7 @@ val p_forall_imp : env -> form -> form -> form
 (* -------------------------------------------------------------------- *)
 val oplus : ty -> ident -> ident -> ident -> form -> form
 val curly : env -> expr -> form -> form -> form
-
+val mu_restr : env -> bool -> expr -> form -> form
 (* -------------------------------------------------------------------- *)
 exception NoWpMuhoare
 
