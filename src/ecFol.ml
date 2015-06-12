@@ -708,5 +708,28 @@ let f_pred2forall env f =
   f_forall [x,GTty t] f
 
 
+let destr_muf_b2r_not env f = 
+  let destr_op_app op f = 
+    let (op', _), args = destr_op_app f in
+    if not (EcPath.p_equal op op') then EcUtils.destr_error "op_app";
+    args in
+  let destr_op_app2 op f = 
+    let args = destr_op_app op f in
+    if List.length args <> 2 then EcUtils.destr_error "op_app";
+    EcUtils.as_seq2 args in
+  let destr_op_app1 op f = 
+    let args = destr_op_app op f in
+    if List.length args <> 1 then EcUtils.destr_error "op_app";
+    EcUtils.as_seq1 args in
+
+  let f1, fmu = destr_op_app2  EcCoreLib.CI_Distr.p_muf f in
+  let x,t,fbody = get_lambda1 env f1 in
+  (* check that fbody = b2r (! p ) *)
+  let np = destr_op_app1 EcCoreLib.CI_Distr.p_real_of_bool fbody in
+  let p = destr_not np in
+  f_lambda [x,GTty t] p, fmu
+
+let is_muf_b2r_not env f = is_from_destr (destr_muf_b2r_not env) f
   
+
     

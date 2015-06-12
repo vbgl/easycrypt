@@ -191,4 +191,5 @@ val sform_of_form : form -> sform
 val get_lambda1       : EcEnv.env -> form -> EcIdent.t * ty * form
 val open_mu_binding   : EcEnv.env -> form -> (EcIdent.t * memtype) * form
 val close_mu_binding  : EcIdent.t * memtype -> form -> form
-
+val is_muf_b2r_not    : EcEnv.env -> form -> bool
+val destr_muf_b2r_not : EcEnv.env -> form -> form * form

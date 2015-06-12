@@ -931,24 +931,17 @@ sform_u(P):
        parse_error n.pl_loc (Some "tuple projection start at 1");
      PFproji(f,n.pl_desc - 1) }
 
-| SAMPLE LBRACKET f=form_r(P) PIPE x=mdident RBRACKET
-   { PFintegr (f, Some x) }
+| SAMPLE LBRACKET f=form_r(P) PIPE d=form_r(P) RBRACKET
+   { PFintegr (f, Some d) }
 
 | SAMPLE LBRACKET f=form_r(P) RBRACKET
    { PFintegr (f, None) }
 
+| SAMPLE AT LBRACKET f=form_r(P) PIPE d=form_r(P) RBRACKET 
+   { PFsquare (f, Some d) }
+
 | SAMPLE AT LBRACKET f=form_r(P) RBRACKET 
-   {
-     let id = 
-       mk_loc f.pl_loc 
-         (PFident (mk_loc f.pl_loc EcCoreLib.s_real_of_int, None)) in
-     let z = mk_loc f.pl_loc (PFint EcBigInt.zero) in
-     let zr = mk_loc f.pl_loc (PFapp (id, [z])) in
-     let nf = mk_loc f.pl_loc (pfapp_symb f.pl_loc "[!]" None [f]) in
-     let nf = mk_loc f.pl_loc (pfapp_symb f.pl_loc "b2r" None [nf]) in
-     let i = mk_loc f.pl_loc (PFintegr (nf, None)) in
-     pfapp_symb f.pl_loc "=" None [i; zr]
-   }
+   { PFsquare (f, None) }
 
 | HOARE LBRACKET hb=hoare_body(P) RBRACKET { hb }
 

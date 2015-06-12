@@ -2467,28 +2467,53 @@ let trans_form_or_pattern env (ps, ue) pf tt =
         let post' = get qenv post' in
         f_muhoareF pre' fpath post'
 
-    | PFintegr(f,mu) ->
-      let (mu,mt) = 
-        match mu with
-        | None -> 
-          begin match EcEnv.MemDistr.current env with
-          | None -> tyerror f.pl_loc env NoActiveDistr
-          | Some mu -> mu 
-          end 
-        | Some s ->
-          begin match EcEnv.MemDistr.lookup 0 s.pl_desc env with
-          | None -> tyerror s.pl_loc env (UnknownDistrName(0,s.pl_desc))
-          | Some mu -> mu
-          end in
-      let m = EcCoreFol.mhr in
-      let bind = (m, mt) in       (* FIXME mhr *)
-      let env' = EcEnv.Memory.push_active bind env in
-      let f' = transf env' f in
-      unify_or_fail env' ue f.pl_loc  ~expct:treal f'.f_ty;
-      f_integr env (f_lambda [m, GTty (tmem mt)] f') mu
+    | PFintegr(ff,mu) ->
+      let ty, mu = trans_mu opsc env f.pl_loc mu in
+      let ff' = trans_integr_body opsc env ty ff in
+      unify_or_fail env ue ff.pl_loc ~expct:(toarrow [ty] treal) ff'.f_ty;
+      f_muf_ty ty ff' mu 
+
+    | PFsquare(ff,mu) ->
+      let ty, mu = trans_mu opsc env f.pl_loc mu in
+      let ff' = trans_integr_body opsc env ty ff in
+      unify_or_fail env ue ff.pl_loc ~expct:(toarrow [ty] tbool) ff'.f_ty;
+      let x, body = 
+        match ff'.f_node with
+        | Fquant(Llambda,[x,_],body) -> x, body
+        | _                          -> 
+          let x = EcIdent.create "x" in
+          x, f_app ff' [f_local x ty] tbool in
+      f_eq 
+        (f_muf_ty ty (f_lambda [x,GTty ty] (f_real_of_bool (f_not body))) mu)
+        f_r0
       
+  and trans_mu opsc env loc pf = 
+    match pf with
+    | None ->
+      begin match EcEnv.MemDistr.current env with
+      | None -> tyerror loc env NoActiveDistr
+      | Some (mu,mt) -> 
+        let ty = tmem mt in
+        ty, f_local mu (tdistr ty)
+      end 
+    | Some pf -> 
+      let f = transf_r opsc env pf in
+      let ty = UE.fresh ue in
+      unify_or_fail env ue loc  ~expct:(tdistr ty) f.f_ty;
+      Tuni.offun (EcUnify.UniEnv.assubst ue) ty, f
 
-
+  and trans_integr_body opsc env ty ff = 
+    if EcUnify.is_tmem env ty then
+      let m,body = 
+        match ff.pl_desc with
+        | PFlambda([[m],{pl_desc = PTunivar}], body) ->
+          EcIdent.create m.pl_desc, body 
+        | _ -> EcCoreFol.mhr, ff in
+      let mt = EcUnify.destr_tmem env ty in
+      let env' = EcEnv.Memory.push_active (m,mt) env in
+      let body' = transf_r opsc env' body in
+      f_lambda [m,GTty ty] body'
+    else transf_r opsc env ff 
 
   and trans_fbind env ue decl = 
     let trans1 env (xs, pgty) =

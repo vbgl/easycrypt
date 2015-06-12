@@ -247,7 +247,8 @@ and pformula_r =
   | PFeqveq  of glob_or_var list * (pmsymbol pair) option
   | PFlsless of pgamepath
   | PFscope  of pqsymbol * pformula
-  | PFintegr of pformula * psymbol option
+  | PFintegr of pformula * pformula option
+  | PFsquare of pformula * pformula option
 
   | PFhoareF   of pformula * pgamepath * pformula
   | PFmuhoareF of pformula * pgamepath * pformula

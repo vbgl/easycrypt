@@ -622,13 +622,14 @@ let is_binop name =
 (* -------------------------------------------------------------------- *)
 let rec pp_type_r ppe outer fmt ty =
   match ty.ty_node with
-  | Tmem mt -> 
-    let l = Msym.bindings (EcMemory.mt_bindings mt) in
+  | Tmem _mt -> 
+(*    let l = Msym.bindings (EcMemory.mt_bindings mt) in
     let pp_id fmt (s, (_,ty)) = 
         Format.fprintf fmt "%a:%a" 
           EcSymbols.pp_symbol s (pp_type_r ppe (min_op_prec, `NonAssoc)) ty in
     Format.fprintf fmt "memory (*@[<hov 2>%a@]*)"
-      (pp_list ";@ "pp_id) l
+      (pp_list ";@ "pp_id) l *)
+    Format.fprintf fmt "memory"
       
 
   | Tglob m -> Format.fprintf fmt "(glob %a)" (pp_topmod ppe) m
@@ -1413,6 +1414,48 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
       let negop = EcPath.pqoname (EcPath.prefix op') "<>" in
       pp_opapp ppe f_ty pp_form_r outer fmt (`Form, negop, tys, [f1; f2])
 
+  | Fapp ({f_node = Fop (op, _)}, [f1;f2]) 
+      when EcPath.p_equal op EcCoreLib.CI_Distr.p_muf ->
+    let env = ppe.PPEnv.ppe_env in
+    let pp_f2 fmt f2 = 
+      match f2.f_node, EcEnv.MemDistr.current env with
+      | Flocal mu, Some (mu',_) when EcIdent.id_equal mu mu' -> ()
+      | _ -> 
+        Format.fprintf fmt "@ | %a" 
+          (pp_form_r ppe ([], (min_op_prec, `NonAssoc))) f2 in
+    let pp_f1 fmt f1 = 
+      if EcUnify.is_tdmem env f2.f_ty then
+        let m,ty,body = get_lambda1 env f1 in
+        let mt = EcUnify.destr_tmem env ty in
+        let ppe = PPEnv.push_mem ppe ~active:true (m,mt) in
+        pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt body
+      else 
+        pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt f2 in
+    Format.fprintf fmt "@[<hov 0>$[%a%a]@]" pp_f1 f1 pp_f2 f2
+
+  | Fapp({f_node = Fop(op, _)},[f1;f2]) when
+      EcPath.p_equal op EcCoreLib.CI_Bool.p_eq &&
+      f_equal f2 f_r0 && 
+      is_muf_b2r_not ppe.PPEnv.ppe_env f1 ->
+    let f1, f2 = destr_muf_b2r_not ppe.PPEnv.ppe_env f1 in
+    let env = ppe.PPEnv.ppe_env in
+    let pp_f2 fmt f2 = 
+      match f2.f_node, EcEnv.MemDistr.current env with
+      | Flocal mu, Some (mu',_) when EcIdent.id_equal mu mu' -> ()
+      | _ -> 
+        Format.fprintf fmt "@ | %a" 
+          (pp_form_r ppe ([], (min_op_prec, `NonAssoc))) f2 in
+    let pp_f1 fmt f1 = 
+      if EcUnify.is_tdmem env f2.f_ty then
+        let m,ty,body = get_lambda1 env f1 in
+        let mt = EcUnify.destr_tmem env ty in
+        let ppe = PPEnv.push_mem ppe ~active:true (m,mt) in
+        pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt body
+      else 
+        pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt f2 in
+    Format.fprintf fmt "@[<hov 0>$@@[%a%a]@]" pp_f1 f1 pp_f2 f2
+      
+    
   | Fapp ({f_node = Fop (p, tys)}, args) ->
 (*    let pp_form_r (ppe : PPEnv.t) outer fmt f =
       Format.fprintf fmt "%a(*%a*)" 
