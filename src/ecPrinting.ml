@@ -1430,7 +1430,7 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         let ppe = PPEnv.push_mem ppe ~active:true (m,mt) in
         pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt body
       else 
-        pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt f2 in
+        pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt f1 in
     Format.fprintf fmt "@[<hov 0>$[%a%a]@]" pp_f1 f1 pp_f2 f2
 
   | Fapp({f_node = Fop(op, _)},[f1;f2]) when
@@ -1452,7 +1452,7 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         let ppe = PPEnv.push_mem ppe ~active:true (m,mt) in
         pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt body
       else 
-        pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt f2 in
+        pp_form_r ppe ([], (min_op_prec, `NonAssoc)) fmt f1 in
     Format.fprintf fmt "@[<hov 0>$@@[%a%a]@]" pp_f1 f1 pp_f2 f2
       
     

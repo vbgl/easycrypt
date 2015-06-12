@@ -390,109 +390,11 @@ theory Dlap.
 (* x = $dlap(x1,s)   ~ x = $dlap(0,s) + x1 : ={x1,s} ==> ={x}. *)
 end Dlap.
 
-(* ----------------------------------------------------------------- *)
-
-pred positive (f:'a -> real) = forall x, 0%r <= f x.
-
-lemma add_positive (f1 f2:'a -> real) :
-   positive f1 => positive f2 => positive (fun x => f1 x + f2 x)
-by [].
-
-lemma mul_positive (f1 f2:'a -> real) :
-   positive f1 => positive f2 => positive (fun x => f1 x * f2 x)
-by [].
-
 (* ---------------------------------------------------------------------- *)
-(* Injection of bool into real *) 
-op b2r (b:bool) = if b then 1%r else 0%r.
-
-lemma b2r_true : b2r true = 1%r
-by [].
-
-lemma b2r_1 (b:bool): b2r b = 1%r <=> b
-by [].
-
-lemma b2r_false : b2r false = 0%r
-by [].
-
-lemma b2r_0 (b:bool): b2r b = 0%r <=> !b 
-by [].
-
-lemma b2r_positive : positive b2r
-by [].
-
-lemma b2r_not (b:bool): b2r (!b) = 1%r - b2r b
-by [].
-
-lemma b2r_and (b1 b2: bool): b2r(b1 /\ b2) = b2r b1 * b2r b2
-by [].
-
-lemma b2r_or (b1 b2:bool): 
-    b2r (b1 \/ b2) = b2r b1 + b2r b2 - b2r b1 * b2r b2
-by [].
-
-lemma b2r_if b1 b2 b3 : b2r (if b1 then b2 else b3) = b2r b1 * b2r b2 + b2r (!b1) * b2r b3
-by [].
 
 (* intergral of f in a distribution d *)
 op muf : ('a -> real) -> 'a distr -> real.
 
-lemma muf_congr (f1 f2: 'a -> real) (d1 d2:'a distr): 
-  d1 = d2 =>
-  (forall a, f1 a = f2 a) =>
-  muf f1 d1 = muf f2 d2.
-proof. by move=> -> Hf;congr; rewrite -fun_ext. qed.
+(* Injection of bool into real *) 
+op b2r (b:bool) = if b then 1%r else 0%r.
 
-axiom nosmt muf_le_compat (f1 f2:'a -> real) (d:'a distr) :
-  (forall x, in_supp x d => f1 x <= f2 x) =>
-  muf f1 d <= muf f2 d.
-
-(* TODO mu should be defined in term of muf *)
-axiom muf_pos_0 (d :'a distr) (f:'a -> real) : 
-  positive f => 
-  muf f d = 0%r <=> (forall x, in_supp x d => f x = 0%r).
-
-axiom muf_b2r (P: 'a -> bool) (d:'a distr) : 
-  mu d P = muf (fun a => b2r (P a)) d.
-
-(* FIXME: need to add restriction on f1 f2 *)
-axiom muf_add (f1 f2:'a -> real) (d:'a distr):
-  muf (fun x => f1 x + f2 x) d = 
-  muf f1 d + muf f2 d.
-
-axiom muf_opp (f : 'a -> real) (d:'a distr):
-  muf (fun x => -(f x)) d = - muf f d.
-
-lemma muf_sub (f1 f2:'a -> real) (d:'a distr):
-  muf (fun x => f1 x - (f2 x)) d = 
-  muf f1 d - muf f2 d.
-proof.
-  cut -> : muf f1 d - muf f2 d = muf f1 d + -muf f2 d by ringeq.
-  rewrite -muf_opp -muf_add;apply muf_congr => //= x;ringeq.
-qed.
-
-axiom muf_mulc_l (c:real) (f:'a -> real) (d:'a distr):
-  muf (fun x => c * f x) d = c * muf f d.
-
-lemma muf_mulc_r (c:real) (f:'a -> real) (d:'a distr):
-  muf (fun x => f x * c) d = muf f d * c.
-proof.
-  rewrite (Real.Comm.Comm (muf f d)) -muf_mulc_l;apply muf_congr => //= x;ringeq.
-qed.
-
-lemma muf_c (c:real) (d:'a distr) : 
-   muf (fun x => c) d = c * muf (fun x => 1%r) d.
-proof. by rewrite -muf_mulc_l. qed.
-
-lemma muf_0 (d:'a distr) :
-  muf (fun x => 0%r) d = 0%r.
-proof. by rewrite muf_c. qed.
-
-lemma square (d :'a distr) (p:'a -> bool) : 
-  muf (fun x => b2r (p x)) d = 0%r <=> (forall x, in_supp x d => !p x)
-by [].
-
-lemma square_and (d :'a distr) (p1 p2:'a -> bool) : 
-  (muf (fun x => b2r(!(p1 x))) d = 0%r /\ muf (fun x => b2r(!(p2 x))) d = 0%r) <=>
-  (muf (fun x => b2r(!(p1 x /\ p2 x))) d = 0%r)
-by []. (* WAOU *) 
