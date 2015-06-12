@@ -242,6 +242,13 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
   in
 
   let rec doit env ((subst, mxs) as ilc) ptn subject =
+    let default () =
+      if opts.fm_conv then begin
+        let subject = Fsubst.f_subst subst subject in
+          if not (EcReduction.is_conv hyps ptn subject) then
+            raise MatchFailure
+      end else raise MatchFailure in
+
     try
       match ptn.f_node, subject.f_node with
       | Flocal x1, Flocal x2 when Mid.mem x1 mxs -> begin
@@ -334,7 +341,7 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
 
             ev := { !ev with evm_form = EV.set f ssbj !ev.evm_form }
 
-          | _ ->  raise MatchFailure
+          | _ ->  default ()
       end
 
       | Fquant (b1, q1, f1), Fquant (b2, q2, f2)
@@ -378,12 +385,7 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
           with EcUnify.UnificationFailure _ -> raise MatchFailure
       end
 
-      | _, _ ->
-        if opts.fm_conv then begin
-          let subject = Fsubst.f_subst subst subject in
-            if not (EcReduction.is_conv hyps ptn subject) then
-              raise MatchFailure
-        end else raise MatchFailure
+      | _, _ -> default ()
 
     with MatchFailure when opts.fm_delta ->
       match fst_map f_node (destr_app ptn),
