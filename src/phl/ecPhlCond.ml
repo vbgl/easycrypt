@@ -19,7 +19,7 @@ module Sid = EcIdent.Sid
 module LowInternal = struct
  let t_gen_cond side e tc =
    let hyps  = FApi.tc1_hyps tc in
-   let fresh = ["&m"; "&m"; "_"; "_"; "_"] in
+   let fresh = ["m"; "m"; "_"; "_"; "_"] in
    let fresh = LDecl.fresh_ids hyps fresh in
 
    let m1,m2,h,h1,h2 = as_seq5 fresh in
@@ -105,7 +105,7 @@ let rec t_equiv_cond side tc =
           [es.es_ml;es.es_mr]
           (f_imp es.es_pr (f_iff el er)) in
 
-      let fresh = ["hiff";"&m1";"&m2";"h";"h";"h"] in
+      let fresh = ["hiff";"m1";"m2";"h";"h";"h"] in
       let fresh = LDecl.fresh_ids hyps fresh in
 
       let hiff,m1,m2,h,h1,h2 = as_seq6 fresh in

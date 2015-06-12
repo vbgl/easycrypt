@@ -1232,6 +1232,9 @@ let is_equivS    f = is_from_destr destr_equivS    f
 let is_eagerF    f = is_from_destr destr_eagerF    f
 let is_hoareS    f = is_from_destr destr_hoareS    f
 let is_hoareF    f = is_from_destr destr_hoareF    f
+let is_muhoareS  f = is_from_destr destr_muhoareS  f
+let is_muhoareF  f = is_from_destr destr_muhoareF  f
+
 let is_bdHoareS  f = is_from_destr destr_bdHoareS  f
 let is_bdHoareF  f = is_from_destr destr_bdHoareF  f
 let is_pr        f = is_from_destr destr_pr        f

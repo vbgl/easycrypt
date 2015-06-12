@@ -443,9 +443,13 @@ lemma muf_congr (f1 f2: 'a -> real) (d1 d2:'a distr):
   muf f1 d1 = muf f2 d2.
 proof. by move=> -> Hf;congr; rewrite -fun_ext. qed.
 
+axiom nosmt muf_le_compat (f1 f2:'a -> real) (d:'a distr) :
+  (forall x, in_supp x d => f1 x <= f2 x) =>
+  muf f1 d <= muf f2 d.
+
 (* TODO mu should be defined in term of muf *)
 axiom muf_pos_0 (d :'a distr) (f:'a -> real) : 
-  (forall x, 0%r <= f x) => 
+  positive f => 
   muf f d = 0%r <=> (forall x, in_supp x d => f x = 0%r).
 
 axiom muf_b2r (P: 'a -> bool) (d:'a distr) : 

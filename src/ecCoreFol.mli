@@ -379,6 +379,9 @@ val is_equivS    : form -> bool
 val is_eagerF    : form -> bool
 val is_hoareF    : form -> bool
 val is_hoareS    : form -> bool
+val is_muhoareF  : form -> bool
+val is_muhoareS  : form -> bool
+
 val is_bdHoareF  : form -> bool
 val is_bdHoareS  : form -> bool
 val is_pr        : form -> bool

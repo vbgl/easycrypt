@@ -18,6 +18,17 @@ open EcLowPhlGoal
 module TTC = EcProofTyping
 
 (* -------------------------------------------------------------------- *)
+let t_muhoare_app_r i p tc = 
+  (* FIXME: check type of p  *)
+  let muh = tc1_as_muhoareS tc in
+  let s1, s2 = s_split i muh.muh_s in
+  let cond1 = f_muhoareS_r {muh with muh_s = stmt s1; muh_po = p } in
+  let cond2 = f_muhoareS_r {muh with muh_s = stmt s2; muh_pr = p } in
+  FApi.xmutate1 tc `HlApp [cond1;cond2]
+
+let t_muhoare_app = FApi.t_low2 "hoare-app" t_muhoare_app_r  
+
+(* -------------------------------------------------------------------- *)
 let t_hoare_app_r i phi tc =
   let hs = tc1_as_hoareS tc in
   let s1, s2 = s_split i hs.hs_s in
@@ -198,6 +209,12 @@ let process_app (side, dir, k, phi, bd_info) tc =
     check_side side;
     let phi = TTC.tc1_process_phl_formula tc (get_single phi) in
     t_hoare_app i phi tc
+
+  | Single i, PAppNone when is_muhoareS concl ->
+    check_side side;
+    let mumt, phi = TTC.tc1_process_phl_ld_formula tc (get_single phi) in
+    t_muhoare_app i (close_mu_binding mumt phi) tc
+
 
   | Single i, PAppNone when is_equivS concl ->
     let pre, post = 

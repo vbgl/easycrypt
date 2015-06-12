@@ -127,6 +127,16 @@ let f_integr env f mu =
   let ty = EcUnify.tfun_dom env f.f_ty in
   f_muf_ty ty f (f_local mu (tdistr ty))
  
+let f_muf_b2r (m,ty) f mu = 
+  (f_muf_ty ty
+     (f_lambda [m,GTty ty] (f_real_of_bool f))
+     (f_local mu (tdistr ty)))
+
+let f_square (m, ty) f mu =
+  f_eq (f_muf_b2r (m,ty) (f_not f) mu) f_r0
+
+
+
 (* -------------------------------------------------------------------- *)
 let f_losslessF f = f_bdHoareF f_true f f_true FHeq f_r1
 

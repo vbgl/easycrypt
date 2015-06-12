@@ -61,12 +61,15 @@ val fop_mu_x    : EcTypes.ty -> form
 val f_in_supp : form -> form -> form
 val f_mu      : EcEnv.env -> form -> form -> form
 val f_mu_x    : form -> form -> form
-val f_weight  : EcTypes.ty -> form -> form
+val f_weight  : ty -> form -> form
 
 val f_real_of_bool : form -> form
-val f_muf_ty  : EcTypes.ty -> form -> form -> form
+val f_muf_ty  : ty -> form -> form -> form
 val f_muf     : EcEnv.env  -> form -> form -> form
 val f_integr  : EcEnv.env  -> form -> EcIdent.t -> form 
+val f_muf_b2r : EcIdent.t * ty -> form -> EcIdent.t -> form
+val f_square  : EcIdent.t * ty -> form -> EcIdent.t -> form
+
 (* common functions *)
 val f_identity : ?name:EcSymbols.symbol -> EcTypes.ty -> form
 
