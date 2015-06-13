@@ -69,13 +69,13 @@ axiom muf_mulc_l (c:real) (f:'a -> real) (d:'a distr):
   $[fun x => c * f x | d] = c * $[f | d].
 
 (* TODO this seem provable *)
-axiom muf_pos_0 (d :'a distr) (f:'a -> real) : 
+axiom nosmt muf_pos_0 (d :'a distr) (f:'a -> real) : 
   positive f => 
   $[ f | d] = 0%r <=> (forall x, in_supp x d => f x = 0%r).
 
 (* ------------------------------------------------------------------------- *)
 
-lemma muf_eq_compat (f1 f2:'a -> real) (d:'a distr) :
+lemma nosmt muf_eq_compat (f1 f2:'a -> real) (d:'a distr) :
   (forall x, in_supp x d => f1 x = f2 x) =>
   $[f1 | d] = $[f2 | d].
 proof.
@@ -105,6 +105,11 @@ lemma muf_c (c:real) (d:'a distr) :
    $[fun x => c | d] = c * $[fun x => 1%r | d].
 proof. by rewrite -muf_mulc_l. qed.
 
+lemma muf_c_ll (c:real) (d:'a distr) : 
+  $[fun x => 1%r | d] = 1%r => 
+  $[fun x => c | d] = c.
+proof. by move=> Hll;rewrite muf_c Hll. qed.
+
 lemma muf_0 (d:'a distr) :
   $[fun x => 0%r | d] = 0%r.
 proof. by rewrite muf_c. qed.
@@ -115,11 +120,11 @@ lemma square_supp (p:'a -> bool) (d :'a distr):
   $@[p | d] <=> (forall x, in_supp x d => p x)
 by [].
 
-lemma square_and (d :'a distr) (p1 p2:'a -> bool) : 
+lemma nosmt square_and (d :'a distr) (p1 p2:'a -> bool) : 
   ($@[p1 | d] /\ $@[p2 | d]) <=> $@[fun x => p1 x /\ p2 x | d]
 by []. (* WAOU *) 
 
-lemma square_muf_add (p:'a -> bool) (f:'a -> real) (d: 'a distr):
+lemma nosmt square_muf_add (p:'a -> bool) (f:'a -> real) (d: 'a distr):
   $@[p | d] =>
   $[ f | d] = $[fun x => f x + b2r (!p x) | d].
 proof.
@@ -127,7 +132,7 @@ proof.
   apply muf_eq_compat=> /= x Hx;rewrite (Hp _ Hx) //.
 qed.
 
-lemma square_muf_mul (p:'a -> bool) (f:'a -> real)  (d: 'a distr):
+lemma nosmt square_muf_mul (p:'a -> bool) (f:'a -> real)  (d: 'a distr):
   $@[p | d] =>
   $[ f | d] = $[fun x => b2r (p x) * f x | d].
 proof.
@@ -135,7 +140,7 @@ proof.
   apply muf_eq_compat=> /= x Hx;rewrite (Hp _ Hx) //.
 qed.
 
-lemma square_muf_mul_add (p:'a -> bool) (f:'a -> real)  (d: 'a distr):
+lemma nosmt square_muf_mul_add (p:'a -> bool) (f:'a -> real)  (d: 'a distr):
   $@[p | d] =>
   $[ f | d] = $[fun x => b2r (p x) * f x + b2r (!p x)| d].
 proof.
@@ -149,8 +154,11 @@ require import Bool.
 axiom muf_dbool (f:bool -> real): 
   $[f | {0,1} ] = 1%r/2%r * f true + 1%r/2%r * f false.
 
-lemma dbool_ll (f:bool -> real): 
-  $[fun x=> 1%r | {0,1} ] = 1%r.
+lemma dbool_ll: $[fun x=> 1%r | {0,1} ] = 1%r.
+proof. by rewrite muf_dbool. qed.
+
+lemma muf_c_dbool : forall c, $[fun x => c | {0,1}] = c.
+proof. by rewrite muf_c dbool_ll. qed.
 
 
     
