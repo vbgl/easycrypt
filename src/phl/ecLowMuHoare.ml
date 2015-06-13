@@ -181,7 +181,10 @@ let wp_ret env mt' pvres e po =
     let m, mt, f = get_lambda1_mem env f in
     let mmt = (m,mt) in
     let let1 = lv_subst mmt (LvVar (pvres, e.e_ty)) (form_of_expr (Some mmt) e) in
-    f_lambda [m, gtmem mt'] (mk_let_of_lv_substs env ([let1],f)) in
+    let f = (mk_let_of_lv_substs env ([let1],f)) in
+    (* this is realy durty ... *)
+    let subst = Fsubst.f_subst_mem m mt' m in
+    f_lambda [m, gtmem mt'] (subst f) in
   do_on_mu env onld ~mt' po
 
 (* -------------------------------------------------------------------- *)
@@ -192,7 +195,7 @@ let wp_pre env mt' f fs pr =
     | None -> 
       fun f ->
         let m,_,f = get_lambda1_mem env f in 
-        f_lambda [m,gmt'] f 
+        f_lambda [m,gmt'] (Fsubst.f_subst_mem m mt' m f)
 
     | Some lv ->
       fun f1 ->
@@ -200,7 +203,8 @@ let wp_pre env mt' f fs pr =
         let v = List.map (fun v -> f_pvloc f v (f_mem (m,mt))) lv in
         let tv = (f_tuple v) in
         let let1 = lv_subst (m,mt) (LvVar (pv_arg f, tv.f_ty)) tv in
-        f_lambda [m, gmt'] (mk_let_of_lv_substs env ([let1],f1)) in
+        let f1 = mk_let_of_lv_substs env ([let1],f1) in
+        f_lambda [m, gmt'] (Fsubst.f_subst_mem m mt' m f1) in
   do_on_mu env onld ~mt' pr
 
 (* -------------------------------------------------------------------- *)
