@@ -200,8 +200,7 @@ module String : sig
 
   val split_lines : string -> string list
 
-  (* [matched_string tomatch s] return the sublist of tomatch which match s *)
-  val matched_string : string list -> string -> string list
+  val option_matching : string list -> string -> string list
 end
 
 (* -------------------------------------------------------------------- *)
@@ -249,6 +248,10 @@ module List : sig
   include module type of Parallel
 
   (*------------------------------------------------------------------ *)
+  val min : ?cmp:('a -> 'a -> int) -> 'a list -> 'a
+  val max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a
+
+  (* ------------------------------------------------------------------ *)
   val mbfilter   : ('a -> bool) -> 'a list -> 'a list
   val fusion     : ('a -> 'a -> 'a) -> 'a list -> 'a list -> 'a list
   val is_unique  : ?eq:('a -> 'a -> bool) -> 'a list -> bool
