@@ -180,6 +180,8 @@ let get_pre f =
   | FbdHoareS hs -> Some (hs.bhs_pr)
   | FequivF ef   -> Some (ef.ef_pr )
   | FequivS es   -> Some (es.es_pr )
+  | FmuhoareF hf -> Some (hf.muhf_pr)
+  | FmuhoareS hs -> Some (hs.muh_pr)
   | _            -> None
 
 let tc1_get_pre tc =
@@ -212,6 +214,8 @@ let set_pre ~pre f =
  | FbdHoareS hs -> f_bdHoareS_r { hs with bhs_pr = pre }
  | FequivF ef   -> f_equivF pre ef.ef_fl ef.ef_fr ef.ef_po
  | FequivS es   -> f_equivS_r { es with es_pr = pre }
+ | FmuhoareF hf -> f_muhoareF pre hf.muhf_f hf.muhf_po
+ | FmuhoareS hs -> f_muhoareS_r { hs with muh_pr = pre }
  | _            -> assert false
 
 (* -------------------------------------------------------------------- *)

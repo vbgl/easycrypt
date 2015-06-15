@@ -641,7 +641,8 @@ let rec sform_of_form fp =
 let destr_exists_prenex f =
   let disjoint bds1 bds2 =
     List.for_all
-      (fun (id1, _) -> List.for_all (fun (id2, _) -> id1 <> id2) bds2)
+      (fun (id1, _) ->
+        List.for_all (fun (id2, _) -> not (EcIdent.id_equal id1 id2)) bds2)
       bds1
   in
 

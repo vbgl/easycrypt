@@ -44,10 +44,20 @@ end
 (* -------------------------------------------------------------------- *)
 let t_hr_exists_elim_r tc =
   let pre = tc1_get_pre tc in
+  let goal = FApi.tc1_goal tc in
+  let lbd, pre =  
+    if is_muhoareS goal || is_muhoareF goal then 
+      let mmt, pre = open_mu_binding (FApi.tc1_env tc) pre in
+      [mmt], pre
+    else
+      [], pre in
   let bd, pre = destr_exists_prenex pre in
-  (* FIXME: check that bd is not bound in the post *)
+  (* FIXME: rename binding in bd  ... *)
+  let pre = f_lambda (List.map (fun (m,mt) -> (m,gtdistr mt)) lbd) pre in
   let concl = f_forall bd (set_pre ~pre (FApi.tc1_goal tc)) in
   FApi.xmutate1 tc `HlExists [concl]
+
+
 
 (* -------------------------------------------------------------------- *)
 let t_hr_exists_intro_r fs tc =
