@@ -33,6 +33,8 @@ proof. smt. qed.
 op pred1  ['a] (c : 'a) = fun (x : 'a), x = c.
 op predT  ['a] = fun (x : 'a), true.
 op pred0  ['a] = fun (x : 'a), false.
+op predI  ['a] (P Q:'a -> bool): 'a -> bool = fun x, P x /\ Q x.
+op predU  ['a] (P Q:'a -> bool): 'a -> bool = fun x, P x \/ Q x.
 op predC  ['a] (P : 'a -> bool) = fun (x : 'a), ! (P x).
 op predC1 ['a] (c : 'a) = fun (x : 'a), x <> c.
 op predD1 ['a] (P : 'a -> bool) (c : 'a) = fun (x : 'a), x <> c /\ P x.
