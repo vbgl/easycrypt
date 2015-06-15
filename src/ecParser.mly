@@ -2211,6 +2211,10 @@ code_pos_underscore:
 
 | s=side i=code_pos? COLON  LPAREN UNDERSCORE COLON f1=form LONGARROW f2=form RPAREN
    { `SeqOne (s, i, f1, f2) }
+| LPAREN UNDERSCORE COLON pr1=form LONGARROW po1=form RPAREN
+  LPAREN UNDERSCORE COLON pr2=form LONGARROW po2=form RPAREN
+   { `MuHoare((pr1,po1),(pr2,po2)) }
+      
 
 byequivopt:
 | b=boption(MINUS) x=lident {
