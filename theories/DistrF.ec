@@ -226,8 +226,14 @@ qed.
    $[@ p | d]    := mu p d := muf (fun x => b2r (p x)) d 
    #[ p | d ]    := mu p d = 0 *)
 
+(* ----------------------------------------------------------------- *)
+op dunit : 'a -> 'a distr.
+axiom dunit_def (f:'a -> real) a: $[f | dunit a] = f a.
 
- 
+op dlet : 'a distr -> ('a -> 'b distr) -> 'b distr.
+axiom dlet_def (d : 'a distr) (F:'a -> 'b distr) f: 
+   $[f | dlet d F] = $[fun a => $[ f | F a] | d].
+
 
 
 
