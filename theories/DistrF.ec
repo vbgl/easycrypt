@@ -46,6 +46,15 @@ by [].
 lemma b2r_imp b1 b2 : b2r (b1 => b2) = 1%r - b2r b1 + b2r b1 * b2r b2
 by [].
 
+lemma nosmt absurd_and_n (b:bool) : !(b /\ !b)
+by [].
+
+lemma add_b2r_pn b : b2r b + b2r (!b) = 1%r
+by [].
+
+lemma add_b2r_np (b:bool) : b2r (!b) + b2r b = 1%r
+by [].
+
 (* ---------------------------------------------------------------------------- *)
 (* FIXME this should be the definition                                          *)
 
@@ -114,15 +123,29 @@ lemma muf_0 (d:'a distr) :
   $[fun x => 0%r | d] = 0%r.
 proof. by rewrite muf_c. qed.
 
+lemma muf_positive (f:'a -> 'b -> real) (d:'a -> 'b distr): 
+   (forall (x:'a), positive (f x)) =>
+   positive (fun (x:'a) => $[ f x | d x]).
+proof.
+  move=> Hf x. 
+  rewrite - (muf_0 (d x)); apply muf_le_compat => /= b _; apply Hf.
+qed.
+
+lemma muf_0_f0 (f:'a -> real) (d: 'a distr):
+   (forall a, in_supp a d => f a = 0%r) => $[f | d] = 0%r.
+proof.
+  move=> Hf;rewrite -(muf_c 0%r d);apply muf_eq_compat;apply Hf.
+qed.
+
 (* ----------------------------------------------------------------- *)
 
 lemma square_supp (p:'a -> bool) (d :'a distr): 
-  $@[p | d] <=> (forall x, in_supp x d => p x)
-by [].
+  $@[p | d] <=> (forall x, in_supp x d => p x).
+proof. by rewrite muf_pos_0 1:smt /= b2r_0. qed.
 
 lemma nosmt square_and (d :'a distr) (p1 p2:'a -> bool) : 
-  ($@[p1 | d] /\ $@[p2 | d]) <=> $@[fun x => p1 x /\ p2 x | d]
-by []. (* WAOU *) 
+  ($@[p1 | d] /\ $@[p2 | d]) <=> $@[fun x => p1 x /\ p2 x | d].
+proof. rewrite !square_supp /=;smt. qed.
 
 lemma nosmt square_muf_add (p:'a -> bool) (f:'a -> real) (d: 'a distr):
   $@[p | d] =>
@@ -160,5 +183,51 @@ proof. by rewrite muf_dbool. qed.
 lemma muf_c_dbool : forall c, $[fun x => c | {0,1}] = c.
 proof. by rewrite muf_c dbool_ll. qed.
 
+(* -------------------------------------------------------------- *)
 
-    
+op drestr : 'a distr -> ('a -> bool) -> 'a distr.
+
+axiom drestr_def (d:'a distr) p f: 
+   $[f | drestr d p] = $[fun x => b2r (p x) * f x | d].
+
+(* --------------------------------------------------------------- *)
+
+op dscale : 'a distr -> 'a distr. 
+
+axiom dscale_def (d:'a distr) f: 
+   $[f | dscale d] = $[f | d] / $[fun x => 1%r | d].
+
+(* --------------------------------------------------------------- *)
+op (||) (d:'a distr) (p:'a -> bool) = dscale (drestr d p).
+(* remark: $[fun x => br2 a | d || b] is Pr_d[a | b] ie Pr_d[a /\ b]/ Pr_d[b] *)
+
+lemma dsrestr_def (d:'a distr) (p:'a -> bool) (f:'a -> real): 
+    $[f | d || p] = 
+       $[fun (x : 'a) => b2r (p x) * f x | d] / 
+       $[fun (x : 'a) => b2r (p x) | d].
+proof. rewrite /(||) dscale_def !drestr_def //. qed.
+
+lemma dsrestr_ll (d:'a distr) (p:'a -> bool): 
+    $[fun x => 1%r | d] = 1%r =>
+    (exists a, in_supp a d /\ p a) => 
+    $[fun x => 1%r | d || p] = 1%r.
+proof.
+  move=> Hll Hex.
+  rewrite /(||) dscale_def drestr_def /=.    
+  cut : $[fun (x : 'a) => b2r (p x) | d] <> 0%r;last by smt.
+  elim Hex=> a [Hin Hp].
+  cut : mu_x d a <= $[fun (x : 'a) => b2r (p x) | d]; last by smt.
+  rewrite /mu_x muf_b2r;apply muf_le_compat=> /= x Hxin; smt.
+qed.
+
+
+(* Notation:
+   $[f | d]      := muf f d
+   $[@ p | d]    := mu p d := muf (fun x => b2r (p x)) d 
+   #[ p | d ]    := mu p d = 0 *)
+
+
+ 
+
+
+
