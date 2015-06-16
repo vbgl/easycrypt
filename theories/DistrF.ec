@@ -40,13 +40,14 @@ lemma b2r_or (b1 b2:bool):
     b2r (b1 \/ b2) = b2r b1 + b2r b2 - b2r b1 * b2r b2
 by [].
 
+lemma if_b2r (b:bool) (r1 r2:real): 
+    (if b then r1 else r2) = b2r b * r1 + b2r (!b) * r2
+by [].
+
 lemma b2r_if b1 b2 b3 : b2r (if b1 then b2 else b3) = b2r b1 * b2r b2 + b2r (!b1) * b2r b3
 by [].
 
 lemma b2r_imp b1 b2 : b2r (b1 => b2) = 1%r - b2r b1 + b2r b1 * b2r b2
-by [].
-
-lemma nosmt absurd_and_n (b:bool) : !(b /\ !b)
 by [].
 
 lemma add_b2r_pn b : b2r b + b2r (!b) = 1%r
@@ -170,6 +171,13 @@ proof.
   move=> Hp; rewrite (square_muf_mul p) // (square_muf_add p) //.
 qed.
 
+lemma square_imp (p1 p2:'a -> bool) (d:'a distr):
+   $@[fun x => p1 x => p2 x | d] => $@[p1| d] => $@[p2 | d].
+proof. by rewrite !square_supp /=;smt. qed.
+
+lemma pr_eq_1 (d:'a distr) (p:'a -> bool): 
+     $[fun x => 1%r | d] = 1%r => $@[p | d] => $[fun x => b2r (p x) | d] = 1%r.
+proof. rewrite b2r_not muf_sub=> -> H;ringeq H. qed.
 
 (* Lemmas about known distribution *)
 require import Bool.
@@ -220,7 +228,6 @@ proof.
   rewrite /mu_x muf_b2r;apply muf_le_compat=> /= x Hxin; smt.
 qed.
 
-
 (* Notation:
    $[f | d]      := muf f d
    $[@ p | d]    := mu p d := muf (fun x => b2r (p x)) d 
@@ -233,6 +240,20 @@ axiom dunit_def (f:'a -> real) a: $[f | dunit a] = f a.
 op dlet : 'a distr -> ('a -> 'b distr) -> 'b distr.
 axiom dlet_def (d : 'a distr) (F:'a -> 'b distr) f: 
    $[f | dlet d F] = $[fun a => $[ f | F a] | d].
+
+(* ----------------------------------------------------------------- *)
+op dif (d:'a distr) (p:'a -> bool) (F1 F2: 'a -> 'b distr) = 
+  dlet d (fun a => if p a then F1 a else F2 a).
+
+lemma nosmt dif_def (d : 'a distr) p (F1 F2:'a -> 'b distr) f :
+  $[f | dif d p F1 F2] = 
+  $[fun a => b2r (p a) * $[f | F1 a] + b2r (!p a) * $[f | F2 a] | d].
+proof.
+  rewrite /dif dlet_def -if_b2r /=.
+  apply muf_congr => //= a; case (p a) => //. 
+qed.
+
+   
 
 
 

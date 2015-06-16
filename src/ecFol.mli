@@ -69,6 +69,7 @@ val f_muf     : EcEnv.env  -> form -> form -> form
 val f_integr  : EcEnv.env  -> form -> EcIdent.t -> form 
 val f_muf_b2r : EcIdent.t * ty -> form -> EcIdent.t -> form
 val f_square  : EcIdent.t * ty -> form -> EcIdent.t -> form
+val f_mulossless : EcEnv.env  -> form -> form
 
 (* common functions *)
 val f_identity : ?name:EcSymbols.symbol -> EcTypes.ty -> form

@@ -136,6 +136,10 @@ let f_square (m, ty) f mu =
   f_eq (f_muf_b2r (m,ty) (f_not f) mu) f_r0
 
 
+let f_mulossless env mu = 
+  let ty = EcUnify.destr_tdistr env mu.f_ty in
+  let x  = EcIdent.create "x" in 
+  f_eq (f_muf_ty ty (f_lambda [x,GTty ty] f_r1) mu) f_r1 
 
 (* -------------------------------------------------------------------- *)
 let f_losslessF f = f_bdHoareF f_true f f_true FHeq f_r1

@@ -154,6 +154,15 @@ proof. smt. qed.
 lemma orb_id2r (a b c : bool) : (! b => a = c) <=> (a \/ b) = (c \/ b).
 proof. smt. qed.
 
+lemma nosmt imp_nor (a b : bool) : (a => b) <=> (!a \/ b)
+by [].
+
+lemma nosmt excl_midl (a : bool) : a \/ !a
+by [].
+
+lemma nosmt absurd_and_n (a:bool) : !(a /\ !a)
+by [].
+
 (** Distributivity and/or *)
 lemma nosmt orDand : forall (a b c : bool),
   ((a \/ b) /\ c) = ((a /\ c) \/ (b /\ c))

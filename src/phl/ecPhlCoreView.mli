@@ -6,6 +6,7 @@
 (* --------------------------------------------------------------------- *)
 open EcCoreGoal.FApi
 
+val destr_square : EcEnv.env -> EcFol.form ->  EcTypes.memtype * EcFol.form
 (* -------------------------------------------------------------------- *)
 val t_hoare_of_bdhoareS : backward
 val t_hoare_of_bdhoareF : backward

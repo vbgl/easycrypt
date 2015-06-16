@@ -2069,8 +2069,11 @@ let pp_muhoareF (ppe : PPEnv.t) fmt hf =
 
 (* -------------------------------------------------------------------- *)
 let pp_muhoareS (ppe : PPEnv.t) fmt hs =
+  let cppe = 
+    let (_,mt),_ = open_mu_binding ppe.PPEnv.ppe_env hs.muh_pr in
+    PPEnv.push_mem ppe ~active:true (mhr,mt) in
   let ppnode = collect2_s hs.muh_s.s_node [] in
-  let ppnode = c_ppnode ~width:80 ppe ppnode
+  let ppnode = c_ppnode ~width:80 cppe ppnode
   in
 (*    Format.fprintf fmt "Context : %a@\n%!" (pp_funname ppe) 
       (EcMemory.xpath (fst hs.muh_pr));
