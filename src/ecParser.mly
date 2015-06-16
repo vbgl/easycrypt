@@ -406,8 +406,10 @@
 %token LAST
 %token LBRACE
 %token LBRACKET
+%token LEAT
 %token LEFT
 %token LEMMA
+%token LESAMPLE
 %token LET
 %token LLARROW
 %token LOCAL
@@ -1146,12 +1148,14 @@ lvalue_u:
 
 base_instr:
 | x=lvalue EQ SAMPLE e=expr
+| x=lvalue LESAMPLE  e=expr
     { PSrnd (x, e) }
 
-| x=lvalue EQ e=expr
+| x=lvalue EQ     e=expr
+| x=lvalue LARROW e=expr
     { PSasgn (x, e) }
 
-| x=lvalue LARROW f=loc(fident) LPAREN es=loc(plist0(expr, COMMA)) RPAREN
+| x=lvalue LEAT f=loc(fident) LPAREN es=loc(plist0(expr, COMMA)) RPAREN
     { PScall (Some x, f, es) }
 
 | f=loc(fident) LPAREN es=loc(plist0(expr, COMMA)) RPAREN
@@ -1209,10 +1213,10 @@ loc_decl_r:
 | VAR x=loc(loc_decl_names) COLON ty=loc(type_exp)
     { { pfl_names = x; pfl_type = Some ty; pfl_init = None; } }
 
-| VAR x=loc(loc_decl_names) COLON ty=loc(type_exp) EQ e=expr
+| VAR x=loc(loc_decl_names) COLON ty=loc(type_exp) either(EQ, LARROW) e=expr
     { { pfl_names = x; pfl_type = Some ty; pfl_init = Some e; } }
 
-| VAR x=loc(loc_decl_names) EQ e=expr
+| VAR x=loc(loc_decl_names) either(EQ, LARROW) e=expr
     { { pfl_names = x; pfl_type = None; pfl_init = Some e; } }
 
 loc_decl:
