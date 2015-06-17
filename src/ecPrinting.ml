@@ -622,14 +622,20 @@ let is_binop name =
 (* -------------------------------------------------------------------- *)
 let rec pp_type_r ppe outer fmt ty =
   match ty.ty_node with
-  | Tmem _mt -> 
-(*    let l = Msym.bindings (EcMemory.mt_bindings mt) in
+  | Tmem mt -> 
+   (* let l = Msym.bindings (EcMemory.mt_bindings mt) in
     let pp_id fmt (s, (_,ty)) = 
         Format.fprintf fmt "%a:%a" 
           EcSymbols.pp_symbol s (pp_type_r ppe (min_op_prec, `NonAssoc)) ty in
-    Format.fprintf fmt "memory (*@[<hov 2>%a@]*)"
+    let pp_xname fmt mt =
+      match mt with
+      | None -> ()
+      | Some lmt -> 
+        Format.fprintf fmt "%a|" (pp_funname ppe) (EcMemory.lmt_xpath lmt) in
+    Format.fprintf fmt "memory (*@[<hov 2>%a%a@]*)"
+      pp_xname mt
       (pp_list ";@ "pp_id) l *)
-    Format.fprintf fmt "memory"
+    Format.fprintf fmt "memory" 
       
 
   | Tglob m -> Format.fprintf fmt "(glob %a)" (pp_topmod ppe) m
