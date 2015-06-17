@@ -63,15 +63,27 @@ and pt_arg =
 
 (* -------------------------------------------------------------------- *)
 let paformula x = PAFormula x
+let pamemory  x = PAFormula (f_mem x)
 let pamodule  x = PAModule  x
 
+(* -------------------------------------------------------------------- *)
+let is_ptcut    = function PTCut    _ -> true | _ -> false
+let is_pthandle = function PTHandle _ -> true | _ -> false
+let is_ptlocal  = function PTLocal  _ -> true | _ -> false
+let is_ptglobal = function PTGlobal _ -> true | _ -> false
+
+(* -------------------------------------------------------------------- *)
+let is_paformula = function PAFormula _ -> true | _ -> false
+let is_pamodule  = function PAModule  _ -> true | _ -> false
+let is_pasub     = function PASub     _ -> true | _ -> false
+
+(* -------------------------------------------------------------------- *)
 let paglobal p tys =
   PASub (Some { pt_head = PTGlobal (p, tys); pt_args = []; })
 
 let palocal x =
   PASub (Some { pt_head = PTLocal x; pt_args = []; })
 
-let pamemory mmt = PAFormula (f_mem mmt)
 (* -------------------------------------------------------------------- *)
 type rwproofterm = {
   rpt_proof : proofterm;
