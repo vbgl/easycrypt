@@ -174,9 +174,15 @@ module PPEnv = struct
   let op_symb (ppe : t) p info =
     let specs = [1, EcPath.pqoname (EcPath.prefix EcCoreLib.CI_Bool.p_eq) "<>"] in
 
+    let check_for_local sm =
+      if List.is_empty (fst sm) && inuse ppe (snd sm) then
+        raise (EcEnv.LookupFailure (`QSymbol sm));
+    in
+
     let lookup =
       match info with
       | None -> fun sm ->
+          check_for_local sm;
           EcEnv.Op.lookup_path sm ppe.ppe_env
 
       | Some (mode, typ, dom) ->
@@ -188,14 +194,15 @@ module PPEnv = struct
           let tvi = Some (EcUnify.TVIunamed typ) in
 
         fun sm ->
+          check_for_local sm;
           let ue = EcUnify.UniEnv.create None in
           match  EcUnify.select_op ~filter tvi ppe.ppe_env sm ue dom with
           | [(p1, _), _, _] -> p1
           | _ -> raise (EcEnv.LookupFailure (`QSymbol sm)) in
 
     let exists sm =
-        try  EcPath.p_equal (lookup sm) p
-        with EcEnv.LookupFailure _ -> false
+        try EcPath.p_equal (lookup sm) p 
+       with EcEnv.LookupFailure _ -> false
     in
       (* FIXME: for special operators, do check `info` *)
       if   List.exists (fun (_, sp) -> EcPath.p_equal sp p) specs
@@ -777,8 +784,18 @@ let pp_opname fmt (nm, op) =
       then Format.sprintf "( %s )" op
       else Format.sprintf "(%s)" op
     end else op
-  in
-    EcSymbols.pp_qsymbol fmt (nm, op)
+
+  in EcSymbols.pp_qsymbol fmt (nm, op)
+
+let pp_opname_with_tvi ppe fmt (nm, op, tvi) =
+  match tvi with
+  | None ->
+      pp_opname fmt (nm, op)
+
+  | Some tvi ->
+      Format.fprintf fmt "%a<:%a>"
+        pp_opname (nm, op)
+        (pp_list "@, " (pp_type ppe)) tvi
 
 let pp_opapp
      (ppe    : PPEnv.t)
@@ -838,7 +855,8 @@ let pp_opapp
     with E.PrintAsPlain ->
       fun () ->
         match es with
-        | [] -> pp_opname fmt (nm, opname)
+        | [] ->
+            pp_opname fmt (nm, opname)
 
         | _  ->
             let pp_subs = ((fun _ _ -> pp_opname), pp_sub) in
@@ -1645,8 +1663,7 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         (pp_ldform ppe) hs.muh_po
 
   | Fpr pr->
-      let spe = PPEnv.create_and_push_mem ppe ~active:true (EcFol.mhr, pr.pr_fun) in
-      let spe = PPEnv.add_local spe pr.pr_mem in
+      let ppe = PPEnv.create_and_push_mem ppe ~active:true (EcFol.mhr, pr.pr_fun) in
       Format.fprintf fmt "Pr[@[%a@[%t@] @@ %a :@ %a@]]"
         (pp_funname ppe) pr.pr_fun
         (match pr.pr_args.f_node with
@@ -1656,8 +1673,8 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
              (fun fmt -> pp_string fmt "()")
          | _ ->
              (fun fmt -> Format.fprintf fmt "(%a)" (pp_form ppe) pr.pr_args))
-        (pp_local spe) pr.pr_mem
-        (pp_form spe) pr.pr_event
+        (pp_local ppe) pr.pr_mem
+        (pp_form ppe) pr.pr_event
 
 and pp_form_r (ppe : PPEnv.t) outer fmt f =
   let printers =
