@@ -1967,7 +1967,7 @@ let c_split ?width pp x =
     Str.split (Str.regexp "\\(\r?\n\\)+") (Buffer.contents buf)
 
 let pp_i_asgn (ppe : PPEnv.t) fmt (lv, e) =
-  Format.fprintf fmt "%a =@ %a"
+  Format.fprintf fmt "%a <-@ %a"
     (pp_lvalue ppe) lv (pp_expr ppe) e
 
 let pp_i_assert (ppe : PPEnv.t) fmt e =
@@ -1981,13 +1981,13 @@ let pp_i_call (ppe : PPEnv.t) fmt (lv, xp, args) =
         (pp_list ",@ " (pp_expr ppe)) args
 
   | Some lv ->
-      Format.fprintf fmt "@[<hov 2>%a =@ %a(%a)@]"
+      Format.fprintf fmt "@[<hov 2>%a <@@@ %a(%a)@]"
         (pp_lvalue ppe) lv
         (pp_funname ppe) xp
         (pp_list ",@ " (pp_expr ppe)) args
 
 let pp_i_rnd (ppe : PPEnv.t) fmt (lv, e) =
-  Format.fprintf fmt "%a =$@ @[<hov 2>%a@]"
+  Format.fprintf fmt "%a <$@ @[<hov 2>%a@]"
     (pp_lvalue ppe) lv (pp_expr ppe) e
 
 let pp_i_if (ppe : PPEnv.t) fmt e =
@@ -2418,11 +2418,11 @@ let pp_modsig ppe fmt (p,ms) =
 let rec pp_instr (ppe : PPEnv.t) fmt i =
   match i.i_node with
   | Sasgn (lv, e) ->
-    Format.fprintf fmt "@[<hov 2>%a =@ @[%a@]@]"
+    Format.fprintf fmt "@[<hov 2>%a <-@ @[%a@]@]"
       (pp_lvalue ppe) lv (pp_expr ppe) e
 
   | Srnd (lv, e) ->
-    Format.fprintf fmt "@[<hov 2>%a =@ @[$%a@]"
+    Format.fprintf fmt "@[<hov 2>%a <$@ @[$%a@]"
       (pp_lvalue ppe) lv (pp_expr ppe) e
 
   | Scall (None, xp, args) ->
@@ -2431,7 +2431,7 @@ let rec pp_instr (ppe : PPEnv.t) fmt i =
       (pp_list ",@ " (pp_expr ppe)) args
 
   | Scall (Some lv, xp, args) ->
-    Format.fprintf fmt "@[<hov 2>%a =@ %a(@[%a@]);@]"
+    Format.fprintf fmt "@[<hov 2>%a <@@@ %a(@[%a@]);@]"
       (pp_lvalue ppe) lv
       (pp_funname ppe) xp
       (pp_list ",@ " (pp_expr ppe)) args
