@@ -8,6 +8,10 @@ open EcLowPhlGoal
 
 
 (* FIXME move this *)
+let p_not env p1 = 
+  let x,ty,p1 = get_lambda1 env p1 in
+  f_lambda [x,GTty ty] (f_not p1)
+
 let p_imp env p1 p2 = 
   let x,ty,p1 = get_lambda1 env p1 in
   f_lambda [x,GTty ty] (f_imp p1 (f_app_simpl p2 [f_local x ty] tbool))

@@ -177,4 +177,8 @@ module CI_Logic : sig
   val p_iff_rl        : path
 
   val p_case_eq_bool  : path
+
+  val p_muhoare_if_conseq_t   : path
+  val p_muhoare_if_conseq_f   : path
+  val p_muhoare_if_conseq_pre : path
 end

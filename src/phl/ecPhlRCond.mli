@@ -11,6 +11,7 @@ open EcCoreGoal.FApi
 module Low : sig
   val t_hoare_rcond   : bool -> int -> backward
   val t_bdhoare_rcond : bool -> int -> backward
+  val t_muhoare_rcond : bool -> int -> backward
   val t_equiv_rcond   : side -> bool -> int -> backward
 end
 

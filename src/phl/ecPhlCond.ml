@@ -142,6 +142,51 @@ let process_muhoare_cond ((pr1, po1),(pr2,po2)) tc =
   let pr2 = EcProofTyping.tc1_process_phl_ld_formula tc pr2 in
   let po2 = EcProofTyping.tc1_process_phl_ld_formula tc po2 in
   t_muhoare_cond (doit pr1) (doit po1) (doit pr2) (doit po2) tc  
+ 
+let t_muhoare_cond_det tc = 
+  let hs = tc1_as_muhoareS tc in
+  let env = FApi.tc1_env tc in
+  let (e,_,_) = fst (tc1_first_if tc hs.muh_s) in
+  let (mu,mt),pr = open_mu_binding env hs.muh_pr in
+  let fe = form_of_expr (Some (mhr,mt)) e in
+  let tmt = tmem mt in
+  let se = f_square (mhr,tmt) fe mu in
+  let sne = f_square (mhr,tmt) (f_not fe) mu in
+  let pr1 = close_mu_binding (mu,mt) (f_and pr (f_or se sne)) in
+  let prt = close_mu_binding (mu,mt) (f_and pr se) in
+  let prf = close_mu_binding (mu,mt) (f_and pr sne) in
+
+  let se = close_mu_binding (mu,mt) se in
+
+  let t_branch b = 
+    let pr = if b then prt else prf in
+    let lconseq = 
+      if b then EcCoreLib.CI_Logic.p_muhoare_if_conseq_t 
+      else EcCoreLib.CI_Logic.p_muhoare_if_conseq_f in
+    let l_and = EcCoreLib.CI_Logic.p_and_proj_r in
+
+    EcPhlConseq.t_muhoareS_conseq pr hs.muh_po @+ [
+      t_intros_s (`Symbol ["_"]) @!  EcHiGoal.t_apply_prept (`UG lconseq) ;
+      t_logic_trivial;
+      EcPhlRCond.t_rcond None b 1 @+ [
+        EcPhlSkip.t_skip @! t_intros_s (`Symbol ["_"]) @! 
+          EcHiGoal.t_apply_prept (`UG l_and); 
+        t_id
+      ]
+    ] in
+  let mu = EcIdent.create "mu" in
+  let lpre = EcCoreLib.CI_Logic.p_muhoare_if_conseq_pre in
+   
+  (EcPhlConseq.t_muhoareS_conseq pr1 hs.muh_po @+ [
+    t_intro_i mu @! 
+      EcHiGoal.t_apply_prept (`UG lpre) @!
+      t_generalize_hyp ~clear:true mu;
+    t_logic_trivial;
+    EcPhlCase.t_hl_case se @+ [
+      t_branch true;
+      t_branch false 
+    ]
+  ]) tc
   
 (* -------------------------------------------------------------------- *)
 let process_cond info tc =
@@ -150,7 +195,7 @@ let process_cond info tc =
   match info with
   | `MuHoare info -> process_muhoare_cond info tc 
   | `Head side ->
-    t_hS_or_bhS_or_eS ~th:t_hoare_cond ~tbh:t_bdhoare_cond ~te:(t_equiv_cond side) tc
+    t_hS_or_bhS_or_eS ~th:t_hoare_cond ~tbh:t_bdhoare_cond ~te:(t_equiv_cond side) ~tmuh:t_muhoare_cond_det tc 
 
   | `Seq (side, i1, i2, f) -> 
     let es = tc1_as_equivS tc in

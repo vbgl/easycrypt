@@ -7,6 +7,7 @@ open EcFol
 open EcModules
 
 (* -------------------------------------------------------------------- *)
+val p_not        : env -> form -> form
 val p_imp        : env -> form -> form -> form
 val p_and        : env -> form -> form -> form
 val p_forall_imp : env -> form -> form -> form

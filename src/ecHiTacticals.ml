@@ -89,6 +89,10 @@ and process1_case (_ : ttenv) (opts, gp) (tc : tcenv1) =
     | FequivS _ when not opts.cod_ambient ->
         let fp = TTC.tc1_process_prhl_formula tc (form_of_gp ()) in
         EcPhlCase.t_equiv_case fp tc
+    | FmuhoareS _ when not opts.cod_ambient ->
+      let mumt,fp = TTC.tc1_process_phl_ld_formula tc (form_of_gp ()) in
+      let fp = close_mu_binding mumt fp in
+      EcPhlCase.t_hl_case fp tc
 
     | _ -> EcHiGoal.process_case gp tc
 

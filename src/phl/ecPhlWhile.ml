@@ -329,10 +329,8 @@ let t_muhoare_while (inv : form) tc =
   let (e, c), s = tc1_last_while tc mus.muh_s in
 
   let enot = e_op EcCoreLib.CI_Bool.p_not [] (toarrow [tbool] tbool) in
-  let ne   = e_app enot [e] tbool in
 
   let cond1 = f_muhoareS inv (s_if (e, c, s_empty)) inv in
-(*let cond2 = f_muhoareS inv (s_assert ne) mus.muh_po in *)
   let cond2 = p_forall_imp env inv (mu_restr env false e mus.muh_po) in
   let cond3 = f_muhoareS mus.muh_pr s inv in
 

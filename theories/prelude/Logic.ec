@@ -372,3 +372,14 @@ lemma nosmt tuple9_ind :
        t = (x1,x2,x3,x4,x5,x6,x7,x8,x9) => p (x1,x2,x3,x4,x5,x6,x7,x8,x9)) => 
     p t
 by [].
+
+
+(* Some lemmas useful for tactics *)
+lemma muhoare_if_conseq_t (a b c:bool): (a /\ (b \/ c)) /\ b => a /\ b
+by [].
+
+lemma muhoare_if_conseq_f (a b c:bool): (a /\ (b \/ c)) /\ !b => a /\ c
+by [].
+
+lemma muhoare_if_conseq_pre (a b:bool): (a=> b) => (a => a /\ b)
+by [].
