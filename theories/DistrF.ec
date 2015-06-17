@@ -144,6 +144,10 @@ lemma square_supp (p:'a -> bool) (d :'a distr):
   $@[p | d] <=> (forall x, in_supp x d => p x).
 proof. by rewrite muf_pos_0 1:smt /= b2r_0. qed.
 
+lemma nosmt square_supp_imp (p:'a -> bool) (d :'a distr): 
+  $@[p | d] => forall x, in_supp x d => p x.
+proof. by rewrite square_supp. qed.
+
 lemma nosmt square_and (d :'a distr) (p1 p2:'a -> bool) : 
   ($@[p1 | d] /\ $@[p2 | d]) <=> $@[fun x => p1 x /\ p2 x | d].
 proof. rewrite !square_supp /=;smt. qed.

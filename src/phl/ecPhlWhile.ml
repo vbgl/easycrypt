@@ -393,7 +393,7 @@ let t_low_muhoare_while_bounded_r (inv, sinv) v m q tc =
       close_mu_binding (mu,mt) (f_and inv' (f_square (mhr, tmt) sinv mu)) in
     f_muhoareS pr (s_if (e, c, s_empty)) inv in
   (* the body terminate *)
-  let nb  = f_not (form_of_expr (Some (mhr, mt)) e) in
+  let b  = form_of_expr (Some (mhr, mt)) e in
   let cond2 = 
     let vk  = EcIdent.create "k" in
     let k   = f_local vk tint in
@@ -401,7 +401,7 @@ let t_low_muhoare_while_bounded_r (inv, sinv) v m q tc =
     let fK  = f_local vK tint in
     let square = 
       f_square (mhr, tmt) 
-        (f_ands [sinv; bounded; f_eq v k; f_eq m fK; nb]) mu in
+        (f_ands [sinv; bounded; f_eq v k; f_eq m fK; b]) mu in
     let ll = f_mulossless env (f_local mu (tdistr tmt)) in
     let pr = close_mu_binding (mu,mt) (f_and square ll) in
     let square_po = 
@@ -409,11 +409,11 @@ let t_low_muhoare_while_bounded_r (inv, sinv) v m q tc =
     let decr = 
       f_real_le q (f_muf_b2r (mhr,tmt) 
                      (f_or (f_eq v f_i0) (f_int_lt v k)) mu) in
-    let po = close_mu_binding (mu,mt) (f_and square_po decr) in
+    let po = close_mu_binding (mu,mt) (f_ands [square_po; decr; ll]) in
     f_forall [vk,GTty tint; vK,GTty tint] (f_muhoareS pr c po) in
   (* *)
   let cond3 = 
-    f_forall [mhr, GTty tmt] (f_imps [sinv; f_eq v f_i0] nb) in
+    f_forall [mhr, GTty tmt] (f_imps [sinv; f_eq v f_i0] (f_not b)) in
   let cond4 = 
     f_real_lt f_r0 q in
   
