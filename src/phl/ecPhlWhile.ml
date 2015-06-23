@@ -438,7 +438,13 @@ let t_muhoare_while_bounded (inv,sinv) v m q tc =
     ] 
   ]) tc
 
-(* Rule : WHILE-RWU *)
+
+
+(* ----------------------------------------------------------------- *)
+
+
+
+
 
 (* -------------------------------------------------------------------- *)
 let t_hoare_while           = FApi.t_low1 "hoare-while"   t_hoare_while_r
@@ -451,17 +457,18 @@ let t_muhoare_while         = FApi.t_low1 "muhoare-while" t_muhoare_while
 
 (* -------------------------------------------------------------------- *)
 
-let split_muinv env inv = 
-  let (mu,mt),inv = open_mu_binding env inv in
-  let inv, sinv = try destr_and inv with DestrError _ -> inv, f_true in
-  let inv = close_mu_binding (mu,mt) inv in
-  let sinv = close_mu_binding (mu,mt) sinv in
-  let sinv = 
-    let body = 
-      try (snd (EcPhlCoreView.destr_square env sinv)) 
-      with DestrError _ -> f_true in
-    f_lambda [mhr,gtmem mt] body in
-  inv, sinv
+let split_muinv env inv0 = 
+  let (mu,mt),inv = open_mu_binding env inv0 in
+  try 
+    let inv, sinv = destr_and inv in 
+    let sinv = close_mu_binding (mu,mt) sinv in
+    let sinv = snd (EcPhlCoreView.destr_square env sinv) in
+    let sinv = f_lambda [mhr,gtmem mt] sinv in
+    let inv = close_mu_binding (mu,mt) inv in
+    inv, sinv
+  with DestrError _ ->
+    inv0, f_lambda [mhr,gtmem mt] f_true
+    
 
 let process_while side winfos tc =
   let { EcParsetree.wh_inv  = phi ;

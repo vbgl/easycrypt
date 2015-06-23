@@ -148,10 +148,6 @@ lemma nosmt square_supp_imp (p:'a -> bool) (d :'a distr):
   $@[p | d] => forall x, in_supp x d => p x.
 proof. by rewrite square_supp. qed.
 
-lemma nosmt square_and (d :'a distr) (p1 p2:'a -> bool) : 
-  ($@[p1 | d] /\ $@[p2 | d]) <=> $@[fun x => p1 x /\ p2 x | d].
-proof. rewrite !square_supp /=;smt. qed.
-
 lemma nosmt square_muf_add (p:'a -> bool) (f:'a -> real) (d: 'a distr):
   $@[p | d] =>
   $[ f | d] = $[fun x => f x + b2r (!p x) | d].
@@ -182,6 +178,24 @@ proof. by rewrite !square_supp /=;smt. qed.
 lemma pr_eq_1 (d:'a distr) (p:'a -> bool): 
      $[fun x => 1%r | d] = 1%r => $@[p | d] => $[fun x => b2r (p x) | d] = 1%r.
 proof. rewrite b2r_not muf_sub=> -> H;ringeq H. qed.
+
+lemma nosmt square_and (d :'a distr) (p1 p2:'a -> bool) : 
+  ($@[p1 | d] /\ $@[p2 | d]) <=> $@[fun x => p1 x /\ p2 x | d].
+proof. rewrite !square_supp /=;smt. qed.
+
+lemma nosmt square_or  (d :'a distr) (p1 p2:'a -> bool) : 
+  ($@[p1 | d] \/ $@[p2 | d]) => $@[fun x => p1 x \/ p2 x | d].
+proof.
+  move=> [ ];apply square_imp;rewrite square_supp /=;smt. 
+qed.
+
+lemma nosmt square_forall (d :'a distr) (p : 'b -> 'a -> bool) : 
+  (forall b, $@[p b | d]) <=> $@[fun x => forall b, p b x | d].
+proof. rewrite !square_supp /=;smt. qed.
+
+lemma nosmt square_exists  (d :'a distr) (p : 'b -> 'a -> bool) : 
+  (exists b, $@[p b | d]) => $@[fun x => exists b, p b x | d].
+proof. by rewrite !square_supp /= => [b Hb] x Hx;exists b;apply Hb. qed.
 
 (* Lemmas about known distribution *)
 require import Bool.
@@ -238,24 +252,130 @@ qed.
    #[ p | d ]    := mu p d = 0 *)
 
 (* ----------------------------------------------------------------- *)
+
 op dunit : 'a -> 'a distr.
+
 axiom dunit_def (f:'a -> real) a: $[f | dunit a] = f a.
 
 op dlet : 'a distr -> ('a -> 'b distr) -> 'b distr.
+
 axiom dlet_def (d : 'a distr) (F:'a -> 'b distr) f: 
    $[f | dlet d F] = $[fun a => $[ f | F a] | d].
 
+op dlift (F: 'a -> 'b distr) : 'a distr -> 'b distr = 
+  fun d => dlet d F.
+
+axiom nosmt eq_distr_ext (d1 d2: 'a distr):
+  (forall (f:'a -> real), muf f d1 = muf f d2) => 
+  d1 = d2.
+
+lemma nosmt dlet_unit (d:'a distr) : dlet d dunit = d.
+proof.
+  by apply eq_distr_ext=> f;rewrite dlet_def dunit_def.
+qed.
+
 (* ----------------------------------------------------------------- *)
-op dif (d:'a distr) (p:'a -> bool) (F1 F2: 'a -> 'b distr) = 
-  dlet d (fun a => if p a then F1 a else F2 a).
+
+op dif (p:'a -> bool) (F1 F2: 'a -> 'b distr) (a:'a) = 
+   if p a then F1 a else F2 a.
 
 lemma nosmt dif_def (d : 'a distr) p (F1 F2:'a -> 'b distr) f :
-  $[f | dif d p F1 F2] = 
+  $[f | dlet d (dif p F1 F2)] = 
   $[fun a => b2r (p a) * $[f | F1 a] + b2r (!p a) * $[f | F2 a] | d].
 proof.
   rewrite /dif dlet_def -if_b2r /=.
   apply muf_congr => //= a; case (p a) => //. 
 qed.
+
+(* ----------------------------------------------------------- *)
+(* try to define the logic                                     *)
+(* ------------------------------------------------------------*)
+
+pred uhoare (P : 'a -> bool) (F : 'a -> 'b distr) (Q : 'b distr -> bool) = 
+  forall a, P a => Q (F a).
+
+pred dhoare (P : 'a distr -> bool) (F : 'a -> 'b distr) (Q : 'b distr -> bool) = 
+  forall d, P d => Q (dlet d F).
+
+op f1 (a:'a) = 1%r.
+
+(* Scale rule *)
+
+lemma nosmt dhoare_scale (P: 'a -> bool) (F:'a -> 'b distr) (r:real) :
+  dhoare (fun d => $@[P | d] /\ $[f1 | d] = 1%r) F (fun d => $[f1 | d] = 1%r) =>
+  dhoare (fun d => $@[P | d] /\ $[f1 | d] = r)   F (fun d => $[f1 | d] = r).
+proof.
+  move=> Hll d [HP Hdf1].
+  case (r= 0%r) => Hr. 
+  + rewrite /dlift dlet_def.
+    cut : $[fun (a : 'a) => $[f1 | F a] | d] <= $[f1 | d].
+    + apply muf_le_compat;rewrite /f1 /= => x Hx. 
+      cut /= := (muf_b2r (fun a => true) (F x)).
+      rewrite b2r_true => <-. smt.
+    cut : 0%r <= $[fun (a : 'a) => $[f1 | F a] | d];last by smt.
+    + by rewrite -(muf_0 d);apply muf_le_compat=> /= x _;
+         rewrite -(muf_0 (F x));apply muf_le_compat.
+  cut := Hll (dscale d) _.
+  + rewrite !dscale_def HP /= Hdf1. smt.
+  rewrite /dlift !dlet_def dscale_def Hdf1;smt.   
+qed.
+
+(* skip rule *)
+lemma nosmt dhoare_skip (P: 'a distr->bool) : dhoare P dunit P. 
+proof. by rewrite /dhoare dlet_unit. qed.
+
+
+(* If rule *)
+import Pred.
+
+pred curly (b:'a -> bool) (P1 P2:'a distr -> bool) (d:'a distr) = 
+  P1 (drestr d b) /\ P2 (drestr d (!b)).
+
+pred (\oplus) (P1 P2 : 'a distr -> bool) (d:'a distr) =
+  exists (d1 d2:'a distr),
+     (forall (f:'a -> real), $[f | d] = $[f | d1] + $[f | d2]) /\
+     P1 d1 /\ P2 d2.
+
+lemma nosmt square_restr (b:'a -> bool) (d:'a distr) : $@[b | drestr d b].
+proof.
+  by rewrite drestr_def /= -b2r_and absurd_and_n b2r_false muf_0.
+qed.
+
+lemma nosmt dhoare_if (P1 P2:'a distr -> bool) (Q1 Q2:'b distr -> bool) (b:'a -> bool)
+   (F1 F2 : 'a -> 'b distr):
+   dhoare (fun d => P1 d /\ $@[b | d]) F1 Q1 =>
+   dhoare (fun d => P2 d /\ $@[!b | d]) F2 Q2 =>
+   dhoare (curly b P1 P2) (dif b F1 F2) (Q1 \oplus Q2).
+proof.
+  move=> HF1 HF2 d [Hd1 Hd2];rewrite /curly /(\oplus) .
+  exists (dlet (drestr d b) F1), (dlet (drestr d (!b)) F2);split.
+  + by move=> f;rewrite /dlift dif_def !dlet_def !drestr_def /Pred.([!]) /= -muf_add.  
+  split; [apply HF1 | apply HF2]; split => //;apply square_restr.
+qed.
+
+(* Sequence *)
+
+op dseq (F1:'a -> 'b distr) (F2: 'b -> 'c distr) = 
+  fun a => dlet (F1 a) F2.
+
+lemma dseq_def (d:'a distr) (F1:'a -> 'b distr) (F2: 'b -> 'c distr) f : 
+  $[f | dlet d (dseq F1 F2)] = $[fun a => $[ fun b => $[f | F2 b] | F1 a ] | d].
+proof.
+  by rewrite /dseq dlet_def /= dlet_def.  
+qed.
+
+lemma dseq_def2 (d:'a distr) (F1:'a -> 'b distr) (F2: 'b -> 'c distr) : 
+  dlet d (dseq F1 F2) = dlet (dlet d F1) F2.
+proof.
+  apply eq_distr_ext=> f;by rewrite dseq_def !dlet_def.
+qed.
+
+lemma nosmt dhoare_seq (P: 'a distr -> bool) (Q:'b distr -> bool) (R: 'c distr -> bool) F1 F2:
+   dhoare P F1 Q => dhoare Q F2 R => dhoare P (dseq F1 F2) R.
+proof. by move=> H1 H2 d Hd;rewrite dseq_def2;apply H2; apply H1. qed.
+
+
+ 
 
    
 
