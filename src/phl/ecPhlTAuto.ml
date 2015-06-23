@@ -18,6 +18,14 @@ let t_hoare_true_r tc =
   | FhoareS hs when f_equal hs.hs_po f_true ->
       FApi.xmutate1 tc `HoareTrue []
 
+  | FmuhoareF hf when 
+      f_equal (snd (open_mu_binding (FApi.tc1_env tc) hf.muhf_po)) f_true ->
+      FApi.xmutate1 tc `HoareTrue []
+
+  | FmuhoareS hs when 
+      f_equal (snd (open_mu_binding (FApi.tc1_env tc) hs.muh_po)) f_true ->
+      FApi.xmutate1 tc `HoareTrue []
+
   | _ ->
     tc_error !!tc
       "the conclusion is not of the form %s"

@@ -54,8 +54,24 @@ let t_hr_exists_elim_r tc =
   let bd, pre = destr_exists_prenex pre in
   (* FIXME: rename binding in bd  ... *)
   let pre = f_lambda (List.map (fun (m,mt) -> (m,gtdistr mt)) lbd) pre in
-  let concl = f_forall bd (set_pre ~pre (FApi.tc1_goal tc)) in
+  let concl = f_forall bd (set_pre ~pre goal) in
   FApi.xmutate1 tc `HlExists [concl]
+
+(* -------------------------------------------------------------------- *)
+let t_hr_forall_intro_r tc =
+  let po= tc1_get_post tc in
+  let goal = FApi.tc1_goal tc in
+  let mmt, po =  
+    if is_muhoareS goal || is_muhoareF goal then 
+      open_mu_binding (FApi.tc1_env tc) po
+    else raise InvalidGoalShape in
+  let bd, po = 
+    try destr_forall po with DestrError _ -> raise InvalidGoalShape in
+  let post = close_mu_binding mmt po in
+  let concl = f_forall bd (set_post ~post goal) in
+  FApi.xmutate1 tc `Hlforall [concl]
+
+
 
 
 
@@ -101,6 +117,7 @@ let t_hr_exists_intro_r fs tc =
 
 (* -------------------------------------------------------------------- *)
 let t_hr_exists_elim  = FApi.t_low0 "hr-exists-elim"  t_hr_exists_elim_r
+let t_hr_forall_intro = FApi.t_low0 "hr-forall-intro"  t_hr_forall_intro_r
 let t_hr_exists_intro = FApi.t_low1 "hr-exists-intro" t_hr_exists_intro_r
 
 (* -------------------------------------------------------------------- *)

@@ -497,6 +497,7 @@ type phltactic =
   | Pconseq        of (bool * (conseq_ppterm option tuple3))
   | Phrex_elim
   | Phrex_intro    of pformula list
+  | Phrforall_intro 
   | Pexfalso
   | Pbydeno        of ([`PHoare | `Equiv ] * (deno_ppterm * bool * pformula option))
   | PPr            of (pformula * pformula) option

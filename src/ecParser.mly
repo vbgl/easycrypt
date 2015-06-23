@@ -2358,6 +2358,9 @@ phltactic:
 | ELIM STAR
     { Phrex_elim }
 
+| FORALL STAR
+    { Phrforall_intro }
+
 | EXIST STAR l=iplist1(sform, COMMA) %prec prec_below_comma
     { Phrex_intro l }
 

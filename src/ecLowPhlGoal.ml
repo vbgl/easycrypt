@@ -198,6 +198,8 @@ let get_post f =
   | FbdHoareS hs -> Some (hs.bhs_po)
   | FequivF ef   -> Some (ef.ef_po )
   | FequivS es   -> Some (es.es_po )
+  | FmuhoareF hf -> Some (hf.muhf_po)
+  | FmuhoareS hs -> Some (hs.muh_po)
   | _            -> None
 
 let tc1_get_post tc =
@@ -208,15 +210,31 @@ let tc1_get_post tc =
 (* -------------------------------------------------------------------- *)
 let set_pre ~pre f =
   match f.f_node with
- | FhoareF hf   -> f_hoareF pre hf.hf_f hf.hf_po
- | FhoareS hs   -> f_hoareS_r { hs with hs_pr = pre }
- | FbdHoareF hf -> f_bdHoareF pre hf.bhf_f hf.bhf_po hf.bhf_cmp hf.bhf_bd
- | FbdHoareS hs -> f_bdHoareS_r { hs with bhs_pr = pre }
- | FequivF ef   -> f_equivF pre ef.ef_fl ef.ef_fr ef.ef_po
- | FequivS es   -> f_equivS_r { es with es_pr = pre }
- | FmuhoareF hf -> f_muhoareF pre hf.muhf_f hf.muhf_po
- | FmuhoareS hs -> f_muhoareS_r { hs with muh_pr = pre }
- | _            -> assert false
+  | FhoareF hf   -> f_hoareF pre hf.hf_f hf.hf_po
+  | FhoareS hs   -> f_hoareS_r { hs with hs_pr = pre }
+  | FbdHoareF hf -> f_bdHoareF pre hf.bhf_f hf.bhf_po hf.bhf_cmp hf.bhf_bd
+  | FbdHoareS hs -> f_bdHoareS_r { hs with bhs_pr = pre }
+  | FequivF ef   -> f_equivF pre ef.ef_fl ef.ef_fr ef.ef_po
+  | FequivS es   -> f_equivS_r { es with es_pr = pre }
+  | FmuhoareF hf -> f_muhoareF pre hf.muhf_f hf.muhf_po
+  | FmuhoareS hs -> f_muhoareS_r { hs with muh_pr = pre }
+  | _            -> assert false
+
+
+(* -------------------------------------------------------------------- *)
+let set_post ~post f =
+  match f.f_node with
+  | FhoareF hf   -> f_hoareF hf.hf_pr hf.hf_f post
+  | FhoareS hs   -> f_hoareS_r { hs with hs_po = post }
+  | FbdHoareF hf -> f_bdHoareF hf.bhf_pr hf.bhf_f post hf.bhf_cmp hf.bhf_bd
+  | FbdHoareS hs -> f_bdHoareS_r { hs with bhs_po = post }
+  | FequivF ef   -> f_equivF ef.ef_pr ef.ef_fl ef.ef_fr post
+  | FequivS es   -> f_equivS_r { es with es_po = post }
+  | FmuhoareF hf -> f_muhoareF hf.muhf_pr hf.muhf_f post
+  | FmuhoareS hs -> f_muhoareS_r { hs with muh_po = post }
+  | _            -> assert false
+
+
 
 (* -------------------------------------------------------------------- *)
 exception InvalidSplit of int * int * int

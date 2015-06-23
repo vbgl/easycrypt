@@ -9,6 +9,7 @@ open EcFol
 open EcCoreGoal.FApi
 
 (* -------------------------------------------------------------------- *)
+val t_hr_forall_intro : backward
 val t_hr_exists_elim  : backward
 val t_hr_exists_intro : form list -> backward
 
