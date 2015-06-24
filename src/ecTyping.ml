@@ -493,9 +493,12 @@ let rec as_tmem env ty =
       match td.tyd_type with
       | `Concrete ty   -> as_tmem env ty
       | `Abstract _    -> false
-      | `Datatype tyd  ->
-        List.exists (snd_app (List.exists (as_tmem env))) tyd.tydt_ctors
-      | `Record (_, l) -> List.exists (snd_app (as_tmem env)) l in
+      | `Datatype tyd  -> false
+        (* FIXME 
+        List.exists (snd_app (List.exists (as_tmem env))) tyd.tydt_ctors *)
+      | `Record (_, l) -> false
+        (* FIXME 
+           List.exists (snd_app (as_tmem env)) l *) in
     inp || ty_sub_exists (as_tmem env) ty
   | _ -> ty_sub_exists (as_tmem env) ty
     
