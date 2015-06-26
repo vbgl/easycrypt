@@ -274,6 +274,12 @@ proof.
   by apply eq_distr_ext=> f;rewrite dlet_def dunit_def.
 qed.
 
+(* TODO *)
+(* dlet (dlet d1 F1) F2 dlet d1 (fun x1 => dlet (F1 x) F2).
+   dlet d1 (fun x => dlet d2 (F x)) = dlet d2 (fun y => dlet d1 (fun x => F x y)). *)
+
+ 
+
 (* ----------------------------------------------------------------- *)
 
 op dif (p:'a -> bool) (F1 F2: 'a -> 'b distr) (a:'a) = 
