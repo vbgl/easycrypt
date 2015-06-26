@@ -3190,15 +3190,14 @@ module LDecl = struct
     { hyps with h_local = (id, ld) :: hyps.h_local }
 
   (* ------------------------------------------------------------------ *)
-
   let fresh_id hyps s =
     let s =
-      if   s = "_" || not (has_name ~dep:false s hyps)
+      if   s = "_" || not (has_name ~dep:true s hyps)
       then s
       else
         let rec aux n =
           let s = Printf.sprintf "%s%d" s n in
-          if has_name ~dep:false s hyps then aux (n+1) else s in
+          if has_name ~dep:true s hyps then aux (n+1) else s in
         aux 0
 
     in EcIdent.create s
