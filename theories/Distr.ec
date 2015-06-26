@@ -62,7 +62,11 @@ axiom uniform_unique (d d':'a distr):
 lemma witness_nzero P (d:'a distr):
   0%r < mu d P => (exists x, P x ).
 proof.
-  by cut: P <> False => (exists x, P x); smt.
+  cut: P <> pred0 => (exists x, P x).
+    apply absurd=> /=.
+    have -> h: (!exists (x:'a), P x) = forall (x:'a), !P x by smt.
+    by apply fun_ext=> x; rewrite h.
+  smt.
 qed.
 
 lemma ew_eq (d d':'a distr):
