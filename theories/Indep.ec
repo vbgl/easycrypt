@@ -254,6 +254,7 @@ proof.
   apply hindep_cat_r.
 qed.
 
+
 lemma indep_comp (d:'m distr) (X:'m -> 'a) (Y: 'm -> 'b) (F :'b -> 'c):
      indep d X Y => indep d X (F \o Y).
 proof.
@@ -267,9 +268,8 @@ qed.
 axiom dcomp_bij (d:'a distr) (f:'a -> 'a):
   bijective f => d \o f = d.
 
-print bijective.
 lemma indep_bij_comp (d:'m distr) (X:'m -> 'a) (Y: 'm -> 'b) (f: 'a -> 'b -> 'a) :
-   (exists g, forall b, bijective (fun a => f a b)) =>
+   (forall b, bijective (fun a => f a b)) =>
    indep d X Y => indep d (fun m => f (X m) (Y m)) Y.
 proof.
   move=> Hf Hi;rewrite indep_eindep /eindep.
@@ -277,26 +277,22 @@ proof.
     apply (eq_trans _ ((d \o fun (m : 'm) => (X m, Y m)) \o 
                (fun (p:'a*'b) => (f p.`1 p.`2, p.`2)))).
     + by rewrite dcomp_dcomp //.
-    apply dcomp_bij. 
-    move: Hf; rewrite /bijective /cancel /=.
-    
-    cut : exists g 
-
-elim Hi.
-    
- exists (fun (p:'a*'b) => 
-
- rewrite /bijective. 
-
-split.
-    d \o (fun m => (f (X m) (Y m), Y m)) = d \o (fun m => (X m, Y m)).
+    apply dcomp_bij;cut {Hf} [g /= Hg]:= funchoice _ Hf. 
+    exists (fun (p:'a*'b) => (g p.`2 p.`1, p.`2));split=> p;cut:= Hg p.`2;rewrite /cancel smt.
   cut -> : d \o (fun (m : 'm) => f (X m) (Y m)) = d \o X.
   + apply (eq_trans _ ((d \o (fun m => (f (X m) (Y m), Y m))) \o (fun (p:'a*'b) => p.`1))).
     + by rewrite dcomp_dcomp.
-    by rewrite indep_bij // dcomp_dcomp.
+    by rewrite H1 // dcomp_dcomp.
   cut := Hi;rewrite indep_eindep /eindep => Hi'.
-  by rewrite /fpair indep_bij.
+  by rewrite /fpair H1.
 qed.
+
+
+
+
+
+
+
 
 
 
