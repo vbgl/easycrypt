@@ -373,7 +373,12 @@ lemma nosmt tuple9_ind :
     p t
 by [].
 
+(* -------------------------------------------------------------------- *)
+axiom nosmt funchoice ['a 'b] (P : 'a -> 'b -> bool):
+     (forall x, exists y, P x y)
+  => (exists f, forall x, P x (f x)).
 
+(* -------------------------------------------------------------------- *)
 (* Some lemmas useful for tactics *)
 lemma muhoare_if_conseq_t (a b c:bool): (a /\ (b \/ c)) /\ b => a /\ b
 by [].
