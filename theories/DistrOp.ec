@@ -1,3 +1,4 @@
+require import NewList.
 require export DistrF.
 import Real Fun.
 
@@ -19,6 +20,9 @@ proof. rewrite /weight; apply PR_bounded. qed.
 (* ----------------------------------------------------------------- *)
 op dzero: 'a distr.
 axiom dzero_def (f:'a->real): $[f | dzero] = 0%r.
+
+lemma PR_dzero (P:'a -> bool): PR dzero P = 0%r.
+proof. by rewrite /PR dzero_def. qed.
 
 lemma w0_dzero (d:'a distr): weight d = 0%r <=> d = dzero.
 proof.
@@ -74,7 +78,7 @@ qed.
 (* multiplication by a constant                                   *)
 op d_compat (d:'a distr) (r:real) =  (0%r <= r <= 1%r/weight d \/ d = dzero).
 
-lemma d_compat_weight (d:'a distr): d_compat d (1%r/ weight d). 
+lemma d_compat_inv_weight (d:'a distr): d_compat d (1%r/ weight d). 
 proof.
   rewrite /d_compat; case (weight d = 0%r)=> Hw;1: by right;apply w0_dzero. 
   cut [H0w Hw1] := weight_bounded d. 
@@ -86,6 +90,9 @@ proof.
   rewrite /d_compat; case (weight d = 0%r);1: smt.
   cut := weight_bounded d; move:(weight d);smt.
 qed.
+
+lemma d_compat_weight (d:'a distr): d_compat d (weight d). 
+proof. smt. qed.
 
 lemma d_compat_dlet (d:'a distr) (F:'a -> 'b distr) r:
     d_compat d r => d_compat (dlet d F) r.
@@ -165,7 +172,7 @@ op dscale (d:'a distr) = dmulc (1%r/weight d) d.
 
 lemma dscale_def (d:'a distr) f: 
    $[f | dscale d] = $[f | d] / weight d.
-proof. rewrite /dscale dmulc_def 2:smt; apply d_compat_weight. qed.
+proof. rewrite /dscale dmulc_def 2:smt; apply d_compat_inv_weight. qed.
  
 (* --------------------------------------------------------------- *)
 op (||) (d:'a distr) (p:'a -> bool) = dscale (drestr d p).
@@ -231,8 +238,9 @@ proof.
   + by right;cut := (w0_dzero d1);rewrite Hw1 /= => ->; rewrite dprod0l.
   case (weight d2 = 0%r) => Hw2.
   + by right;cut := (w0_dzero d2);rewrite Hw2 /= => ->; rewrite dprod0r.
-  rewrite dprodW. left. cut := weight_bounded d1. 
-  move:  (weight d1) (weight d2) H1 Hw1 Hw2. smt.
+  rewrite dprodW. left. cut := weight_bounded d1. cut := weight_bounded d2. 
+  move:  (weight d1) (weight d2) H1 Hw1 Hw2. 
+  admit. 
 qed.
 
 lemma dprod_comp_l (d1:'a distr) (d2:'b distr) r: d_compat d1 r => d_compat (d1 * d2) r.
@@ -243,7 +251,8 @@ proof.
   case (weight d2 = 0%r) => Hw2.
   + by right;cut := (w0_dzero d2);rewrite Hw2 /= => ->; rewrite dprod0r.
   rewrite dprodW. left. cut := weight_bounded d2. 
-  move:  (weight d1) (weight d2) H1 Hw1 Hw2. smt.
+  move:  (weight d1) (weight d2) H1 Hw1 Hw2. 
+  admit.
 qed.
 
 lemma dmulc_dprod_r r (d1:'a distr) (d2:'b distr) : 
@@ -271,7 +280,7 @@ lemma dcomp_def (d:'a distr) (g: 'a -> 'b) (f:'b -> real):
   $[f | d \o g] = $[f \o g | d].
 proof. by rewrite /(\o) dlet_def /= dunit_def. qed.
 
-lemma dcomp_dzero (f:'a -> 'b) : dzero \o f = dzero. 
+lemma dzero_dcomp (f:'a -> 'b) : dzero \o f = dzero. 
 proof. by rewrite /(\o) dlet_dzero. qed.
 
 lemma dcomp_dunit (f:'a -> 'b) a: dunit a \o f = dunit (f a).
@@ -292,7 +301,40 @@ proof. by rewrite -distr_ext /(\o) !dlet_def /= !dunit_def. qed.
 lemma weight_dcomp d (g:'a -> 'b) : weight (d \o g) = weight d.
 proof. by rewrite /weight /PR dcomp_def. qed.
 
+lemma d_compat_dcomp  r d (g:'a -> 'b):  d_compat d r => d_compat (d \o g) r.
+proof.
+  by rewrite /d_compat;rewrite weight_dcomp => [ ] -> //; rewrite dzero_dcomp.
+qed.
 
+(* ------------------------------------------------------------------ *)
+(* list of distributions to distribution of list                      *)
+
+op dnil : 'a list distr = dunit [].
+
+op dcons (d:'a distr) (ds:'a list distr) = 
+  dlet d (fun a => dlet ds (fun (l:'a list) => dunit (a :: l))).
+
+lemma dcons_def (d:'m distr) (ds: 'm list distr) (f:'m list -> real): 
+  $[f | dcons d ds] = 
+  $[fun (a : 'm) => $[fun (a0 : 'm list) => f (a :: a0) | ds] | d].
+proof.
+  by rewrite /dcons dlet_def /= dlet_def /= dunit_def.
+qed.
+
+op dlist (ds:'a distr list) = foldr dcons (dunit []) ds.
+
+lemma dlist_nil : dlist<:'a> [] = dnil.
+proof. by []. qed.
+
+lemma dlist_cons (d:'a distr) (ds: 'a distr list) : dlist<:'a> (d::ds) = dcons d (dlist ds).
+proof. by []. qed.
+
+lemma ddrop1_dcons (d:'a distr) (ds:'a list distr) : 
+  (dcons d ds) \o (drop 1) = dmulc (weight d) ds.
+proof.
+  rewrite -distr_ext /(\o) => f. 
+  rewrite dlet_def dcons_def dmulc_def 1:smt /= dunit_def drop0 muf_c Real.Comm.Comm //.
+qed.
 
 
 
