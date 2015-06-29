@@ -76,6 +76,26 @@ proof.
   by exists (nth predT Ps' (size Xs) \o X), [] => /=;exists (nth predT Ps' (size Xs)).
 qed.
 
+lemma valid2_range (Xs: int -> 'm -> 'a) (p k: int) Ps:
+    valid2 (map (I_ \o Xs) (range k p)) Ps <=>
+    exists (Fs:int -> 'a -> bool), Ps = map (fun i m => Fs i (Xs i m)) (range k p).
+proof.
+  case (p <= k) => Hpk;1: by rewrite range_geq //= valid2_nPr.
+  rewrite map_comp valid2_Imap size_map.
+  cut Hs : size (range k p) = p - k by rewrite /range size_iota smt. 
+  cut {4}-> : k = 0 + k by ringeq. 
+  cut {4}-> : p = (p-k) + k by ringeq.
+  rewrite range_add -map_comp /(\o) Hs;split.
+  + move=> [Ps' [H1 ->>]].
+    exists (fun i => nth predT Ps' (i-k)).
+    apply eq_in_map=> i /=;rewrite mem_range => Hi;apply fun_ext => /= m.
+    rewrite (nth_map Option.witness) 1:Hs // nth_range // (_: k + i - k = i) //;ringeq.
+  move => [Fs ->>].   
+  exists (map Fs (range k p));rewrite size_map /= Hs /=.
+  apply eq_in_map=> i /=;rewrite mem_range => Hi;apply fun_ext => /= m.
+  rewrite !(nth_map Option.witness) 1,2:Hs // nth_range //. 
+qed.
+
 (* ------------------------------------------------------------------- *)
 (* Generic definition of heterogeneous independance                    *)
 (* ------------------------------------------------------------------- *)
@@ -135,7 +155,7 @@ pred pwindeps (d:'m distr) (Xs:int -> 'm -> 'a) (k p:int) =
       BRM.bigi predT (fun i => PR d (fun m => Ps i = Xs i m)) k p.
 
 (* ------------------------------------------------------------------- *)
-(* Equivalence of the different definitions                            *)
+(* Equivalence of the different binary definitions                     *)
 (* ------------------------------------------------------------------- *)
 
 lemma hindep_indep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b):
@@ -198,38 +218,9 @@ lemma indep_pwindep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b):
   indep d X Y <=> pwindep d X Y.
 proof. by rewrite indep_eindep pwindep_eindep. qed.
 
-lemma nth_range (i p k w : int) : 0 <= i < p - k => nth w (range k p) i = k + i.
-proof.
-  admit.
-qed.
-
-lemma valid2_range (Xs: int -> 'm -> 'a) (p k: int) Ps:
-    valid2 (map (I_ \o Xs) (range k p)) Ps <=>
-    exists (Fs:int -> 'a -> bool), Ps = map (fun i m => Fs i (Xs i m)) (range k p).
-proof.
-  case (p <= k) => Hpk;1: by rewrite range_geq //= valid2_nPr.
-  rewrite map_comp valid2_Imap size_map.
-  cut Hs : size (range k p) = p - k by rewrite /range size_iota smt. 
-  cut {4}-> : k = 0 + k by ringeq. 
-  cut {4}-> : p = (p-k) + k by ringeq.
-  rewrite range_add -map_comp /(\o) Hs;split.
-  + move=> [Ps' [H1 ->>]].
-    exists (fun i => nth predT Ps' (i-k)).
-    apply eq_in_map=> i /=;rewrite mem_range => Hi;apply fun_ext => /= m.
-    rewrite (nth_map Option.witness) 1:Hs // nth_range // (_: k + i - k = i) //;ringeq.
-  move => [Fs ->>].   
-  exists (map Fs (range k p));rewrite size_map /= Hs /=.
-  apply eq_in_map=> i /=;rewrite mem_range => Hi;apply fun_ext => /= m.
-  rewrite !(nth_map Option.witness) 1,2:Hs // nth_range //. 
-qed.
-
-lemma BBM_big_mapT (h : 'b -> 'a) (F : 'a -> bool) (s : 'b list):
-    BBM.big predT F (map h s) = BBM.big predT (F \o h) s.
-proof. rewrite BBM.big_map; apply BBM.eq_bigl=> //. qed.
-
-lemma BRM_big_mapT (h : 'b -> 'a) (F : 'a -> real) (s : 'b list):
-    BRM.big predT F (map h s) = BRM.big predT (F \o h) s.
-proof. rewrite BRM.big_map; apply BRM.eq_bigl=> //. qed.
+(* ------------------------------------------------------------------- *)
+(* Equivalence of the different nary definitions                       *)
+(* ------------------------------------------------------------------- *)
 
 lemma hindep_indeps (d:'m distr) (Xs: int -> 'm -> 'a) k p:
   hindep d (map (I_ \o Xs) (range k p)) <=> indeps d Xs k p.
@@ -241,7 +232,10 @@ proof.
   rewrite valid2_range.
   split => Hind Ps.
   + cut {Hind}:= Hind (map (fun i m => Ps i (Xs i m)) (range k p)) _;1: by exists Ps.
-    by rewrite size_map Hr BRM_big_mapT /BRM.bigi BBM_big_mapT => <-.
+    rewrite size_map Hr.
+print BRM.big_mapT.
+ BRM.big_mapT.
+ /BRM.bigi BBM.big_mapT => <-.
   move=> [Fs ->>].
   rewrite size_map {1}/range size_iota (_: max 0 (p - k) = p - k) 1:smt.
   rewrite BBM_big_mapT BRM_big_mapT; apply Hind.
