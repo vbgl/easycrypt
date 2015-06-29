@@ -1175,7 +1175,7 @@ theory Iota.
     iota_ i (n+1) = rcons (iota_ i n) (i+n).
   proof. by move=> ge0_n; rewrite iota_add // iota1 cats1. qed.
 
-  lemma nth_iota m n i: 0 <= i < n => nth 0 (iota_ m n) i = m + i.
+  lemma nth_iota m n i w: 0 <= i < n => nth w (iota_ m n) i = m + i.
   proof.
     case=> ge0_i lt_in; rewrite (_ : n = i + ((n-i-1)+1)) 1:smt.
     rewrite iota_add // 1:smt nth_cat size_iota max_ler //=.
@@ -1218,6 +1218,10 @@ theory Range.
     range m n = m :: range (m+1) n.
   proof. smt. qed.
 
+  lemma rangeS (m:int):
+    range m (m+1) = [m].
+  proof. by rewrite range_ltn 1:smt range_geq. qed.
+
   lemma range_add (m n a : int):
     range (m+a) (n+a) = map (Int.(+) a) (range m n).
   proof. by rewrite /range addrC iota_addl; congr; smt. qed.
@@ -1232,7 +1236,10 @@ theory Range.
 
   lemma range_cat (n m p : int): m <= n => n <= p =>
     range m p = range m n ++ range n p.
-  proof. admit. qed.
+  proof. 
+    rewrite /range (_: p - m = n - m + (p - n)) 1:smt=> Hm Hn. 
+    rewrite iota_add; smt. 
+  qed.
 
   lemma mem_range (m n i: int):
     (mem (range m n) i) <=> (m <= i < n).
@@ -1240,6 +1247,17 @@ theory Range.
     rewrite /range mem_iota; case: (m <= i)=> //=.
     by rewrite subrE addrCA addrN addr0.
   qed.
+
+  lemma range_uniq m n: uniq (range m n).
+  proof. by apply/iota_uniq. qed.
+
+  lemma size_range m n: size (range m n) = max 0 (n - m).
+  proof. by apply/size_iota. qed.
+
+  lemma nth_range  (i p k w : int) : 
+    0 <= i < p - k => nth w (range k p) i = k + i.
+  proof. by apply/nth_iota. qed.
+
 end Range.
 
 export Range.

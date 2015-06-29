@@ -46,6 +46,10 @@ lemma nosmt big_map ['a 'b] (h : 'b -> 'a) (P : 'a -> bool) F s:
   big P F (map h s) = big (P \o h) (F \o h) s.
 proof. by elim: s => // x s; rewrite map_cons !big_cons=> ->. qed.
 
+lemma nosmt big_mapT ['a 'b] (h : 'b -> 'a) (P : 'a -> bool) F s:
+  big predT F (map h s) = big predT (F \o h) s.
+proof. by rewrite big_map. qed.
+
 (* -------------------------------------------------------------------- *)
 lemma nosmt big_comp ['a] (h : t -> t) (P : 'a -> bool) F s:
   h idm = idm => morphism_2 h Support.(+) Support.(+) =>
@@ -262,14 +266,44 @@ lemma eq_big_seq (F1 F2 : 'a -> t) s:
 proof. by move=> eqF; rewrite !big_seq; apply/eq_bigr. qed.
 
 (* -------------------------------------------------------------------- *)
-lemma big_nat_cond m n P F:
+
+lemma nosmt congr_big_seq (P1 P2: 'a -> bool) (F1 F2 : 'a -> t) s:
+     (forall x, mem s x => P1 x = P2 x) =>
+     (forall x, mem s x => P1 x => P2 x => F1 x = F2 x)
+  => big P1 F1 s = big P2 F2 s.
+proof. 
+  move=> eqP eqH;rewrite big_mkcond eq_sym big_mkcond eq_sym.
+  apply eq_big_seq=> x Hx /=;rewrite eqP //. 
+  by case (P2 x) => // HP2;apply eqH => //;rewrite eqP.
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma big1_eq (P : 'a -> bool) s: big P (fun x => idm) s = idm.
+proof.
+  rewrite big_const; elim/Induction.natind: (count _ _)=> n.
+    by move/iter0<:t> => ->.
+  by move/iterS<:t> => -> ->; rewrite addm0.
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma big1 (P : 'a -> bool) F s:
+  (forall i, P i => F i = idm) => big P F s = idm.
+proof. by move/eq_bigr=> ->; apply/big1_eq. qed.
+
+(* -------------------------------------------------------------------- *)
+lemma big1_seq (P : 'a -> bool) F s:
+  (forall i, P i /\ (mem s i) => F i = idm) => big P F s = idm.
+proof. admit. qed. (* by move=> eqF1; rewrite big_seq_cond big_andbC big1. qed. *)
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt big_int_cond m n P F:
   bigi P F m n = bigi (fun i => m <= i < n /\ P i) F m n.
 proof. by rewrite /bigi big_seq_cond; apply/eq_bigl=> i /=; smt. qed.
 
 (* -------------------------------------------------------------------- *)
 lemma big_nat m n F:
   bigi predT F m n = bigi (fun i => m <= i < n) F m n.
-proof. by rewrite big_nat_cond. qed.
+proof. by rewrite big_int_cond. qed.
 
 (* -------------------------------------------------------------------- *)
 lemma congr_big_nat (m1 n1 m2 n2 : int) P1 P2 F1 F2:
