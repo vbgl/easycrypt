@@ -137,7 +137,7 @@ proof.
   case (r2 = 0%r).
   + by move=> ->; rewrite dmulc_0.
   rewrite -w0_dzero; cut := weight_bounded d;move: (weight d) => w H1 H2 H3 H4 H5;left.
-  admit. 
+  split. smt. admit.
 qed.
 
 lemma dmulc_eq_compat (r:real) (d1 d2:'a distr) : 
@@ -145,6 +145,14 @@ lemma dmulc_eq_compat (r:real) (d1 d2:'a distr) :
    dmulc r d1 = dmulc r d2 <=> d1 = d2.
 proof.
   move=> Hr1 Hr2; rewrite -!distr_ext !dmulc_def 1,2:smt.
+  split => Hf f;cut := Hf f=> //;smt. 
+qed.
+
+lemma dmulc_eq_compat1 (r:real) (d1 d2:'a distr) : 
+   0%r < r <= 1%r =>  
+   dmulc r d1 = dmulc r d2 <=> d1 = d2.
+proof.
+  move=> Hr; rewrite -!distr_ext !dmulc_def 1,2:smt.
   split => Hf f;cut := Hf f=> //;smt. 
 qed.
 

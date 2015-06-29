@@ -196,9 +196,18 @@ lemma nosmt square_forall (d :'a distr) (p : 'b -> 'a -> bool) :
   (forall b, $@[p b | d]) <=> $@[fun x => forall b, p b x | d].
 proof. rewrite !square_supp /=;smt. qed.
 
-lemma nosmt square_exists  (d :'a distr) (p : 'b -> 'a -> bool) : 
+lemma nosmt square_exists (d :'a distr) (p : 'b -> 'a -> bool) : 
   (exists b, $@[p b | d]) => $@[fun x => exists b, p b x | d].
 proof. by rewrite !square_supp /= => [b Hb] x Hx;exists b;apply Hb. qed.
+
+lemma nosmt square_eq (d:'a distr) (X Y:'a ->'b) (f :'a -> 'b -> real) :
+  $@[ fun m => X m = Y m | d] =>
+  $[fun m => f m (X m) | d] = $[fun m => f m (Y m) | d].
+proof.
+  move=> Hs;rewrite (square_muf_mul _ _ _ Hs) eq_sym (square_muf_mul _ _ _ Hs).
+  apply muf_eq_compat=> x Hx /=.
+  by case (X x = Y x) => Heq;1:rewrite Heq;2:rewrite b2r_false.
+qed.
 
 (* Lemmas about known distribution *)
 require import Bool.

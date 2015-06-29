@@ -1,6 +1,6 @@
 require import NewList.
 require import StdBigop StdRing.
-import Int Real Fun.
+import Int Real Fun Option.
 require export DistrOp.
 
 search Real.PowerInt.( ^ ).
@@ -54,7 +54,7 @@ lemma valid2_Imap (Xs:('m -> 'a)list) (Ps:('m -> bool) list):
   valid2 (map I_ Xs) Ps <=> 
     exists (Ps':('a -> bool)list), 
     size Ps' = size Xs /\
-    Ps = map (fun i => (nth predT Ps' i) \o (nth Option.witness Xs i)) (range 0 (size Xs)).
+    Ps = map (fun i => (nth predT Ps' i) \o (nth witness Xs i)) (range 0 (size Xs)).
 proof.
   elim /last_ind Xs Ps => /=;1: smt.
   move=> Xs X Hrec Ps.
@@ -67,8 +67,8 @@ proof.
   exists (map
            (fun (i : int) =>
               nth predT Ps' i \o
-              if i < size Xs then nth Option.witness Xs i
-             else if i - size Xs = 0 then X else Option.witness)
+              if i < size Xs then nth witness Xs i
+             else if i - size Xs = 0 then X else witness)
            (range 0 (size Xs))),
          ((nth predT Ps' (size Xs) \o X) :: []);progress.
   + exists (take (size Xs) Ps');split;1:smt.
@@ -76,28 +76,22 @@ proof.
   by exists (nth predT Ps' (size Xs) \o X), [] => /=;exists (nth predT Ps' (size Xs)).
 qed.
 
-lemma valid2_range (Xs: int -> 'm -> 'a) (p k: int) Ps:
-    valid2 (map (I_ \o Xs) (range k p)) Ps <=>
-    exists (Fs:int -> 'a -> bool), Ps = map (fun i m => Fs i (Xs i m)) (range k p).
+lemma valid2_range (Xs: ('m -> 'a) list) Ps:
+    valid2 (map I_  Xs) Ps <=>
+    exists (Fs:int -> 'a -> bool), 
+        Ps =
+        map (fun i m => Fs i (nth witness Xs i m)) (range 0 (size Xs)).
 proof.
-  case (p <= k) => Hpk;1: by rewrite range_geq //= valid2_nPr.
-  rewrite map_comp valid2_Imap size_map.
-  cut Hs : size (range k p) = p - k by rewrite /range size_iota smt. 
-  cut {4}-> : k = 0 + k by ringeq. 
-  cut {4}-> : p = (p-k) + k by ringeq.
-  rewrite range_add -map_comp /(\o) Hs;split.
-  + move=> [Ps' [H1 ->>]].
-    exists (fun i => nth predT Ps' (i-k)).
-    apply eq_in_map=> i /=;rewrite mem_range => Hi;apply fun_ext => /= m.
-    rewrite (nth_map Option.witness) 1:Hs // nth_range // (_: k + i - k = i) //;ringeq.
-  move => [Fs ->>].   
-  exists (map Fs (range k p));rewrite size_map /= Hs /=.
+  rewrite valid2_Imap;split.
+  + move=> [Ps' [H1 ->>]]; exists (nth predT Ps')=> //.
+  cut Hs : size (range 0 (size Xs)) = size Xs by rewrite size_range smt. 
+  move => [Fs ->>];exists (map Fs (range 0 (size Xs)));rewrite size_map /= Hs /=.
   apply eq_in_map=> i /=;rewrite mem_range => Hi;apply fun_ext => /= m.
-  rewrite !(nth_map Option.witness) 1,2:Hs // nth_range //. 
+  rewrite /(\o) /= (nth_map witness) 1:Hs // nth_range //.
 qed.
 
 (* ------------------------------------------------------------------- *)
-(* Generic definition of heterogeneous independance                    *)
+(* Generic definition of heterogeneous independence                    *)
 (* ------------------------------------------------------------------- *)
 
 op appf (a:'a) (f:'a -> 'b) = f a.
@@ -110,7 +104,7 @@ pred hindep (d:'m distr) (L: 'm ppred list) =
     BRM.big predT (PR d) Ps.
 
 (* ------------------------------------------------------------------- *)
-(* Independance in term of equality of distribution                    *)
+(* Independence in term of equality of distribution                    *)
 (* ------------------------------------------------------------------- *)
 
 op fpair (X : 'm -> 'a) (Y : 'm -> 'b) (m:'m) = (X m, Y m).
@@ -118,28 +112,28 @@ op fpair (X : 'm -> 'a) (Y : 'm -> 'b) (m:'m) = (X m, Y m).
 op eindep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b) =
    dmulc (DistrOp.weight d) (d \o fpair X Y) = (d \o X) * (d \o Y).
 
-pred eindeps (d:'m distr) (Xs : int -> 'm -> 'a) (k p:int) = 
-  p <= k \/
-  dmulc ((DistrOp.weight d)^(p - k -1)) (d \o (fun m => map (fun i => Xs i m) (range k p))) = 
-     dlist (map (fun i => (d \o (Xs i))) (range k p)).
+pred eindeps (d:'m distr) (Xs : ('m -> 'a) list)  = 
+  Xs = [] \/
+  dmulc ((DistrOp.weight d)^(size Xs -1)) (d \o (fun m => map (appf m) Xs)) =
+     dlist (map ((\o) d) Xs).
 
 (* ------------------------------------------------------------------- *)
-(* Independance in term of predicates                                  *)
+(* Independence in term of predicates                                  *)
 (* ------------------------------------------------------------------- *)
 
 pred indep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b) =
   forall (P1:'a -> bool) (P2:'b -> bool), 
      (DistrOp.weight d) * PR d (fun m => P1 (X m) /\ P2 (Y m)) = PR d (P1 \o X) * PR d (P2 \o Y).
 
-pred indeps (d:'m distr) (Xs:int -> 'm -> 'a) (k p:int) = 
+pred indeps (d:'m distr) (Xs:('m -> 'a) list)= 
    forall (Ps:int -> 'a -> bool),
-      p <= k \/
-      (DistrOp.weight d)^(p - k - 1) * 
-      PR d (fun m => BBM.bigi predT (fun i => Ps i (Xs i m)) k p) = 
-      BRM.bigi predT (fun i => PR d (fun m => Ps i (Xs i m))) k p.
+      Xs = [] \/
+      (DistrOp.weight d)^(size Xs - 1) * 
+      PR d (fun m => BBM.bigi predT (fun i => Ps i (nth witness Xs i m)) 0 (size Xs)) = 
+      BRM.bigi predT (fun i => PR d (fun m => Ps i (nth witness Xs i m))) 0 (size Xs).
 
 (* ------------------------------------------------------------------- *)
-(* Independance in term of points                                      *)
+(* Independence in term of points                                      *)
 (* ------------------------------------------------------------------- *)
 
 pred pwindep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b) =
@@ -147,12 +141,12 @@ pred pwindep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b) =
      (DistrOp.weight d) * PR d (fun m => a = X m /\ b = Y m) = 
                           PR d ((=) a \o X) * PR d ((=) b \o Y).
 
-pred pwindeps (d:'m distr) (Xs:int -> 'm -> 'a) (k p:int) = 
+pred pwindeps (d:'m distr) (Xs:('m -> 'a)list) = 
    forall (Ps:int -> 'a),
-      p <= k \/
-      (DistrOp.weight d)^(p - k - 1) * 
-      PR d (fun m => BBM.bigi predT (fun i => Ps i = Xs i m) k p) = 
-      BRM.bigi predT (fun i => PR d (fun m => Ps i = Xs i m)) k p.
+      Xs = [] \/
+      (DistrOp.weight d)^(size Xs - 1) * 
+      PR d (fun m => BBM.bigi predT (fun i => Ps i = nth witness Xs i m) 0 (size Xs)) = 
+      BRM.bigi predT (fun i => PR d (fun m => Ps i = nth witness Xs i m)) 0 (size Xs).
 
 (* ------------------------------------------------------------------- *)
 (* Equivalence of the different binary definitions                     *)
@@ -222,40 +216,194 @@ proof. by rewrite indep_eindep pwindep_eindep. qed.
 (* Equivalence of the different nary definitions                       *)
 (* ------------------------------------------------------------------- *)
 
-lemma hindep_indeps (d:'m distr) (Xs: int -> 'm -> 'a) k p:
-  hindep d (map (I_ \o Xs) (range k p)) <=> indeps d Xs k p.
+lemma hindeps_indeps (d:'m distr) (Xs: ('m -> 'a) list):
+  hindep d (map I_ Xs) <=> indeps d Xs.
 proof.
   rewrite /hindep /indeps.
-  case (p <= k) => Hpk /=;1:by rewrite range_geq.
-  cut Hr : size (range k p) = p - k by rewrite /range size_iota;smt.
-  cut -> /=: map (I_ \o Xs) (range k p) <> [] by smt.
-  rewrite valid2_range.
-  split => Hind Ps.
-  + cut {Hind}:= Hind (map (fun i m => Ps i (Xs i m)) (range k p)) _;1: by exists Ps.
+  case (Xs = [])=> HXs /=;1:by rewrite HXs.
+  cut -> /=: map I_ Xs <> [] by smt.
+  cut Hr : size (range 0 (size Xs)) = size Xs by rewrite size_range smt.
+  rewrite valid2_range;split => Hind Ps.
+  + cut {Hind}:= Hind (map (fun i m => Ps i (nth witness Xs i m)) (range 0 (size Xs))) _.
+    + by exists Ps.
     by rewrite size_map Hr BRM.big_mapT /BRM.bigi BBM.big_mapT => <-.
   move=> [Fs ->>].
-  rewrite size_map {1}/range size_iota (_: max 0 (p - k) = p - k) 1:smt.
-  rewrite BBM.big_mapT BRM.big_mapT; apply Hind.
+  rewrite size_map Hr BBM.big_mapT BRM.big_mapT;apply Hind.
 qed.
 
-lemma indeps_eindeps (d:'m distr) (Xs: int -> 'm -> 'a) k p:
-  indeps d Xs k p <=> eindeps d Xs k p.
-proof.
-  rewrite /indeps /eindeps;case (p <= k) => Hpk //=.
-  cut Hc : d_compat (d \o fun (m : 'm) => map (fun (i : int) => Xs i m) (range k p))
-             ((DistrOp.weight d)^(p-k-1)). 
-  + apply d_compat_1;move: (DistrOp.weight d) (weight_bounded d). 
-    cut : 0 <= p - k - 1 by smt.
-    elim (p-k-1);2:smt; 1:by rewrite Power_0 // -One /Int.one.
-  admit.
+(* TODO: move this *)
+lemma Rpow_bounded r n : 0%r <= r <= 1%r => 0 <= n => 0%r <= r ^ n <= 1%r.
+proof. 
+  move=> Hr. elim /Induction.induction n; smt. 
 qed.
 
-lemma indeps_pwindeps (d:'m distr) (Xs: int -> 'm -> 'a) k p:
-  indeps d Xs k p <=> pwindeps d Xs k p.
-proof.
-  rewrite /indeps /pwindeps;case (p <= k) => Hpk //=.
-  admit.
+lemma Rpow_bounded_lt r n : 0%r < r <= 1%r => 0 <= n => 0%r < r ^ n <= 1%r.
+proof. 
+  move=> Hr. elim /Induction.induction n; smt. 
 qed.
+
+lemma Rpow_S (x:real) (n:int) : 0 <= n => x ^ (n+1) = x * x ^ n.
+proof. smt. qed.
+
+lemma BBM_big_Prop (P1 P2:'a -> bool) (s:'a list): 
+   BBM.big P1 P2 s <=> forall a, mem s a => P1 a => P2 a.
+proof.
+  elim s => //= x s Hrec;rewrite BBM.big_cons;smt.
+qed.
+
+lemma BBM_bigi_Prop (P1 P2:int -> bool) k p: 
+   BBM.bigi P1 P2 k p <=> forall i, k <= i < p => P1 i => P2 i.
+proof. by rewrite /BBM.bigi BBM_big_Prop mem_range. qed.
+
+lemma indeps_eindeps (d:'m distr) (Xs: ('m -> 'a)list):
+  indeps d Xs <=> eindeps d Xs.
+proof.
+  rewrite /indeps /eindeps; case (Xs = []) => Hpk //=.
+  cut Hc : d_compat (d \o fun (m : 'm) => map (appf m) Xs) ((DistrOp.weight d)^(size Xs - 1)).
+  + apply d_compat_dcomp;smt. 
+  split => Hind.
+  + rewrite -pw_eq => l;rewrite /mu_x !muf_b2r dmulc_def //.
+    rewrite dcomp_def /= /Fun.(\o) /=. 
+    cut /= H:= Hind (fun i a => nth witness l i = a).
+    case (size l = size Xs) => Hsize.
+    + apply (eq_trans _ 
+            ((DistrOp.weight d) ^ (size Xs - 1) *
+            PR d
+             (fun (m : 'm) =>
+             BBM.bigi predT
+                (fun (i : int) => nth witness l i = nth witness Xs i m) 
+                0 (size Xs)))).
+      + congr;rewrite /PR;apply muf_eq_compat=> m Hm /=. 
+        congr; rewrite eq_iff;split.
+        + by move=> ->; rewrite /BBM.bigi BBM.big1_seq // => i [_ ];rewrite mem_range /= => Hi;
+          rewrite (nth_map witness). 
+        move=> {H Hind Hm Hc Hpk} Hbigi.
+        apply (eq_from_nth witness);1:by rewrite size_map.       
+        move: Hbigi;rewrite BBM_bigi_Prop /predT Hsize //= => H i Hi.
+        by rewrite (nth_map witness) // /appf;apply H. 
+      rewrite H=> {Hind H Hc Hpk}.
+      elim Xs l Hsize;1:smt.
+      move=> X Xs Hrec [ | x l] /= Heq;1:smt.
+      rewrite /dlist /= dcons_def /= b2r_and muf_mulc_l muf_mulc_r -Hrec 1:smt. 
+      rewrite (addzC 1) BRM.big_nat_recl 1:smt /=;congr.
+      rewrite /PR dcomp_def; apply muf_eq_compat=> m Hm /=;rewrite /(\o) /=. smt. 
+      apply BRM.eq_big_seq => //= i /mem_range Hi. 
+      rewrite /PR;apply muf_eq_compat => /= m Hm;smt.
+    rewrite muf_0_f0 /=. 
+    + move=> m Hm; case (l =  map (appf m) Xs) => // ->>;smt.
+    move=> {Hind H Hc Hpk};elim Xs l Hsize; 1:smt.
+    move => X Xs Hrec [ | x l] /= Hs;rewrite /dlist /= dcons_def /= b2r_false;
+      1: by rewrite !muf_0. 
+    rewrite b2r_and muf_mulc_l muf_mulc_r -Hrec /=;smt.
+  move=> Ps;rewrite /PR -dmulc_def 1:smt.
+  apply (eq_trans _
+           ($[fun (x : 'a list) =>
+              b2r
+                (BBM.bigi predT (fun (i : int) => Ps i (nth witness x i)) 0 (size Xs)) 
+             | (dmulc ((weight d)%DistrOp ^ (size Xs - 1)) d) \o (fun m => map (appf m) Xs)])).
+  + rewrite dcomp_def;apply muf_eq_compat => m Hm;rewrite /(\o) /=;congr.
+    by apply BBM.eq_big_nat => i Hi /=;rewrite (nth_map witness).
+  rewrite dcomp_dmulc 1:smt Hind.
+  move=> {Hpk Hc Hind};elim Xs Ps => /=;rewrite /dlist /=.
+  + by move=> Ps;rewrite BRM.big_geq // dunit_def /= BBM.big_geq.
+  move=> X Xs Hrec Ps;rewrite dcons_def.
+  rewrite (addzC 1) BRM.big_nat_recl 1:smt BBM.big_nat_recl 1:smt /=.     
+  rewrite b2r_and muf_mulc_l.
+  apply (eq_trans _
+           ($[fun (a : 'a) =>
+              b2r (Ps 0 a) *
+              $[fun (x : 'a list) =>
+                 b2r (BBM.bigi predT
+                   (fun (i : int) =>
+                     Ps (i + 1) (nth witness x (i))) 0 (size Xs)) 
+              | foldr dcons (dunit []) (map ((\o) d) Xs)] | d \o X])).
+  + apply muf_eq_compat => a Ha /=;congr;apply muf_eq_compat => l Hl /=;congr.
+    apply BBM.eq_big_nat => i Hi /=; smt.
+  rewrite muf_mulc_r (Hrec (fun i => Ps (i+1)));congr. 
+  + rewrite dcomp_def;apply muf_eq_compat;smt.
+  apply BRM.eq_big_nat => i Hi /=;apply muf_eq_compat=> m Hm /=;smt. 
+qed.
+
+lemma pwindeps_eindeps (d:'m distr) (Xs: ('m -> 'a)list):
+  pwindeps d Xs <=> eindeps d Xs.
+proof.
+  rewrite /pwindeps /eindeps; case (Xs = []) => Hpk //=.
+  cut Hc : d_compat (d \o fun (m : 'm) => map (appf m) Xs) ((DistrOp.weight d)^(size Xs - 1)).
+  + apply d_compat_dcomp;smt. 
+  split => Hind.
+  + rewrite -pw_eq => l;rewrite /mu_x !muf_b2r dmulc_def //.
+    rewrite dcomp_def /= /Fun.(\o) /=. 
+    cut /= H:= Hind (fun i => nth witness l i).
+    case (size l = size Xs) => Hsize.
+    + apply (eq_trans _ 
+            ((DistrOp.weight d) ^ (size Xs - 1) *
+            PR d
+             (fun (m : 'm) =>
+             BBM.bigi predT
+                (fun (i : int) => nth witness l i = nth witness Xs i m) 
+                0 (size Xs)))).
+      + congr;rewrite /PR;apply muf_eq_compat=> m Hm /=. 
+        congr; rewrite eq_iff;split.
+        + by move=> ->; rewrite /BBM.bigi BBM.big1_seq // => i [_ ];rewrite mem_range /= => Hi;
+          rewrite (nth_map witness). 
+        move=> {H Hind Hm Hc Hpk} Hbigi.
+        apply (eq_from_nth witness);1:by rewrite size_map.       
+        move: Hbigi;rewrite BBM_bigi_Prop /predT Hsize //= => H i Hi.
+        by rewrite (nth_map witness) // /appf;apply H. 
+      rewrite H=> {Hind H Hc Hpk}.
+      elim Xs l Hsize;1:smt.
+      move=> X Xs Hrec [ | x l] /= Heq;1:smt.
+      rewrite /dlist /= dcons_def /= b2r_and muf_mulc_l muf_mulc_r -Hrec 1:smt. 
+      rewrite (addzC 1) BRM.big_nat_recl 1:smt /=;congr.
+      rewrite /PR dcomp_def; apply muf_eq_compat=> m Hm /=;rewrite /(\o) /=. smt. 
+      apply BRM.eq_big_seq => //= i /mem_range Hi. 
+      rewrite /PR;apply muf_eq_compat => /= m Hm;smt.
+    rewrite muf_0_f0 /=. 
+    + move=> m Hm; case (l =  map (appf m) Xs) => // ->>;smt.
+    move=> {Hind H Hc Hpk};elim Xs l Hsize; 1:smt.
+    move => X Xs Hrec [ | x l] /= Hs;rewrite /dlist /= dcons_def /= b2r_false;
+      1: by rewrite !muf_0. 
+    rewrite b2r_and muf_mulc_l muf_mulc_r -Hrec /=;smt.
+  move=> Ps;rewrite /PR -dmulc_def 1:smt.
+  apply (eq_trans _
+           ($[fun (x : 'a list) =>
+              b2r
+                (BBM.bigi predT (fun (i : int) => Ps i = (nth witness x i)) 0 (size Xs)) 
+             | (dmulc ((weight d)%DistrOp ^ (size Xs - 1)) d) \o (fun m => map (appf m) Xs)])).
+  + rewrite dcomp_def;apply muf_eq_compat => m Hm;rewrite /(\o) /=;congr.
+    by apply BBM.eq_big_nat => i Hi /=;rewrite (nth_map witness).
+  rewrite dcomp_dmulc 1:smt Hind.
+  move=> {Hpk Hc Hind};elim Xs Ps => /=;rewrite /dlist /=.
+  + by move=> Ps;rewrite BRM.big_geq // dunit_def /= BBM.big_geq.
+  move=> X Xs Hrec Ps;rewrite dcons_def.
+  rewrite (addzC 1) BRM.big_nat_recl 1:smt BBM.big_nat_recl 1:smt /=.     
+  rewrite b2r_and muf_mulc_l.
+  apply (eq_trans _
+           ($[fun (a : 'a) =>
+              b2r (Ps 0 = a) *
+              $[fun (x : 'a list) =>
+                 b2r (BBM.bigi predT
+                   (fun (i : int) =>
+                     Ps (i + 1) = (nth witness x (i))) 0 (size Xs)) 
+              | foldr dcons (dunit []) (map ((\o) d) Xs)] | d \o X])).
+  + apply muf_eq_compat => a Ha /=;congr;apply muf_eq_compat => l Hl /=;congr.
+    apply BBM.eq_big_nat => i Hi /=; smt.
+  rewrite muf_mulc_r (Hrec (fun i => Ps (i+1)));congr. 
+  + rewrite dcomp_def;apply muf_eq_compat;smt.
+  apply BRM.eq_big_nat => i Hi /=;apply muf_eq_compat=> m Hm /=;smt. 
+qed.
+
+lemma hindeps_eindeps (d:'m distr) (Xs:('m -> 'a)list):
+  hindep d (map I_ Xs) <=> eindeps d Xs.
+proof. by rewrite hindeps_indeps indeps_eindeps. qed.
+
+lemma hindeps_pwindeps (d:'m distr) (Xs:('m -> 'a)list):  
+  hindep d (map I_ Xs) <=> pwindeps d Xs.
+proof. by rewrite hindeps_eindeps pwindeps_eindeps. qed.
+
+lemma indeps_pwindeps (d:'m distr) (Xs:('m -> 'a)list):  
+  indeps d Xs <=> pwindeps d Xs.
+proof. by rewrite indeps_eindeps pwindeps_eindeps. qed.
 
 (* ------------------------------------------------------------------- *)
 
@@ -273,7 +421,6 @@ proof.
   + by move=> p; have := eq_s12 p; rewrite !count_cat /=; smt.
   + by rewrite cat_rcons.
   rewrite /hindep=> H1 Ps Hv;right.
-print valid2_catPr.
   cut {Hv} /valid2_catPr [Ps_ Ps' [->> [Hv Hv']]] := Hv. 
   cut {Hv'} /valid2_catPr [Ps3 Ps'' [->> [Hv3 Hv']]] := Hv'.
   cut {Hv'} /valid2_cPr [P Ps4 [->> [HP Hv4]]] := Hv'.
@@ -376,46 +523,46 @@ qed.
 
 (* --------------------------------------------------------------------- *)
 
-lemma hindep_hindep2 (d:'m distr) (X:'m -> 'b) (Xs: ('m -> 'a) list):
-  hindep d (I_ X :: map I_ Xs) =>
-  hindep d [I_ X; I_ (fun m => map (fun Xi => Xi m) Xs) ]. 
-proof.  
-  move=> Hind;rewrite hindep_eindep /eindep.
-  cut HXs := hindep_Icons _ _ _ Hind.
-  cut 
+lemma eindeps_eindep (d:'m distr) (X:'m -> 'a) (Xs: ('m -> 'a) list):
+  eindeps d (X :: Xs) =>
+  eindep d X (fun m => map (appf m) Xs).
+proof. 
+  move=> Hind;rewrite /eindep.
+  case (Xs = []) => HeqXs.
+  + rewrite HeqXs -distr_ext => f. 
+    rewrite dprod_def /= dcomp_def dmulc_def /=;
+      1: by apply d_compat_dcomp;apply d_compat_weight.
+    by rewrite !dcomp_def /(\o) /fpair muf_c muf_mulc_r RField.mulrC.  
   case (DistrOp.weight d = 0%r). 
-  + by move=> /w0_dzero ->; rewrite !dzero_dcomp dprod0l dmulc_dzero.
-  move=> Hw.
-  case (Xs = []).
-  + mov
+  + by rewrite w0_dzero => ->;rewrite !dzero_dcomp dprod0l dmulc_dzero. 
+  move=> Hpr.
+  cut /hindeps_indeps /indeps_eindeps HXS := hindep_Icons X d (map I_ Xs) _. 
+  + by rewrite -map_cons hindeps_indeps indeps_eindeps. 
   cut Hs : 0 < size Xs by smt.
-  cut Hbd:= PR_bounded predT d.
+  cut Hbd:= weight_bounded d.
   cut Hsi : 0 <= size Xs - 1 by smt.
-  rewrite -(dmulc_eq_compat ((PR d predT)^(size Xs - 1))). smt.
+  rewrite -(dmulc_eq_compat1 ((DistrOp.weight d)^(size Xs - 1))).
+  + apply Rpow_bounded_lt; smt. 
   cut Hbd' := Rpow_bounded _ _ Hbd Hsi.
-  rewrite dmulcA // Real.Comm.Comm -RpowS //.  
-  cut -> : dproj d (fun (m : 'm) => (X m, map (fun (Xi : 'm -> 'a) => Xi m) Xs)) = 
-           dproj (dproj d (fun m => map (fun Xi => Xi m) (X::Xs)))
-            (fun (l:'a list) => (head witness l, drop 1 l)).
-  + by rewrite dproj_dproj /(\o) map_cons drop_cons /= drop0.
-  move:Hind;rewrite /muindep.
+  rewrite dmulcA. 
+  + apply d_compat_dcomp;apply d_compat_weight.
+  + apply d_compat_1. rewrite RField.mulrC -Rpow_S //; smt. 
+  rewrite RField.mulrC -Rpow_S //.  
+  cut -> : d \o (fun (m : 'm) => (X m, map (fun (Xi : 'm -> 'a) => Xi m) Xs)) = 
+            (d \o (fun m => map (fun Xi => Xi m) (X::Xs))) \o
+            (fun (l:'a list) => (head Option.witness l, drop 1 l)).
+  + by rewrite dcomp_dcomp /(\o) map_cons drop_cons /= drop0.
+  move:Hind;rewrite /eindeps. 
   rewrite (_:size Xs - 1 + 1 = size Xs) 1:smt.
-  rewrite (_: size (X :: Xs) - 1 = size Xs) 1:smt => H.
-  rewrite -dproj_dmulc // 1:smt H.
-  cut -> : dproj (dlist (map (dproj d) (X :: Xs)))
-             (fun (l : 'a list) => (head witness l, drop 1 l)) = 
-           dproj d X * dlist (map (dproj d) Xs).
+  rewrite (_: size (X :: Xs) - 1 = size Xs) 1:smt => [ | H];1:smt.
+  rewrite -dcomp_dmulc 1:smt H.
+  cut -> : (dlist (map ((\o) d) (X :: Xs))) \o
+             (fun (l : 'a list) => (head Option.witness l, drop 1 l)) = 
+           (d \o X) * dlist (map ((\o) d) Xs).
   + apply eq_distr_ext => f.
-    by rewrite dproj_def dprod_def /dlist /= dcons_def /= drop0.
-  by rewrite -HXS dmulc_dprod_r.
+    rewrite dcomp_def dprod_def /dlist /= dcons_def /= !dcomp_def. 
+    by simplify Fun.(\o);rewrite drop0.
+  rewrite dmulc_dprod_r;1:by apply d_compat_dcomp;smt. 
+  by congr;move: HXS;rewrite /eindeps HeqXs /= => ->.
 qed.
-
-
-
-
-
-
-
-
-
 
