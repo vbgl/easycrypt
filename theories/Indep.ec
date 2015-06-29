@@ -26,18 +26,54 @@ proof.
   by elim: Xs Ps => [ [ | P Ps] | X Xs Hrec [ | P Ps]] //= [_ Hv];rewrite (Hrec _ Hv).
 qed.
 
-lemma valid2_nPr (Ps: ('a -> bool) list): valid2 [] Ps => Ps = [].
+lemma valid2_nPr (Ps: ('a -> bool) list): valid2 [] Ps <=> Ps = [].
 proof. by case Ps. qed.
 
 lemma valid2_cPr (X:'a ppred) (Xs: 'a ppred list) (Ps: ('a -> bool) list):
-   valid2 (X::Xs) Ps => exists P Ps', Ps = P :: Ps' /\ X P /\ valid2 Xs Ps'. 
-proof. by case Ps => // P Ps' _;exists P, Ps'. qed.
+   valid2 (X::Xs) Ps <=> exists P Ps', Ps = P :: Ps' /\ X P /\ valid2 Xs Ps'. 
+proof. case Ps => //= P Ps'; smt. qed.
 
 lemma valid2_catPr (Xs1 Xs2: 'a ppred list) (Ps: ('a -> bool) list):
-   valid2 (Xs1 ++ Xs2) Ps => exists Ps1 Ps2, Ps = Ps1 ++ Ps2 /\ valid2 Xs1 Ps1 /\ valid2 Xs2 Ps2.
+   valid2 (Xs1 ++ Xs2) Ps <=> 
+      exists Ps1 Ps2, Ps = Ps1 ++ Ps2 /\ valid2 Xs1 Ps1 /\ valid2 Xs2 Ps2.
 proof.  
-  elim: Xs1 Ps => /= [ Ps _ | X Xs1 Hs1 [ | P Ps] //= [_ Hv] ]; 1: by exists [], Ps.
-  by have [Ps1 Ps2 [Heq [H1 H2]]] := Hs1 _ Hv;exists (P::Ps1), Ps2;rewrite Heq.
+  elim Xs1 Ps => /=;1:smt.
+  move=> X Xs1 Hrec [ | P Ps] /=;1:smt. 
+  rewrite Hrec;split;1:smt.
+  move=> [Ps1 Ps2 [Heq [/valid2_cPr [P' Ps' [->> [H1 H2]]] Hv]]];smt.
+qed.
+
+pred I_ (X:'m -> 'a) (P : 'm -> bool) =
+  exists (P': 'a -> bool), P = P' \o X.
+
+lemma valid2_Icons (X:'m -> 'a) (L: 'm ppred list) (Ps:('m -> bool) list):
+  valid2 (I_ X :: L) Ps <=> exists (P:'a -> bool) Ps', Ps = (P \o X) :: Ps' /\ valid2 L Ps'.
+proof. by rewrite valid2_cPr;smt. qed.
+
+lemma valid2_Imap (Xs:('m -> 'a)list) (Ps:('m -> bool) list):
+  valid2 (map I_ Xs) Ps <=> 
+    exists (Ps':('a -> bool)list), 
+    size Ps' = size Xs /\
+    Ps = map (fun i => (nth predT Ps' i) \o (nth Option.witness Xs i)) (range 0 (size Xs)).
+proof.
+  elim /last_ind Xs Ps => /=;1: smt.
+  move=> Xs X Hrec Ps.
+  rewrite -cats1 map_cat valid2_catPr Hrec size_cat /= =>{Hrec}.
+  rewrite (range_cat (size Xs) 0 (size Xs + 1)) 1,2:smt.
+  rewrite map_cat (range_ltn (size Xs) (size Xs + 1)) 1:smt (range_geq (size Xs + 1)) //=.
+  rewrite !nth_cat /= valid2_cPr valid2_nPr /I_;progress.
+  + exists (Ps' ++ [P']);rewrite size_cat !nth_cat H /=;congr.
+    by apply eq_in_map=> /= x /mem_range [H0x ->].
+  exists (map
+           (fun (i : int) =>
+              nth predT Ps' i \o
+              if i < size Xs then nth Option.witness Xs i
+             else if i - size Xs = 0 then X else Option.witness)
+           (range 0 (size Xs))),
+         ((nth predT Ps' (size Xs) \o X) :: []);progress.
+  + exists (take (size Xs) Ps');split;1:smt.
+    apply eq_in_map=> /= x /mem_range [H0x Hx];rewrite Hx /=;congr;smt.
+  by exists (nth predT Ps' (size Xs) \o X), [] => /=;exists (nth predT Ps' (size Xs)).
 qed.
 
 (* ------------------------------------------------------------------- *)
@@ -53,42 +89,6 @@ pred hindep (d:'m distr) (L: 'm ppred list) =
     (DistrOp.weight d)^(size Ps - 1) * PR d (fun m => BBM.big predT (appf m) Ps) = 
     BRM.big predT (PR d) Ps.
 
-pred I_ (X:'m -> 'a) (P : 'm -> bool) =
-  exists (P': 'a -> bool), P = P' \o X.
-
-lemma valid2_Icons (X:'m -> 'a) (L: 'm ppred list) (Ps:('m -> bool) list):
-  valid2 (I_ X :: L) Ps => exists (P:'a -> bool) Ps', Ps = (P \o X) :: Ps' /\ valid2 L Ps'.
-proof.
-  by move=> /valid2_cPr [P0 Ps' [->> [[P ->>] Hv]]]; exists P, Ps'.
-qed.
-
-lemma valid2_Imap (Xs:('m -> 'a)list) (Ps:('m -> bool) list):
-  valid2 (map I_ Xs) Ps => 
-    exists (Ps':('a -> bool)list), 
-    Ps = map (fun i => (nth predT Ps' i) \o (nth Option.witness Xs i)) (range 0 (size Xs)).
-proof.
-  elim /last_ind Xs Ps=> /=;1:by move=> Ps /valid2_nPr ->>;rewrite range_geq. 
-  move=> Xs X Hrec Ps; rewrite -cats1 map_cat=> 
-    /valid2_catPr [Ps1 Ps2 [->> [HPs1 ]]] /= /valid2_cPr [_P _Ps [->> [[P ->>] ]]]
-    /valid2_nPr ->> {_P _Ps}.
-  cut [Ps' ->>]:= Hrec _ HPs1.
-  rewrite size_cat /= (range_cat (size Xs) 0 (size Xs + 1)) 1,2:smt map_cat. 
-  exists (Ps' ++ P :: []).
-  rewrite (range_ltn (size Xs) (size Xs + 1)) 1:smt (range_geq (size Xs + 1)) //=.
-  congr.
-search map.  
-search range.
-search rcons (++).
-  rewrite   
-
-rewrite 
-(P \o X) :: Ps' /\ valid2 L Ps'.
-proof.
-  by move=> /valid2_cPr [P0 Ps' [->> [[P ->>] Hv]]]; exists P, Ps'.
-qed.
-
-
-  
 (* ------------------------------------------------------------------- *)
 (* Independance in term of equality of distribution                    *)
 (* ------------------------------------------------------------------- *)
@@ -98,10 +98,10 @@ op fpair (X : 'm -> 'a) (Y : 'm -> 'b) (m:'m) = (X m, Y m).
 op eindep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b) =
    dmulc (DistrOp.weight d) (d \o fpair X Y) = (d \o X) * (d \o Y).
 
-pred eindeps (d:'m distr) (Xs : ('m -> 'a) list) = 
-  Xs = [] \/
-  dmulc ((DistrOp.weight d)^(size Xs - 1)) (d \o (fun m => map (appf m) Xs)) = 
-     dlist (map ((\o) d) Xs).
+pred eindeps (d:'m distr) (Xs : int -> 'm -> 'a) (k p:int) = 
+  p <= k \/
+  dmulc ((DistrOp.weight d)^(p - k -1)) (d \o (fun m => map (fun i => Xs i m) (range k p))) = 
+     dlist (map (fun i => (d \o (Xs i))) (range k p)).
 
 (* ------------------------------------------------------------------- *)
 (* Independance in term of predicates                                  *)
@@ -111,12 +111,12 @@ pred indep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b) =
   forall (P1:'a -> bool) (P2:'b -> bool), 
      (DistrOp.weight d) * PR d (fun m => P1 (X m) /\ P2 (Y m)) = PR d (P1 \o X) * PR d (P2 \o Y).
 
-pred indeps (d:'m distr) (Xs:'m -> int -> 'a) (k p:int) = 
+pred indeps (d:'m distr) (Xs:int -> 'm -> 'a) (k p:int) = 
    forall (Ps:int -> 'a -> bool),
       p <= k \/
       (DistrOp.weight d)^(p - k - 1) * 
-      PR d (fun m => BBM.bigi predT (fun i => Ps i (Xs m i)) k p) = 
-      BRM.bigi predT (fun i => PR d (fun m => Ps i (Xs m i))) k p.
+      PR d (fun m => BBM.bigi predT (fun i => Ps i (Xs i m)) k p) = 
+      BRM.bigi predT (fun i => PR d (fun m => Ps i (Xs i m))) k p.
 
 (* ------------------------------------------------------------------- *)
 (* Independance in term of points                                      *)
@@ -127,12 +127,12 @@ pred pwindep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b) =
      (DistrOp.weight d) * PR d (fun m => a = X m /\ b = Y m) = 
                           PR d ((=) a \o X) * PR d ((=) b \o Y).
 
-pred pwindeps (d:'m distr) (Xs:'m -> int -> 'a) (k p:int) = 
+pred pwindeps (d:'m distr) (Xs:int -> 'm -> 'a) (k p:int) = 
    forall (Ps:int -> 'a),
       p <= k \/
       (DistrOp.weight d)^(p - k - 1) * 
-      PR d (fun m => BBM.bigi predT (fun i => Ps i = Xs m i) k p) = 
-      BRM.bigi predT (fun i => PR d (fun m => Ps i = Xs m i)) k p.
+      PR d (fun m => BBM.bigi predT (fun i => Ps i = Xs i m) k p) = 
+      BRM.bigi predT (fun i => PR d (fun m => Ps i = Xs i m)) k p.
 
 (* ------------------------------------------------------------------- *)
 (* Equivalence of the different definitions                            *)
@@ -198,30 +198,53 @@ lemma indep_pwindep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b):
   indep d X Y <=> pwindep d X Y.
 proof. by rewrite indep_eindep pwindep_eindep. qed.
 
-lemma hindep_eindeps (d:'m distr) (Xs: ('m -> 'a)list):
-  hindep d (map I_ Xs) <=> eindeps d Xs.
+lemma nth_range (i p k w : int) : 0 <= i < p - k => nth w (range k p) i = k + i.
 proof.
-  rewrite /hindep /eindeps.
-  case (Xs = []);1:done;move=> Hn /=;split=> Hind.
-  + apply pw_eq=> L;rewrite /mu_x !muf_b2r.
-    cut Hpr := Hind (map (fun i m => nth (fun m => Option.witness) Xs i m =  
-                                 nth Option.witness L i)
-                     (range 0 (size Xs))) _.
-    + cut : 0 <= 0 by done.
-      move: {-1}0;move=> {Hind Hn}; elim Xs L => /=; 1: by move=> L x Hx; rewrite range_geq.
-      move=> X Xs HXs L. /valid2_cPr.    
- search range. 
-  + move=> -> /=.
-  cut Hc : d_compat (d \o fpair X Y) (DistrOp.weight d).
-  + by apply d_compat_dcomp;apply d_compat_weight.
-  split => Hind.
-  + rewrite -pw_eq => [a b];rewrite /mu_x !muf_b2r dmulc_def //.
-    rewrite dcomp_def /= /Fun.(\o) /fpair /= anda_and (Hind ((=) a) ((=) b)).
-    by rewrite /PR dprod_def /= !dcomp_def /(\o) anda_and b2r_and muf_mulc_l muf_mulc_r.
-  move=> P1 P2;rewrite /PR.
-  apply (eq_trans _ ($[ (fun (p:'a * 'b) => b2r(P1 p.`1 /\ P2 p.`2)) | (d \o X) * (d \o Y)])).
-  + by rewrite -Hind dmulc_def // dcomp_def.
-  by rewrite dprod_def /= b2r_and muf_mulc_l muf_mulc_r !dcomp_def.
+  admit.
+qed.
+
+lemma valid2_range (Xs: int -> 'm -> 'a) (p k: int) Ps:
+    valid2 (map (I_ \o Xs) (range k p)) Ps <=>
+    exists (Fs:int -> 'a -> bool), Ps = map (fun i m => Fs i (Xs i m)) (range k p).
+proof.
+  case (p <= k) => Hpk;1: by rewrite range_geq //= valid2_nPr.
+  rewrite map_comp valid2_Imap size_map.
+  cut Hs : size (range k p) = p - k by rewrite /range size_iota smt. 
+  cut {4}-> : k = 0 + k by ringeq. 
+  cut {4}-> : p = (p-k) + k by ringeq.
+  rewrite range_add -map_comp /(\o) Hs;split.
+  + move=> [Ps' [H1 ->>]].
+    exists (fun i => nth predT Ps' (i-k)).
+    apply eq_in_map=> i /=;rewrite mem_range => Hi;apply fun_ext => /= m.
+    rewrite (nth_map Option.witness) 1:Hs // nth_range // (_: k + i - k = i) //;ringeq.
+  move => [Fs ->>].   
+  exists (map Fs (range k p));rewrite size_map /= Hs /=.
+  apply eq_in_map=> i /=;rewrite mem_range => Hi;apply fun_ext => /= m.
+  rewrite !(nth_map Option.witness) 1,2:Hs // nth_range //. 
+qed.
+
+lemma BBM_big_mapT (h : 'b -> 'a) (F : 'a -> bool) (s : 'b list):
+    BBM.big predT F (map h s) = BBM.big predT (F \o h) s.
+proof. rewrite BBM.big_map; apply BBM.eq_bigl=> //. qed.
+
+lemma BRM_big_mapT (h : 'b -> 'a) (F : 'a -> real) (s : 'b list):
+    BRM.big predT F (map h s) = BRM.big predT (F \o h) s.
+proof. rewrite BRM.big_map; apply BRM.eq_bigl=> //. qed.
+
+lemma hindep_indeps (d:'m distr) (Xs: int -> 'm -> 'a) k p:
+  hindep d (map (I_ \o Xs) (range k p)) <=> indeps d Xs k p.
+proof.
+  rewrite /hindep /indeps.
+  case (p <= k) => Hpk /=;1:by rewrite range_geq.
+  cut Hr : size (range k p) = p - k by rewrite /range size_iota;smt.
+  cut -> /=: map (I_ \o Xs) (range k p) <> [] by smt.
+  rewrite valid2_range.
+  split => Hind Ps.
+  + cut {Hind}:= Hind (map (fun i m => Ps i (Xs i m)) (range k p)) _;1: by exists Ps.
+    by rewrite size_map Hr BRM_big_mapT /BRM.bigi BBM_big_mapT => <-.
+  move=> [Fs ->>].
+  rewrite size_map {1}/range size_iota (_: max 0 (p - k) = p - k) 1:smt.
+  rewrite BBM_big_mapT BRM_big_mapT; apply Hind.
 qed.
 
 (* ------------------------------------------------------------------- *)
