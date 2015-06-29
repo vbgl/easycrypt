@@ -232,13 +232,29 @@ proof.
   rewrite valid2_range.
   split => Hind Ps.
   + cut {Hind}:= Hind (map (fun i m => Ps i (Xs i m)) (range k p)) _;1: by exists Ps.
-    rewrite size_map Hr.
-print BRM.big_mapT.
- BRM.big_mapT.
- /BRM.bigi BBM.big_mapT => <-.
+    by rewrite size_map Hr BRM.big_mapT /BRM.bigi BBM.big_mapT => <-.
   move=> [Fs ->>].
   rewrite size_map {1}/range size_iota (_: max 0 (p - k) = p - k) 1:smt.
-  rewrite BBM_big_mapT BRM_big_mapT; apply Hind.
+  rewrite BBM.big_mapT BRM.big_mapT; apply Hind.
+qed.
+
+lemma indeps_eindeps (d:'m distr) (Xs: int -> 'm -> 'a) k p:
+  indeps d Xs k p <=> eindeps d Xs k p.
+proof.
+  rewrite /indeps /eindeps;case (p <= k) => Hpk //=.
+  cut Hc : d_compat (d \o fun (m : 'm) => map (fun (i : int) => Xs i m) (range k p))
+             ((DistrOp.weight d)^(p-k-1)). 
+  + apply d_compat_1;move: (DistrOp.weight d) (weight_bounded d). 
+    cut : 0 <= p - k - 1 by smt.
+    elim (p-k-1);2:smt; 1:by rewrite Power_0 // -One /Int.one.
+  admit.
+qed.
+
+lemma indeps_pwindeps (d:'m distr) (Xs: int -> 'm -> 'a) k p:
+  indeps d Xs k p <=> pwindeps d Xs k p.
+proof.
+  rewrite /indeps /pwindeps;case (p <= k) => Hpk //=.
+  admit.
 qed.
 
 (* ------------------------------------------------------------------- *)
@@ -257,9 +273,10 @@ proof.
   + by move=> p; have := eq_s12 p; rewrite !count_cat /=; smt.
   + by rewrite cat_rcons.
   rewrite /hindep=> H1 Ps Hv;right.
-  cut {Hv} [Ps_ Ps' [->> [Hv Hv']]] := valid2_catPr _ _ _ Hv.
-  cut {Hv'} [Ps3 Ps'' [->> [Hv3 Hv']]] := valid2_catPr _ _ _ Hv'.
-  cut {Hv'} [P Ps4 [->> [HP Hv4]]] := valid2_cPr _ _ _ Hv'.
+print valid2_catPr.
+  cut {Hv} /valid2_catPr [Ps_ Ps' [->> [Hv Hv']]] := Hv. 
+  cut {Hv'} /valid2_catPr [Ps3 Ps'' [->> [Hv3 Hv']]] := Hv'.
+  cut {Hv'} /valid2_cPr [P Ps4 [->> [HP Hv4]]] := Hv'.
   cut {H1}[ ] H:= H1 (rcons Ps_ P ++ (Ps3 ++ Ps4)) _. 
   + apply valid2_cat;1:rewrite -!cats1; apply valid2_cat => //.
   + cut : size (rcons Xs X ++ (Xs3 ++ Xs4)) <= 0 by rewrite H.
@@ -359,16 +376,18 @@ qed.
 
 (* --------------------------------------------------------------------- *)
 
-lemma foo (d:'m distr) (X:'m -> 'b) (Xs: ('m -> 'a) list):
+lemma hindep_hindep2 (d:'m distr) (X:'m -> 'b) (Xs: ('m -> 'a) list):
   hindep d (I_ X :: map I_ Xs) =>
   hindep d [I_ X; I_ (fun m => map (fun Xi => Xi m) Xs) ]. 
 proof.  
   move=> Hind;rewrite hindep_eindep /eindep.
   cut HXs := hindep_Icons _ _ _ Hind.
+  cut 
   case (DistrOp.weight d = 0%r). 
   + by move=> /w0_dzero ->; rewrite !dzero_dcomp dprod0l dmulc_dzero.
   move=> Hw.
-  case 
+  case (Xs = []).
+  + mov
   cut Hs : 0 < size Xs by smt.
   cut Hbd:= PR_bounded predT d.
   cut Hsi : 0 <= size Xs - 1 by smt.
