@@ -522,7 +522,7 @@ proof.
 qed.
 
 (* --------------------------------------------------------------------- *)
-
+(* Jolie tentative mais ca marche pas *)
 pred splitable (X:'m ppred) (Xs:'m ppred list) = 
   forall (P:'m -> bool),
     X P => exists Ps, valid2 Xs Ps /\ P = fun m => BBM.big predT (appf m) Ps.
@@ -566,6 +566,7 @@ proof.
   by rewrite BRM.big_cat.
 qed.
 
+(*
 lemma hindep_hindep2_I (d:'m distr) (X:'m -> 'a) (Xs: ('m -> 'a) list):
   hindep d (map I_ (X :: Xs)) =>
   hindep d [I_ X; I_ (fun m => map (appf m) Xs)].
@@ -575,7 +576,52 @@ proof.
                       ([I_(fun m => map (appf m) Xs);I_ X]) by apply perm_consCA.
   apply (hindep_hindep2 d (map I_ Xs)).
   + move=> _P [P ->>]. rewrite /splitable.
+admit. domage. ...........................................
   + apply (all_I_predT [X]).
   rewrite -(hindep_perm _ (map I_ (X :: Xs))) //=.
   by rewrite perm_eq_sym perm_catCl perm_eq_refl.
-qed
+qed.
+*)
+
+lemma eindeps_eindep (d:'m distr) (X:'m -> 'a) (Xs: ('m -> 'a) list):
+  eindeps d (X :: Xs) =>
+  eindep d X (fun m => map (appf m) Xs).
+proof. 
+  move=> Hind;rewrite /eindep.
+  case (Xs = []) => HeqXs.
+  + rewrite HeqXs -distr_ext => f. 
+    rewrite dprod_def /= dcomp_def dmulc_def /=;
+      1: by apply d_compat_dcomp;apply d_compat_weight.
+    by rewrite !dcomp_def /(\o) /fpair muf_c muf_mulc_r RField.mulrC. 
+  case (DistrOp.weight d = 0%r).  
+  + by rewrite w0_dzero => ->;rewrite !dzero_dcomp dprod0l dmulc_dzero. 
+  move=> Hpr.
+  cut /hindep_indeps /indeps_eindeps HXS := hindep_Icons X d (map I_ Xs) _. 
+  + by rewrite -map_cons hindep_indeps indeps_eindeps. 
+  cut Hs : 0 < size Xs by smt.
+  cut Hbd:= weight_bounded d.
+  cut Hsi : 0 <= size Xs - 1 by smt.
+  rewrite -(dmulc_eq_compat1 ((DistrOp.weight d)^(size Xs - 1))).
+  + apply Rpow_bounded_lt; smt. 
+  cut Hbd' := Rpow_bounded _ _ Hbd Hsi.
+  rewrite dmulcA. 
+  + apply d_compat_dcomp;apply d_compat_weight.
+  + apply d_compat_1. rewrite RField.mulrC -Rpow_S //; smt. 
+  rewrite RField.mulrC -Rpow_S //.  
+  cut -> : d \o (fun (m : 'm) => (X m, map (fun (Xi : 'm -> 'a) => Xi m) Xs)) = 
+            (d \o (fun m => map (fun Xi => Xi m) (X::Xs))) \o
+            (fun (l:'a list) => (head Option.witness l, drop 1 l)).
+  + by rewrite dcomp_dcomp /(\o) map_cons drop_cons /= drop0.
+  move:Hind;rewrite /eindeps. 
+  rewrite (_:size Xs - 1 + 1 = size Xs) 1:smt.
+  rewrite (_: size (X :: Xs) - 1 = size Xs) 1:smt => [ | H];1:smt.
+  rewrite -dcomp_dmulc 1:smt H.
+  cut -> : (dlist (map ((\o) d) (X :: Xs))) \o
+             (fun (l : 'a list) => (head Option.witness l, drop 1 l)) = 
+           (d \o X) * dlist (map ((\o) d) Xs).
+  + apply eq_distr_ext => f.
+    rewrite dcomp_def dprod_def /dlist /= dcons_def /= !dcomp_def. 
+    by simplify Fun.(\o);rewrite drop0.
+  rewrite dmulc_dprod_r;1:by apply d_compat_dcomp;smt. 
+  by congr;move: HXS;rewrite /eindeps HeqXs /= => ->.
+qed.
