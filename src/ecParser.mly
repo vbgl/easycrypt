@@ -1136,6 +1136,7 @@ simpl_type_exp:
 | UNDERSCORE                  { PTunivar       }
 | x=qident                    { PTnamed x      }
 | x=tident                    { PTvar x        }
+| x=mdident                   { PTmemof x      }
 | tya=type_args x=qident      { PTapp (x, tya) }
 | GLOB m=loc(mod_qident)      { PTglob m       }
 | LPAREN ty=type_exp RPAREN   { ty             }
