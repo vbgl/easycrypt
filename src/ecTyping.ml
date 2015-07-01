@@ -60,6 +60,7 @@ type tyerror =
 | TypeVarNotAllowed
 | OnlyMonoTypeAllowed
 | TmemNotAllowed         of ty
+| TmemTyNotFound         of symbol * ty
 | UnboundTypeParameter   of symbol
 | UnknownTypeName        of qsymbol
 | UnknownTypeClass       of qsymbol
@@ -162,6 +163,9 @@ let pp_tyerror env fmt error =
   | TmemNotAllowed ty ->
     msg "type of variable should not depend of memory %a"
       pp_type ty
+
+  | TmemTyNotFound (x,ty) ->
+    msg "can not extract a memory type from the type of %s: %a" x pp_type ty
 
   | UnboundTypeParameter x ->
       msg "unbound type parameter: %s" x
@@ -496,9 +500,7 @@ let rec as_tmem env ty =
       | `Datatype tyd  -> false
         (* FIXME 
         List.exists (snd_app (List.exists (as_tmem env))) tyd.tydt_ctors *)
-      | `Record (_, l) -> false
-        (* FIXME 
-           List.exists (snd_app (as_tmem env)) l *) in
+      | `Record (_, l) -> List.exists (snd_app (as_tmem env)) l in
     inp || ty_sub_exists (as_tmem env) ty
   | _ -> ty_sub_exists (as_tmem env) ty
     
@@ -1099,6 +1101,22 @@ let rec transty (tp : typolicy) (env : EcEnv.env) ue ty =
   | PTglob gp ->
     let m,_ = trans_msymbol env gp in
     tglob m
+
+  | PTmemof x ->
+    let s = x.pl_desc in
+    let s = String.sub s 1 (String.length s - 1) in
+    match EcEnv.Var.lookup_local_opt s env with
+    | None -> tyerror x.pl_loc env (UnknownVarOrOp(([],s), []))
+    | Some(_, ty) -> 
+      let mt = 
+        try EcUnify.destr_tmem env ty 
+        with DestrError _ -> 
+          try EcUnify.destr_tdmem env ty with DestrError _ -> 
+            tyerror x.pl_loc env (TmemTyNotFound(s, ty)) in
+      tmem mt
+
+    
+    
 
 and transtys tp (env : EcEnv.env) ue tys = 
   List.map (transty tp env ue) tys

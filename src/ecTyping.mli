@@ -50,6 +50,7 @@ type tyerror =
 | TypeVarNotAllowed
 | OnlyMonoTypeAllowed
 | TmemNotAllowed         of ty
+| TmemTyNotFound         of symbol * ty
 | UnboundTypeParameter   of symbol
 | UnknownTypeName        of qsymbol
 | UnknownTypeClass       of qsymbol

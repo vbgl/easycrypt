@@ -97,8 +97,6 @@ let t_hoare_of_muhoareF_r tc =
   let _ , po = 
     try destr_square env muh.muhf_po 
     with EcUtils.DestrError _ -> tc_error !!tc "post is not a square ... :-)" in
-  let _, pr = destr_square env muh.muhf_pr in
-  let _, po = destr_square env muh.muhf_po in
   let concl = f_hoareF pr muh.muhf_f po in
   FApi.xmutate1 tc `ViewmuHoare [concl]
 

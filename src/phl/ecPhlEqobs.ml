@@ -337,7 +337,6 @@ let t_eqobs_inS_r sim eqo tc =
   let env, hyps, _ = FApi.tc1_eflat tc in
   let sim = { sim with sim_env = env } in
   let es = tc1_as_equivS tc in
-  let ml = fst (es.es_ml) and mr = fst (es.es_mr) in
   let sl, sr, sim, eqi = 
     try s_eqobs_in es.es_sl es.es_sr sim eqo 
     with EqObsInError -> tc_error !!tc "cannot apply sim ..."

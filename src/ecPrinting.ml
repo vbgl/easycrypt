@@ -622,7 +622,7 @@ let is_binop name =
 (* -------------------------------------------------------------------- *)
 let rec pp_type_r ppe outer fmt ty =
   match ty.ty_node with
-  | Tmem mt -> 
+  | Tmem _mt -> 
    (* let l = Msym.bindings (EcMemory.mt_bindings mt) in
     let pp_id fmt (s, (_,ty)) = 
         Format.fprintf fmt "%a:%a" 

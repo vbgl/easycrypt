@@ -56,6 +56,7 @@ type pty_r =
   | PTtuple  of pty list
   | PTnamed  of pqsymbol
   | PTvar    of psymbol
+  | PTmemof  of psymbol
   | PTapp    of pqsymbol * pty list
   | PTfun    of pty * pty
   | PTglob   of pmsymbol located

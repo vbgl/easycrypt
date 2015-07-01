@@ -178,9 +178,18 @@ lemma square_imp (p1 p2:'a -> bool) (d:'a distr):
    $@[fun x => p1 x => p2 x | d] => $@[p1| d] => $@[p2 | d].
 proof. by rewrite !square_supp /=;smt. qed.
 
+lemma nosmt square_imp_supp (P2 P1:'a -> bool) (d:'a distr) : 
+   (forall m, in_supp m d => P1 m => P2 m) => $@[P1 | d] => $@[P2 | d].
+proof.
+  by move=> H1;apply square_imp;rewrite square_supp /= => m Hm;apply H1. 
+qed.
+
 lemma pr_eq_1 (d:'a distr) (p:'a -> bool): 
      $[fun x => 1%r | d] = 1%r => $@[p | d] => $[fun x => b2r (p x) | d] = 1%r.
 proof. rewrite b2r_not muf_sub=> -> H;ringeq H. qed.
+
+lemma square_true (d:'a distr) : $@[fun a => true | d].
+proof. by rewrite /= b2r_false muf_0. qed. 
 
 lemma nosmt square_and (d :'a distr) (p1 p2:'a -> bool) : 
   ($@[p1 | d] /\ $@[p2 | d]) <=> $@[fun x => p1 x /\ p2 x | d].
@@ -207,6 +216,13 @@ proof.
   move=> Hs;rewrite (square_muf_mul _ _ _ Hs) eq_sym (square_muf_mul _ _ _ Hs).
   apply muf_eq_compat=> x Hx /=.
   by case (X x = Y x) => Heq;1:rewrite Heq;2:rewrite b2r_false.
+qed.
+
+lemma nosmt square_eq_and (P1 P2:'a -> bool) (d: 'a distr):
+  $@[P1 | d] =>
+  $@[P2 | d] <=> $@[fun x => P1 x /\ P2 x | d].
+proof.
+  by move=> HP1;rewrite !b2r_not !muf_sub b2r_and -(square_muf_mul _ _ _ HP1).
 qed.
 
 (* Lemmas about known distribution *)
