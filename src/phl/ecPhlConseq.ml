@@ -97,12 +97,23 @@ let t_muhoareF_and =
 
 let t_muhoare_conseq_and t_conseq t_and pr1 pr2 po1 po2 tc = 
   let env = FApi.tc1_env tc in
+  let t_pre side tc = 
+    let x = EcIdent.create "_" in
+    let h1 = EcIdent.create "_" in
+    let h2 = EcIdent.create "_" in
+    (t_intro_i x @! t_elim_and @! t_intros_i [h1;h2] @!
+       t_apply_hyp (if side then h1 else h2) ~args:[] ~sk:0) tc in
+   let t_trivial tc = 
+    let x = EcIdent.create "_" in
+    let h = EcIdent.create "_" in
+    (t_intros_i [x;h] @! t_apply_hyp h ~args:[] ~sk:0) tc
+ in
   (t_conseq (p_and env pr1 pr2) (p_and env po1 po2) @+ [
     t_id;
     t_id;
     t_and @+[ 
-      t_conseq pr1 po1 @! t_logic_trivial;
-      t_conseq pr2 po2 @! t_logic_trivial; 
+      t_conseq pr1 po1 @+ [t_pre true; t_trivial; t_id]; 
+      t_conseq pr2 po2 @+ [t_pre false; t_trivial; t_id]; 
     ]
   ]) tc
 
@@ -895,8 +906,8 @@ let rec t_hi_conseq notmod f1 f2 f3 tc =
     (* FIXME what should be not modify *)
     (t_muhoareF_conseq_and 
       hs1.muhf_pr hs2.muhf_pr hs1.muhf_po hs2.muhf_po @+ 
-      [ t_id; t_id;
-        t_apply_r nf1; t_apply_r nf2]) tc
+      [ t_id; t_id; 
+        t_apply_r nf1; t_apply_r nf2 ]) tc
 
   | _ ->
     let rec pp_f f =
