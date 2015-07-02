@@ -55,9 +55,8 @@ abstract theory INDEPi.
            Ps I (T m).[i m <- v].[fromint (T m) I]) | d] | mu] =
       $[fun m=> $[fun v=>b2r(BBM.bigi predT (fun k => Ps k (T m).[fromint (T m) k]) 0 I /\ Ps I v) 
                  | d ]| mu].
-    + apply muf_eq_compat => /= m Hm.
-      cut /square_supp {Hs} Hs:= Hs; cut {Hs}/= Hs:=Hs m Hm.
-      apply muf_eq_compat => /= v Hv;congr;congr; 2:smt.
+    + move:Hs;apply square_eq => /= m Hm;progress.
+      apply muf_eq_compat => /= v Hv;congr;congr;2:smt.
       apply BBM.congr_big_nat=> //=; smt.
     rewrite b2r_and muf_mulc_l muf_mulc_r.
     cut ->:
@@ -65,19 +64,19 @@ abstract theory INDEPi.
         (fun k => $[fun m => $[fun v => b2r (Ps k (T m).[i m <- v].[fromint (T m) k]) | d] | mu]) 0 I =
       BRM.bigi predT
         (fun k => $[fun m => b2r (Ps k (T m).[fromint (T m) k]) | mu]) 0 I.
-    + apply BRM.congr_big_nat=> //= k [_ Hk];apply muf_eq_compat => m Hm /=.
-      cut /square_supp {Hs} Hs:= Hs; cut {Hs}/= Hs:=Hs m Hm.
+    + apply BRM.congr_big_nat=> //= k [_ Hk].
+      move:Hs;apply square_eq => m Hm {Hm};progress. 
       rewrite -(muf_c_ll (b2r (Ps k (T m).[fromint (T m) k])) d) //.
       apply muf_eq_compat => /= v Hv;smt.
     cut -> :
      $[fun (m : 'm) => $[fun v => b2r (Ps I (T m).[i m <- v].[fromint (T m) I]) | d] | mu] =
      $[fun v => b2r (Ps I v) | d] * $[fun (m : 'm) => 1%r| mu].
-    + rewrite -muf_mulc_l;apply muf_eq_compat => m Hm /=.
-      cut /square_supp {Hs} Hs:= Hs; cut {Hs}/= Hs:=Hs m Hm.
+    + rewrite -muf_mulc_l;move:Hs;apply square_eq => m Hm {Hm};progress. 
       apply muf_eq_compat => /= v Hv;smt.
     cut := Hind Ps;rewrite -ora_or => {Hind} [] Hind.
     cut -> /= : I = 0 by smt.
-    + by rewrite Power_0 -One /Int.one /= BBM.big_geq // BRM.big_geq //= b2r_true RField.mulrC.
+    + by rewrite Power_0 -One /Int.one /= BBM.big_geq // 
+      BRM.big_geq //= b2r_true RField.mulrC.
     cut -> : I - 0 - 1 = I - 1 by ringeq.
     cut -> : I + 1 - 1 = I - 1 + 1 by ringeq.
     move=> <-;rewrite Power_s 1:smt;ringeq.
@@ -96,12 +95,11 @@ abstract theory INDEPi.
     move=> Hd Hs Hind k Hk f.
     case (k < I) => HkI.  
     + rewrite -(Hind k _ f);1:by move:Hk.
-      apply muf_eq_compat => m Hm /=. 
-      cut /square_supp {Hs} Hs:= Hs; cut {Hs}/= Hs:=Hs m Hm.
-      rewrite -(muf_c_ll (f (T m).[fromint (T m) k]) d) 1:Hd //;apply muf_eq_compat => v Hv /=; smt.
+      move: Hs;apply square_eq => m Hm;progress. 
+      rewrite -(muf_c_ll (f (T m).[fromint (T m) k]) d) 1:Hd //. 
+      by apply muf_eq_compat => v Hv /=; smt.
     rewrite -muf_mulc_l -muf_mulc_r /=. 
-    apply muf_eq_compat => m Hm /=.
-    cut /square_supp {Hs} Hs:= Hs; cut {Hs}/= Hs:=Hs m Hm.
+    move:Hs; apply square_eq => m Hm;progress.
     apply muf_eq_compat => v Hv /=;smt.
   qed.
 

@@ -209,7 +209,7 @@ lemma nosmt square_exists (d :'a distr) (p : 'b -> 'a -> bool) :
   (exists b, $@[p b | d]) => $@[fun x => exists b, p b x | d].
 proof. by rewrite !square_supp /= => [b Hb] x Hx;exists b;apply Hb. qed.
 
-lemma nosmt square_eq (d:'a distr) (X Y:'a ->'b) (f :'a -> 'b -> real) :
+lemma nosmt square_rweq (d:'a distr) (X Y:'a ->'b) (f :'a -> 'b -> real) :
   $@[ fun m => X m = Y m | d] =>
   $[fun m => f m (X m) | d] = $[fun m => f m (Y m) | d].
 proof.
@@ -225,7 +225,7 @@ proof.
   by move=> HP1;rewrite !b2r_not !muf_sub b2r_and -(square_muf_mul _ _ _ HP1).
 qed.
 
-lemma square_muf_le (P1:'a -> bool) (f1 f2:'a -> real) (d:'a distr):
+lemma nosmt square_le (P1:'a -> bool) (f1 f2:'a -> real) (d:'a distr):
   (forall a, in_supp a d => P1 a => f1 a <= f2 a) =>
   $@[P1 | d] =>
   $[f1 | d] <= $[f2 | d].
@@ -235,7 +235,7 @@ proof.
   by move: Hs;rewrite square_supp=> Hs;apply Hs.
 qed.
 
-lemma square_muf_eq (P1:'a -> bool) (f1 f2:'a -> real) (d:'a distr):
+lemma nosmt square_eq (P1:'a -> bool) (f1 f2:'a -> real) (d:'a distr):
   (forall a, in_supp a d => P1 a => f1 a = f2 a) =>
   $@[P1 | d] =>
   $[f1 | d] = $[f2 | d].
