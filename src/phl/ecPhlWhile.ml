@@ -401,7 +401,7 @@ let t_low_muhoare_while_bounded_r (inv, sinv) v m q tc =
     f_forall [vk,GTty tint;] (f_muhoareS pr c po) in
   (* *)
   let cond3 = 
-    f_forall [mhr, GTty tmt] (f_imps [sinv; f_int_lt v f_i0] (f_not b)) in
+    f_forall [mhr, GTty tmt] (f_imps [sinv; f_int_le v f_i0] (f_not b)) in
   let cond4 = 
     f_real_lt f_r0 q in
   
@@ -471,7 +471,7 @@ let t_low_muhoare_while_decr_r (inv, sinv) v m tc =
     f_forall [vk,GTty tint;] (f_muhoareS pr c po) in
   (* *)
   let cond3 = 
-    f_forall [mhr, GTty tmt] (f_imps [sinv; f_int_lt v f_i0] (f_not b)) in
+    f_forall [mhr, GTty tmt] (f_imps [sinv; f_int_le v f_i0] (f_not b)) in
   FApi.xmutate1 tc `While [cond3; cond2; cond1]
 
 let t_low_muhoare_while_decr = 
