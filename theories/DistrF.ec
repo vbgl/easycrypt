@@ -13,6 +13,10 @@ lemma mul_positive (f1 f2:'a -> real) :
    positive f1 => positive f2 => positive (fun x => f1 x * f2 x)
 by [].
 
+lemma if_positive (f1 f2:'a -> real) (b:'a -> bool):
+  positive f1 => positive f2 => positive (fun a => if b a then f1 a else f2 a).
+proof. move=> H1 H2 x; case (b x)=> _;[apply H1 | apply H2]. qed.
+
 (* ----------------------------------------------------------------- *)
 
 lemma b2r_positive (f:'a -> bool): positive (fun x => b2r (f x))
@@ -43,6 +47,10 @@ by [].
 lemma if_b2r (b:bool) (r1 r2:real): 
     (if b then r1 else r2) = b2r b * r1 + b2r (!b) * r2
 by [].
+
+lemma if_nb2r (b : bool) (r1 r2 : real):
+    (if !b then r1 else r2) = b2r (!b) * r1 + b2r b * r2.
+proof. by rewrite if_b2r. qed.
 
 lemma b2r_if b1 b2 b3 : b2r (if b1 then b2 else b3) = b2r b1 * b2r b2 + b2r (!b1) * b2r b3
 by [].
