@@ -225,6 +225,26 @@ proof.
   by move=> HP1;rewrite !b2r_not !muf_sub b2r_and -(square_muf_mul _ _ _ HP1).
 qed.
 
+lemma square_muf_le (P1:'a -> bool) (f1 f2:'a -> real) (d:'a distr):
+  (forall a, in_supp a d => P1 a => f1 a <= f2 a) =>
+  $@[P1 | d] =>
+  $[f1 | d] <= $[f2 | d].
+proof.
+  move=> H1 Hs.
+  apply muf_le_compat => x Hx;apply H1 => //.
+  by move: Hs;rewrite square_supp=> Hs;apply Hs.
+qed.
+
+lemma square_muf_eq (P1:'a -> bool) (f1 f2:'a -> real) (d:'a distr):
+  (forall a, in_supp a d => P1 a => f1 a = f2 a) =>
+  $@[P1 | d] =>
+  $[f1 | d] = $[f2 | d].
+proof.
+  move=> H1 Hs.
+  apply muf_eq_compat => x Hx;apply H1 => //.
+  by move: Hs;rewrite square_supp=> Hs;apply Hs.
+qed.
+
 (* Lemmas about known distribution *)
 require import Bool.
 
