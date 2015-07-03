@@ -498,27 +498,23 @@ proof.
   by apply eq_distr_ext=> f;rewrite !(dprod_def, dcomp_def).
 qed.
 
-(* TODO *)
-axiom dcomp_bij (d:'a distr) (f:'a -> 'a):
-  bijective f => d \o f = d.
-
-lemma indep_bij_comp (d:'m distr) (X:'m -> 'a) (Y: 'm -> 'b) (f: 'a -> 'b -> 'a) :
-   (forall b, bijective (fun a => f a b)) =>
-   indep d X Y => indep d (fun m => f (X m) (Y m)) Y.
+(* TODO move this *)
+lemma in_supp_dcomp (proj:'a -> 'b) (d:'a distr) x:
+  in_supp x d => in_supp (proj x) (d \o proj).
 proof.
-  move=> Hf Hi;rewrite indep_eindep /eindep.
-  cut H1 : d \o (fun m => (f (X m) (Y m), Y m)) = d \o (fun m => (X m, Y m)).
-    apply (eq_trans _ ((d \o fun (m : 'm) => (X m, Y m)) \o 
-               (fun (p:'a*'b) => (f p.`1 p.`2, p.`2)))).
-    + by rewrite dcomp_dcomp //.
-    apply dcomp_bij;cut {Hf} [g /= Hg]:= funchoice _ Hf. 
-    exists (fun (p:'a*'b) => (g p.`2 p.`1, p.`2));split=> p;cut:= Hg p.`2;rewrite /cancel smt.
-  cut -> : d \o (fun (m : 'm) => f (X m) (Y m)) = d \o X.
-  + apply (eq_trans _ ((d \o (fun m => (f (X m) (Y m), Y m))) \o (fun (p:'a*'b) => p.`1))).
-    + by rewrite dcomp_dcomp.
-    by rewrite H1 // dcomp_dcomp.
-  cut := Hi;rewrite indep_eindep /eindep => Hi'.
-  by rewrite /fpair H1.
+  rewrite /in_supp /mu_x !muf_b2r => H.
+  apply (real_lt_trans _ _ _ H); rewrite dcomp_def;apply muf_le_compat;smt ml=0.
+qed.
+
+lemma muf_sum_supp (proj:'a -> 'b) (f:'a -> real) (d:'a distr): 
+  $[f | d] = 
+  $[fun x => $[fun y => b2r(proj x = proj y) * f x | d] / 
+             PR d (fun y => proj x = proj y) 
+   | d].
+proof.
+  apply muf_eq_compat=> x Hx /=;rewrite muf_mulc_r /PR;fieldeq.
+  cut {Hx} := in_supp_dcomp proj _ _ Hx. 
+  rewrite /in_supp /mu_x muf_b2r dcomp_def /(\o);smt ml=0.
 qed.
 
 (* --------------------------------------------------------------------- *)
