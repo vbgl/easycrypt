@@ -212,6 +212,17 @@ lemma indep_pwindep (d:'m distr) (X : 'm -> 'a) (Y : 'm -> 'b):
   indep d X Y <=> pwindep d X Y.
 proof. by rewrite indep_eindep pwindep_eindep. qed.
 
+lemma square_pwindep (d:'m distr) (X1 X2:'m -> 'a) (Y:'m -> 'b) (P:'m -> bool): 
+  $@[P | d] => (forall m, P m => X1 m = X2 m) => 
+  pwindep d X1 Y => pwindep d X2 Y.
+proof.
+  rewrite /pwindep /(\o);move=> HP HX Hpw a b.
+  cut -> : PR d (fun (x : 'm) => a = X2 x) = PR d (fun (x : 'm) => a = X1 x).
+  + by move:HP;apply square_eq => m Hm /= Hp;rewrite (HX _ Hp).
+  rewrite -Hpw;congr.
+  by move:HP;apply square_eq => m Hm /= Hp;rewrite (HX _ Hp).
+qed.
+
 (* ------------------------------------------------------------------- *)
 (* Equivalence of the different nary definitions                       *)
 (* ------------------------------------------------------------------- *)
@@ -441,6 +452,13 @@ proof.
   by move=> Hp;split; apply hindep_perm_imp => //;apply perm_eq_sym.
 qed.
 
+lemma pwindep_sym (d:'m distr) (X:'m -> 'a) (Y:'m -> 'b):
+   pwindep d X Y <=> pwindep d Y X.
+proof.
+  rewrite -!hindep_pwindep.
+  by apply hindep_perm;rewrite perm_consCA perm_eq_refl.
+qed.
+
 lemma hindep_cons (X:'m ppred) (d:'m distr) (Xs:'m ppred list):
   X predT => 
   hindep d (X :: Xs) => hindep d Xs.
@@ -620,4 +638,50 @@ proof.
     by simplify Fun.(\o);rewrite drop0.
   rewrite dmulc_dprod_r;1:by apply d_compat_dcomp;smt. 
   by congr;move: HXS;rewrite /eindeps HeqXs /= => ->.
+qed.
+
+import Bool.
+lemma eindep_xor (d:'m distr) (X:'m -> bool) (W: 'm -> 'a)
+           (F1 : 'a -> bool):
+     eindep d X W =>
+     d \o X = {0,1} =>
+     d \o (fun m => X m ^^ F1 (W m)) = d \o X.
+proof.
+  rewrite /eindep; move=> Hind HeqX.
+  case (DistrOp.weight d = 0%r). 
+  + by rewrite w0_dzero=> ->; rewrite !dzero_dcomp.  
+  move=> Hw.
+  rewrite -(dmulc_eq_compat (DistrOp.weight d)). smt. smt.
+  cut -> : 
+    d \o (fun (m : 'm) => X m ^^ F1 (W m)) =
+    (d \o (fun (m : 'm) => (X m, W m))) \o
+          (fun p => let (x, w) = p in x ^^ F1 w).
+  + by rewrite dcomp_dcomp /(\o).
+  rewrite -dcomp_dmulc 1:smt Hind HeqX;apply eq_distr_ext => f.
+  rewrite dcomp_def dmulc_def 1:smt dprod_def /= !dcomp_def /=.
+  rewrite !muf_dbool /= -add_div 1:smt -muf_add /=.
+  cut -> : $[fun (x : 'm) =>
+              f (true ^^ F1 (W x)) +
+              f (false ^^ F1 (W x)) | d] =
+           $[fun (x : 'm) => f true + f false | d].
+  + apply muf_eq_compat => x Hm /=; smt.
+  rewrite muf_c /DistrOp.weight /PR /predT b2r_true;fieldeq;smt.
+qed.
+
+lemma pwindep_xor (d:'m distr) (X:'m -> bool) (W: 'm -> 'a)
+           (F1 F2 : 'a -> bool):
+     pwindep d X W =>
+     d \o X = {0,1} =>
+     pwindep d (fun m => X m ^^ F1 (W m)) (fun m => F2 (W m)).
+proof.
+  rewrite !pwindep_eindep /eindep => Hind HeqX.
+  cut -> : 
+    d \o (fun (m : 'm) => (X m ^^ F1 (W m), F2 (W m))) = 
+    (d \o (fun (m : 'm) => (X m, W m))) \o (fun p => let (x, w) = p in (x ^^ F1 w, F2 w)).
+  + rewrite dcomp_dcomp //.    
+  rewrite -dcomp_dmulc 1:smt Hind // eindep_xor // HeqX; apply eq_distr_ext => /= f.
+  rewrite !dcomp_def /= !dprod_def !dcomp_def //= !muf_dbool /=.
+  rewrite -!add_div 1,2:smt;congr.
+  rewrite -!muf_add /=;apply muf_eq_compat => x Hx /=;rewrite /(\o) /=. 
+  case (F1 (W x)) => //;rewrite /(^^) /= => _;ringeq.
 qed.

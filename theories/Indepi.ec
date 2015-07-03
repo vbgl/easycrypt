@@ -1,5 +1,5 @@
 require export Indep.
-import Real Int StdBigop StdRing.
+import NewList Real Int StdBigop StdRing.
 
 pred indepsi (d:'m distr) (Xi: int -> 'm -> 'a) (i j : int) = 
  forall (Ps : int -> 'a -> bool),
@@ -13,6 +13,49 @@ pred follows (d:'m distr) (X:'m -> 'a) (da:'a distr) =
 
 pred followsi (d:'m distr) (X:int -> 'm -> 'a) (da:'a distr) (i j : int) = 
   forall (k:int), i <= k < j => follows d (X k) da.
+
+require import Option.
+
+lemma indepsi_indeps (d:'m distr) (Xi:int -> 'm -> 'a) (i j:int):  
+   indepsi d Xi i j <=> indeps d (map Xi (range i j)).
+proof.
+  rewrite /indepsi /indeps size_map size_range /DistrOp.weight /PR.
+  case (j <= i) => Hij /=.   
+  + by rewrite range_geq.
+  cut -> : max 0 (j - i) = j - i by smt ml=0.
+  split=> Hi Ps.
+  + right;cut {Hi} /= Hi := Hi (fun k => Ps (k - i)).
+    apply (eq_trans _ (BRM.bigi predT
+              (fun (k : int) => $[fun (m : 'm) => b2r (Ps (k - i) (Xi k m)) | d]) i j)).
+    + rewrite -Hi;congr;apply muf_eq_compat=> m Hm {Hi}/=;congr.
+      rewrite {4}(_: i = 0 + i) 1:// BBM.big_addn; apply BBM.eq_big_nat => /= i0 Hi0.
+      rewrite (nth_map witness) 1:size_range 1:[smt ml=0] nth_range //; smt ml=0.
+    rewrite {2}(_: i = 0 + i) // BRM.big_addn; apply BRM.eq_big_nat => /= i0 Hi0.
+    apply muf_eq_compat => m Hm.
+    rewrite (nth_map witness) 1:size_range 1:[smt ml=0] nth_range //; smt ml=0.
+  cut {Hi} /= [ | Hi] := Hi (fun k => Ps (k + i));1:smt.
+  apply (eq_trans _ 
+    (BRM.bigi predT
+      (fun (i0 : int) =>
+          $[fun (x : 'm) => b2r (Ps (i0 + i) (nth witness (map Xi (range i j)) i0 x)) | d])
+              0 (j - i))).
+  + rewrite -Hi;congr;apply muf_eq_compat=> m Hm {Hi}/=;congr.
+      rewrite {1}(_: i = 0 + i) 1:// BBM.big_addn; apply BBM.eq_big_nat => /= i0 Hi0.
+      rewrite (nth_map witness) 1:size_range 1:[smt ml=0] nth_range //; smt ml=0.
+    rewrite {4}(_: i = 0 + i)// BRM.big_addn; apply BRM.eq_big_nat => /= i0 Hi0.
+    apply muf_eq_compat => m Hm.
+    rewrite (nth_map witness) 1:size_range 1:[smt ml=0] nth_range //; smt ml=0.  
+qed.
+
+lemma indepsi_sub (i j k l: int) (d:'m distr) (Xi: int -> 'm -> 'a):
+   k <= i => j <= l => indepsi d Xi k l => indepsi d Xi i j.
+proof.
+  move=> Hi Hj;rewrite !indepsi_indeps.
+  case (i <= j) => Hij.
+  + rewrite (range_cat i k l) // 1:[smt ml=0] (range_cat j i l) // !map_cat.
+    by rewrite -!hindep_indeps !map_cat=> /hindep_Icat_r /hindep_Icat_l.
+  rewrite /indeps=> ? ?;left;smt.
+qed.
 
 abstract theory INDEPi.
 
