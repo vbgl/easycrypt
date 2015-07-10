@@ -1,4 +1,6 @@
-require import Real.
+(* ----------------------------------------------------------------- *)
+require import Int Real StdRing StdOrder.
+(*---*) import RField RealOrder.
 require export Distr.
 
 (* ----------------------------------------------------------------- *)
@@ -94,8 +96,8 @@ axiom nosmt muf_pos_0 (d :'a distr) (f:'a -> real) :
 axiom nosmt eq_distr_ext (d1 d2: 'a distr):
   (forall (f:'a -> real), muf f d1 = muf f d2) => 
   d1 = d2.
-(* ------------------------------------------------------------------------- *)
 
+(* ------------------------------------------------------------------------- *)
 lemma nosmt muf_eq_compat (f1 f2:'a -> real) (d:'a distr) :
   (forall x, in_supp x d => f1 x = f2 x) =>
   $[f1 | d] = $[f2 | d].
@@ -147,6 +149,18 @@ lemma muf_0_f0 (f:'a -> real) (d: 'a distr):
    (forall a, in_supp a d => f a = 0%r) => $[f | d] = 0%r.
 proof.
   move=> Hf;rewrite -(muf_c 0%r d);apply muf_eq_compat;apply Hf.
+qed.
+
+lemma muf_1_le1 (d : 'a distr): $[fun x => 1%r | d] <= 1%r.
+proof.
+  have /= <- := muf_b2r True d; rewrite b2r_true.
+  by have [] := mu_bounded d True.
+qed.
+
+lemma muf_c_le c (d : 'a distr): 0 <= c => $[fun x => c%r | d] <= c%r.
+proof.
+  move=> ge0_c; rewrite muf_c; apply/ler_pimulr.
+   by apply/from_intMle. by apply/muf_1_le1.
 qed.
 
 (* ----------------------------------------------------------------- *)
