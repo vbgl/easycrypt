@@ -61,7 +61,8 @@ val tdistr  : ty -> ty
 val tcpred  : ty -> ty
 val toarrow : ty list -> ty -> ty
 
-val flatten_ty : ty -> ty list
+val tytuple_flat : ty -> ty list
+val tyfun_flat   : ty -> (dom * ty)
 
 (* Do not use those functions use the corresponding in EcUnify *)
 val is_tmem : ty -> bool
