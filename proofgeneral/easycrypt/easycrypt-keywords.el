@@ -51,6 +51,7 @@
   "with"
   "prover"
   "timeout"
+  "why3"
   "Top"
   "Self"
 ))
