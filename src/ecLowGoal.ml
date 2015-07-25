@@ -1336,6 +1336,7 @@ let t_absurd_hyp ?(conv  = `AlphaEq) id tc =
       [ t_apply_hyp hnx; t_apply_hyp hx ]
   ]) tc
 
+(* -------------------------------------------------------------------- *)
 let t_absurd_hyp ?conv ?id tc =
   let tabsurd = t_absurd_hyp ?conv in
 
@@ -1506,7 +1507,7 @@ let t_logic_trivial (tc : tcenv1) =
     FApi.t_try (t_assumption `Conv);
     t_progress t_id;
     FApi.t_try (t_assumption `Conv);
-    FApi.t_try (t_absurd_hyp ~conv:`Eq);
+    FApi.t_try (t_absurd_hyp ~conv:`AlphaEq);
     t_fail;
   ]
 
