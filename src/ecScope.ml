@@ -699,7 +699,7 @@ module Ax = struct
       | None -> scope
       | Some _ ->
           let lvl1 = if local then `Local else `Global in
-          let lvl2 = if ax.ax_kind = `Axiom then `Axiom else `Lemma in
+          let lvl2 = if is_axiom ax.ax_kind then `Axiom else `Lemma in
 
           if lvl2 = `Axiom && ax.ax_tparams <> [] then
             hierror "axiom must be monomorphic in sections";
@@ -764,11 +764,15 @@ module Ax = struct
     let tparams = EcUnify.UniEnv.tparams ue in
 
     let axd  =
-      let kind = match ax.pa_kind with PAxiom -> `Axiom | _ -> `Lemma in
-        { ax_tparams = tparams;
-          ax_spec    = Some concl;
-          ax_kind    = kind;
-          ax_nosmt   = ax.pa_nosmt; }
+      let kind =
+        match ax.pa_kind with
+        | PAxiom tags -> `Axiom (Ssym.of_list (List.map unloc tags))
+        | _ -> `Lemma
+
+      in { ax_tparams = tparams;
+           ax_spec    = Some concl;
+           ax_kind    = kind;
+           ax_nosmt   = ax.pa_nosmt; }
     in
 
     let check    = Check_mode.check scope.sc_options in
@@ -783,7 +787,7 @@ module Ax = struct
             hierror "this lemma uses local modules and must be declared as local"
     end;
 
-    if ax.pa_local && ax.pa_kind = PAxiom then
+    if ax.pa_local && EcDecl.is_axiom axd.ax_kind then
       hierror "an axiom cannot be local";
 
     match ax.pa_kind with
@@ -797,7 +801,7 @@ module Ax = struct
           (Some tintro) pucflags (mode, mk_loc loc tc) check
           (unloc ax.pa_name) axd
 
-    | PAxiom ->
+    | PAxiom _ ->
         Some (unloc ax.pa_name),
         bind scope (snd pucflags).puc_local (unloc ax.pa_name, axd)
 
@@ -1060,7 +1064,7 @@ module Op = struct
           let ax =
             { ax_tparams = axpm;
               ax_spec    = Some ax;
-              ax_kind    = `Axiom;
+              ax_kind    = `Axiom Ssym.empty;
               ax_nosmt   = false; }
           in Ax.bind scope false (unloc rname, ax))
         scope refts
@@ -1423,7 +1427,7 @@ module Ty = struct
           let t  = { pt_core = t; pt_intros = []; } in
           let ax = { ax_tparams = [];
                      ax_spec    = Some f;
-                     ax_kind    = `Axiom;
+                     ax_kind    = `Axiom Ssym.empty;
                      ax_nosmt   = true; } in
 
           let pucflags = { puc_nosmt = false; puc_local = false; } in
@@ -1851,8 +1855,8 @@ module Section = struct
 
           | T.CTh_axiom (x, ax) -> begin
             match ax.ax_kind with
-            | `Axiom -> scope
-            | `Lemma ->
+            | `Axiom _ -> scope
+            | `Lemma   ->
                 let axp = EcPath.pqname (path scope) x in
                   if not (EcSection.is_local `Lemma axp locals) then
                     Ax.bind scope false
@@ -1965,7 +1969,7 @@ module Cloning = struct
   }
 
   and ovrsc = {
-    ovrc_glproof : (ptactic_core option) option;
+    ovrc_glproof : (ptactic_core option * Ssym.t option) list;
   }
 
   (* ------------------------------------------------------------------ *)
@@ -1989,7 +1993,7 @@ module Cloning = struct
 
     let (name, (opath, oth), ovrds) = C.clone scope.sc_env thcl in
     let ovrds = { ovre_ovrd  = ovrds;
-                  ovre_scope = { ovrc_glproof = None}; } in
+                  ovre_scope = { ovrc_glproof = []}; } in
     let incl  = thcl.pthc_import = Some `Include in
     let opts  = Options.merge Options.default thcl.pthc_opts in
 
@@ -2008,9 +2012,10 @@ module Cloning = struct
 
         let myovscope = {
           ovrc_glproof =
-            (match ovrds.ovre_ovrd.evc_lemmas.ev_global with
-             | Some _ as x -> x
-             | _ -> ovrds.ovre_scope.ovrc_glproof);
+            if List.is_empty ovrds.ovre_ovrd.evc_lemmas.ev_global then
+              ovrds.ovre_scope.ovrc_glproof
+            else
+              ovrds.ovre_ovrd.evc_lemmas.ev_global
         } in
 
         match item with
@@ -2181,10 +2186,15 @@ module Cloning = struct
               let doproof =
                 match ax.ax_kind with
                 | `Lemma -> None
-                | `Axiom ->
+                | `Axiom tags -> begin
                     match Msym.find_opt x (ovrds.ovre_ovrd.evc_lemmas.ev_bynames) with
                     | Some pt -> Some pt
-                    | None -> myovscope.ovrc_glproof
+                    | None ->
+                        List.Exceptionless.find_map
+                          (function (pt, None) -> Some pt | (pt, Some pttags) ->
+                             if Ssym.disjoint tags pttags then None else Some pt)
+                          myovscope.ovrc_glproof
+                end
               in
                 match doproof with
                 | None     -> (ax, proofs)
