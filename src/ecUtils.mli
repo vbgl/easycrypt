@@ -228,11 +228,6 @@ module Buffer : sig
 end
 
 (* -------------------------------------------------------------------- *)
-module Regexp : sig
-  include module type of Str
-end
-
-(* -------------------------------------------------------------------- *)
 module List : sig
   include module type of BatList
 
