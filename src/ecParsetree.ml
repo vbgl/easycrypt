@@ -710,7 +710,7 @@ and ptactic_chain =
 
 (* -------------------------------------------------------------------- *)
 type paxiom_kind =
-| PAxiom of [`Axiom | `Hypothesis]
+| PAxiom
 | PLemma of ptactics option
 | PILemma
 
