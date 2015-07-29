@@ -569,7 +569,6 @@ let e_bin_prio_lambda = ( 5, `Prefix)
 let e_bin_prio_impl   = (10, `Infix `Right)
 let e_bin_prio_iff    = (12, `NonAssoc)
 let e_bin_prio_if     = (15, `Prefix)
-let e_bin_prio_if3    = (17, `Infix `NonAssoc)
 let e_bin_prio_letin  = (18, `Prefix)
 let e_bin_prio_nop    = (19, `Infix `Left)
 let e_bin_prio_or     = (20, `Infix `Right)
@@ -584,6 +583,7 @@ let e_bin_prio_lop3   = (50, `Infix `Left )
 let e_bin_prio_rop3   = (51, `Infix `Right)
 let e_bin_prio_lop4   = (60, `Infix `Left )
 let e_bin_prio_rop4   = (61, `Infix `Right)
+let e_bin_prio_if3    = e_bin_prio_lop2
 
 let e_uni_prio_not    = 26
 let e_uni_prio_lsless = 10000
@@ -705,6 +705,9 @@ let rec pp_type_r ppe outer fmt ty =
 let pp_type ppe fmt ty =
   pp_type_r ppe (min_op_prec, `NonAssoc) fmt ty
 
+let pp_stype ppe fmt ty =
+  pp_type_r ppe ((1 + fst t_prio_tpl, `NonAssoc), `NonAssoc) fmt ty
+
 (* -------------------------------------------------------------------- *)
 let pp_if3 (ppe : PPEnv.t) pp_sub outer fmt (b, e1, e2) =
   let pp fmt (b, e1, e2)=
@@ -780,7 +783,9 @@ let pp_app (ppe : PPEnv.t) (pp_first, pp_sub) outer fmt (e, args) =
 (* -------------------------------------------------------------------- *)
 let pp_opname fmt (nm, op) =
   let op =
-    if is_binop op then begin
+    if EcCoreLib.is_mixfix_op op then
+      Printf.sprintf "\"%s\"" op
+    else if is_binop op then begin
       if op.[0] = '*' || op.[String.length op - 1] = '*'
       then Format.sprintf "( %s )" op
       else Format.sprintf "(%s)" op
@@ -1722,21 +1727,27 @@ let pp_typedecl (ppe : PPEnv.t) fmt (x, tyd) =
         Format.fprintf fmt "type %a %s" (pp_tyvar ppe) tx name
 
     | txs ->
-        Format.fprintf fmt "type (%a) %s"
+        Format.fprintf fmt "type %a %s"
           (pp_paren (pp_list ",@ " (pp_tyvar ppe))) txs name
 
   and pp_body fmt =
     match tyd.tyd_type with
     | `Abstract _ -> ()                (* FIXME: TC HOOK *)
-    | `Concrete ty -> Format.fprintf fmt " =@ %a" (pp_type ppe) ty
+
+    | `Concrete ty ->
+        Format.fprintf fmt " =@ %a" (pp_type ppe) ty
+
     | `Datatype { tydt_ctors = cs } ->
         let pp_ctor fmt (c, cty) =
           match cty with
-          | [] -> Format.fprintf fmt "%s" c
-          | _  -> Format.fprintf fmt "%s of @[<hov 2>%a@]"
-                    c (pp_list " *@ " (pp_type ppe)) cty
+          | [] ->
+            Format.fprintf fmt "%a" pp_opname ([], c)
+          | _  ->
+            Format.fprintf fmt "%a of @[<hov 2>%a@]"
+              pp_opname ([], c) (pp_list " &@ " (pp_stype ppe)) cty
         in
           Format.fprintf fmt " =@ [@[<hov 2>%a@]]" (pp_list " |@ " pp_ctor) cs
+
     | `Record (_, fields) ->
         let pp_field fmt (f, fty) =
           Format.fprintf fmt "%s: @[<hov 2>%a@]" f (pp_type ppe) fty
