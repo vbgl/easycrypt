@@ -546,15 +546,36 @@
 %%
 
 (* -------------------------------------------------------------------- *)
-%inline lident: x=loc(LIDENT) { x }
-%inline uident: x=loc(UIDENT) { x }
-%inline tident: x=loc(TIDENT) { x }
-%inline mident: x=loc(MIDENT) { x }
-%inline mdident: x=loc(MDIDENT) { x }
+_lident:
+| x=LIDENT { x }
+| FIRST    { "first"  }
+| LAST     { "last"   }
+| LEFT     { "left"   }
+| RIGHT    { "right"  }
+| STRICT   { "strict" }
+| EXPECT   { "expect" }
+
+%inline _uident:
+| x=UIDENT { x }
+
+%inline _tident:
+| x=TIDENT { x }
+
+%inline _mident:
+| x=MIDENT { x }
+
+%inline _mdident:
+| x=MDIDENT { x }
+
+%inline lident : x=loc(_lident ) { x }
+%inline uident : x=loc(_uident ) { x }
+%inline tident : x=loc(_tident ) { x }
+%inline mident : x=loc(_mident ) { x }
+%inline mdident: x=loc(_mdident) { x }
 
 %inline _ident:
-| x=LIDENT { x }
-| x=UIDENT { x }
+| x=_lident { x }
+| x=_uident { x }
 
 %inline ident:
 | x=loc(_ident) { x }
@@ -592,16 +613,16 @@ genqident(X):
 
 
 (* -------------------------------------------------------------------- *)
-%inline  qident: x=genqident(_ident) { x }
-%inline uqident: x=genqident(UIDENT) { x }
-%inline lqident: x=genqident(LIDENT) { x }
+%inline  qident: x=genqident(_ident ) { x }
+%inline uqident: x=genqident(_uident) { x }
+%inline lqident: x=genqident(_lident) { x }
 
 (* -------------------------------------------------------------------- *)
 %inline _boident:
-| x=LIDENT        { x }
-| x=UIDENT        { x }
-| x=PUNIOP        { x }
-| x=PBINOP        { x }
+| x=_lident { x }
+| x=_uident { x }
+| x=PUNIOP  { x }
+| x=PBINOP  { x }
 
 | x=loc(STRING)   {
     if not (EcCoreLib.is_mixfix_op (unloc x)) then
@@ -680,7 +701,7 @@ fident:
 
 (* -------------------------------------------------------------------- *)
 pside_:
-| x=LIDENT     { (0, Printf.sprintf "%s" x) }
+| x=_lident    { (0, Printf.sprintf "%s" x) }
 | x=word       { (0, Printf.sprintf "%d" x) }
 | ADD x=pside_ { (1 + fst x, snd x) }
 
@@ -1703,9 +1724,9 @@ tselect:
 (* tactic                                                               *)
 
 intro_pattern_1_name:
-| s=LIDENT   { s }
-| s=UIDENT   { s }
-| s=MIDENT   { s }
+| s=_lident { s }
+| s=_uident { s }
+| s=_mident { s }
 
 intro_pattern_1:
 | UNDERSCORE
@@ -2894,8 +2915,11 @@ global_action:
 | PRAGMA MINUS x=pragma { Goption (x, false) }
 
 pragma_r:
-| x=LIDENT { x }
-| u=UIDENT COLON x=LIDENT { Printf.sprintf "%s:%s" u x }
+| x=_lident
+    { x }
+
+| u=_uident COLON x=_lident
+    { Printf.sprintf "%s:%s" u x }
 
 pragma:
 | x=loc(pragma_r) { x }
