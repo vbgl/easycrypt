@@ -14,11 +14,14 @@ open EcTypes
  * - m  is the map to be updated
  * - x  is the index to update
  * - ty is the type of the value [m] *)
+type lvmap = 
+    (EcPath.path * EcTypes.ty list)
+  *  EcTypes.prog_var * EcTypes.expr * EcTypes.ty
+
 type lvalue =
   | LvVar   of (EcTypes.prog_var * EcTypes.ty)
   | LvTuple of (EcTypes.prog_var * EcTypes.ty) list
-  | LvMap   of (EcPath.path * EcTypes.ty list) *
-                  EcTypes.prog_var * EcTypes.expr * EcTypes.ty
+  | LvMap   of lvmap
 
 val lv_equal : lvalue -> lvalue -> bool
 val symbol_of_lv : lvalue -> symbol
@@ -75,12 +78,11 @@ val s_if       : expr * stmt * stmt -> stmt
 val s_while    : expr * stmt -> stmt
 val s_assert   : expr -> stmt
 val s_abstract : EcIdent.t -> stmt
-
-val s_seq   : stmt -> stmt -> stmt
-val s_empty : stmt
+val s_seq      : stmt -> stmt -> stmt
+val s_empty    : stmt
 
 val stmt  : instr list -> stmt
-val rstmt : instr list -> stmt (* = stmt (rev s) *)
+val rstmt : instr list -> stmt
 
 val s_split : int -> stmt -> instr list * instr list
 
