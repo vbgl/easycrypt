@@ -2164,7 +2164,7 @@ logtactic:
 | REWRITE a=rwarg+
    { Prewrite (a, None) }
 
-| REWRITE a=rwarg+ IN x=lident
+| REWRITE a=rwarg+ IN x=ident
    { Prewrite (a, Some x) }
 
 | RWNORMAL f=sform WITH ps=qident+
