@@ -322,6 +322,7 @@ end
 
 (* -------------------------------------------------------------------- *)
 val destr_local     : form -> EcIdent.t
+val destr_pvar      : form -> prog_var * form
 val destr_tuple     : form -> form list
 val destr_op        : form -> EcPath.path * ty list
 val destr_app       : form -> form * form list
@@ -374,6 +375,7 @@ val is_let       : form -> bool
 val is_eq        : form -> bool
 val is_local     : form -> bool
 val is_local_id  : EcIdent.t -> form -> bool
+val is_pvar      : form -> bool
 val is_equivF    : form -> bool
 val is_equivS    : form -> bool
 val is_eagerF    : form -> bool
