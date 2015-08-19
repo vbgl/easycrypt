@@ -268,6 +268,7 @@ and pgty =
 | PGTY_ModTy of pmodule_type_restr
 | PGTY_Mem
 
+(* -------------------------------------------------------------------- *)
 let rec pf_ident f =
   match unloc f with
   | PFident ({ pl_desc = ([], x) }, _) -> Some x
@@ -275,6 +276,9 @@ let rec pf_ident f =
   | _ -> None
 
 (* -------------------------------------------------------------------- *)
+type ppattern =
+| PPApp of (pqsymbol * ptyannot option) * psymbol list
+
 type pop_def =
   | PO_abstr of pty
   | PO_concr of pty * pexpr
@@ -288,7 +292,7 @@ and pop_branch = {
 
 and pop_pattern = {
   pop_name    : psymbol;
-  pop_pattern : (pqsymbol * ptyannot option) * psymbol list;
+  pop_pattern : ppattern;
 }
 
 type poperator = {
@@ -855,6 +859,12 @@ type proofmode = {
 }
 
 (* -------------------------------------------------------------------- *)
+type tcdump = {
+  tcd_source : string * (int * int);
+  tcd_output : string;
+}
+
+(* -------------------------------------------------------------------- *)
 type global_action =
   | Gdeclare     of pdeclare
   | Gmodule      of pmodule_def
@@ -878,6 +888,7 @@ type global_action =
   | GsctClose    of psymbol option
   | Grealize     of prealize located
   | Gtactics     of [`Proof of proofmode | `Actual of ptactic list]
+  | Gtcdump      of (tcdump * ptactic list)
   | Gprover_info of pprover_infos
   | Gsave        of EcLocation.t
   | Gpragma      of psymbol

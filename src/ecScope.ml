@@ -599,6 +599,9 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Tactics = struct
+  type prinfos =
+    EcCoreGoal.proofenv * (EcCoreGoal.handle * EcCoreGoal.handle list)
+
   let pi scope pi = Prover.do_prover_info scope pi
 
   let proof (scope : scope) mode (strict : bool) =
@@ -638,7 +641,8 @@ module Tactics = struct
     let pac = oget (puc).puc_active in
 
     match pac.puc_jdg with
-    | PSNoCheck -> scope
+    | PSNoCheck ->
+        None, scope
 
     | PSCheck juc ->
         let module TTC = EcHiTacticals in
@@ -660,13 +664,17 @@ module Tactics = struct
           EcHiGoal.tt_smtmode    = htmode;
           EcHiGoal.tt_implicits  = Options.get_implicits scope; } in
 
-        let juc   = TTC.process ttenv tac juc in
-        let pac   = { pac with puc_jdg = PSCheck juc } in
-          { scope with sc_pr_uc = Some { puc with puc_active = Some pac; } }
+        let hds, juc = TTC.process ttenv tac juc in
+        let penv = EcCoreGoal.proofenv_of_proof juc in
+
+        let pac = { pac with puc_jdg = PSCheck juc } in
+        let puc = { puc with puc_active = Some pac; } in
+        let scope = { scope with sc_pr_uc = Some puc } in
+        Some (penv, hds), scope
 
   let process_core mark mode (scope : scope) (ts : ptactic_core list) =
     let ts = List.map (fun t -> { pt_core = t; pt_intros = []; }) ts in
-      process_r mark mode scope ts
+    snd (process_r mark mode scope ts)
 
   let process scope mode tac =
     process_r true mode scope tac
@@ -860,7 +868,7 @@ module Ax = struct
     let tc = { pl_loc = loc; pl_desc = Pby (Some tc) } in
     let tc = { pt_core = tc; pt_intros = []; } in
 
-    let scope = Tactics.process_r false mode scope [tc] in
+    let _, scope = Tactics.process_r false mode scope [tc] in
     save scope loc
 
   (* ------------------------------------------------------------------ *)
@@ -1425,7 +1433,7 @@ module Ty = struct
           let escope = scope in
           let escope = Ax.start_lemma escope pucflags check x ax in
           let escope = Tactics.proof escope mode true in
-          let escope = Tactics.process_r false mode escope [t] in
+          let escope = snd (Tactics.process_r false mode escope [t]) in
             ignore (Ax.save escope pt.pl_loc))
         axs
 
@@ -2336,7 +2344,7 @@ module Cloning = struct
           let escope = { scope with sc_env = axc.C.axc_env; } in
           let escope = Ax.start_lemma escope pucflags check x ax in
           let escope = Tactics.proof escope mode true in
-          let escope = Tactics.process_r false mode escope [t] in
+          let escope = snd (Tactics.process_r false mode escope [t]) in
             ignore (Ax.save escope pt.pl_loc); None)
       proofs
     in

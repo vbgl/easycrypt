@@ -8,6 +8,7 @@
   open EcLocation
   open EcParsetree
 
+  module L  = Lexing
   module BI = EcBigInt
 
   let parse_error loc msg = raise (ParseError (loc, msg))
@@ -359,6 +360,7 @@
 %token DOTDOT
 %token DOTTICK
 %token DROP
+%token DUMP
 %token EAGER
 %token ELIF
 %token ELIM
@@ -558,6 +560,7 @@ _lident:
 | RIGHT    { "right"  }
 | STRICT   { "strict" }
 | EXPECT   { "expect" }
+| DUMP     { "dump"   }
 
 %inline _uident:
 | x=UIDENT { x }
@@ -1602,24 +1605,24 @@ opbr:
 
 opptn(BOP):
 | c=qoident tvi=tvars_app? ps=ident*
-    { ((c, tvi), ps) }
+    { PPApp ((c, tvi), ps) }
 
 | LBRACKET tvi=tvars_app? RBRACKET {
     let loc = EcLocation.make $startpos $endpos in
-      ((pqsymb_of_symb loc EcCoreLib.s_nil, tvi), [])
+    PPApp ((pqsymb_of_symb loc EcCoreLib.s_nil, tvi), [])
   }
 
 | op=loc(uniop) tvi=tvars_app? x=ident
-    { ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x]) }
+    { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x]) }
 
 | x1=ident op=loc(NE) tvi=tvars_app? x2=ident
-    { ((pqsymb_of_symb op.pl_loc "[!]", tvi), [x1; x2]) }
+    { PPApp ((pqsymb_of_symb op.pl_loc "[!]", tvi), [x1; x2]) }
 
 | x1=ident op=loc(BOP) tvi=tvars_app? x2=ident
-    { ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
+    { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
 | x1=ident op=loc(ordering_op) tvi=tvars_app? x2=ident
-    { ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
+    { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
 predicate:
 | PRED x = oident
@@ -2674,6 +2677,26 @@ proofmodename:
 | STRICT { `Strict }
 
 (* -------------------------------------------------------------------- *)
+tcd_toptactic:
+| t=toptactic {
+    let l1 = $startpos(t) in
+    let l2 = $endpos(t) in
+
+    if l1.L.pos_fname <> l2.L.pos_fname then
+      parse_error
+        (EcLocation.make $startpos $endpos)
+        (Some "<dump> command cannot span multiple files");
+    ((l1.L.pos_fname, (l1.L.pos_cnum, l2.L.pos_cnum)), t)
+  }
+
+tactic_dump:
+| DUMP aout=STRING t=paren(tcd_toptactic)
+  {  let infos = {
+      tcd_source = fst t;
+      tcd_output = aout;
+    } in (infos, snd t) }
+
+(* -------------------------------------------------------------------- *)
 (* Theory cloning                                                       *)
 
 theory_clone:
@@ -2905,6 +2928,7 @@ global_action:
 | predicate        { Gpredicate   $1 }
 | axiom            { Gaxiom       $1 }
 | tactics_or_prf   { Gtactics     $1 }
+| tactic_dump      { Gtcdump      $1 }
 | x=loc(realize)   { Grealize     x  }
 | gprover_info     { Gprover_info $1 }
 | addrw            { Gaddrw       $1 }
