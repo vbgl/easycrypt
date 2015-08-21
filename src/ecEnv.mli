@@ -51,6 +51,7 @@ type lookup_error = [
 ]
 
 exception LookupFailure of lookup_error
+exception DuplicatedBinding of symbol
 
 (* -------------------------------------------------------------------- *)
 exception NotReducible
