@@ -455,7 +455,10 @@ let rec process_rewrite1 ttenv ?target ri tc =
               when mode = `Implicit
         ->
           let env = FApi.tc1_env tc in
-          let pt  = PT.tc1_process_full_pterm ~implicits:(implicits mode) tc pt in
+          let pt  =
+            PT.process_full_pterm ~implicits:(implicits mode)
+              (PT.ptenv_of_penv hyps !!tc) pt
+          in
 
           if    is_ptglobal pt.PT.ptev_pt.pt_head
              && List.is_empty pt.PT.ptev_pt.pt_args
@@ -470,8 +473,10 @@ let rec process_rewrite1 ttenv ?target ri tc =
             process_rewrite1_core (theside, o) pt tc
 
         | _ ->
-          let pt = PT.tc1_process_full_pterm ~implicits:(implicits mode) tc pt in
-          process_rewrite1_core ?target (theside, o) pt tc
+          let pt =
+            PT.process_full_pterm ~implicits:(implicits mode)
+              (PT.ptenv_of_penv hyps !!tc) pt
+          in process_rewrite1_core ?target (theside, o) pt tc
         in
 
       let doall tc = t_ors (List.map do1 pts) tc in
