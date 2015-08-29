@@ -1645,16 +1645,19 @@ intro_pattern_1_name:
 
 intro_pattern_1:
 | UNDERSCORE
-    { `NoName }
+   { `NoName }
+
+| ADD
+   { `Temp }
 
 | QUESTION
    { `FindName }
 
 | s=intro_pattern_1_name
-    {`NoRename s}
+   { `NoRename s }
 
 | s=intro_pattern_1_name NOT
-    {`WithRename s}
+   { `WithRename s }
 
 %inline icasemode:
 | /* empty */ { `One  }
