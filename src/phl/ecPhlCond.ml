@@ -180,7 +180,7 @@ let t_muhoare_cond_det tc =
   (EcPhlConseq.t_muhoareS_conseq pr1 hs.muh_po @+ [
     t_intro_i mu @! 
       EcHiGoal.t_apply_prept (`UG lpre) @!
-      t_generalize_hyp ~clear:true mu;
+      t_generalize_hyp ~clear:`Yes mu;
     t_logic_trivial;
     EcPhlCase.t_hl_case se @+ [
       t_branch true;
