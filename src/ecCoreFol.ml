@@ -1253,7 +1253,7 @@ let quantif_of_equantif (qt : equantif) =
 let form_of_expr mem_mt =
   let mem = lazy (mem_mt
     |> omap (fun (mem, mt) -> f_local mem (tmem mt))
-    |> oget) in
+    |> oget ?exn:None) in
 
   let rec form_of_expr (e : expr) =
     match e.e_node with
