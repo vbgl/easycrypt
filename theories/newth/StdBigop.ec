@@ -44,5 +44,11 @@ clone NewBigop as BBA with
 clone NewBigop as BBM with
   type t <- bool,
   op Support.idm <- true,
-  op Support.(+)  <- Pervasive.( /\ )
-  proof Support.Axioms.* by (delta;smt).  
+  op Support.(+) <- Pervasive.( /\ )
+  proof Support.Axioms.* by (delta; smt).  
+
+clone NewBigop as BBO with
+  type t <- bool,
+  op Support.idm <- false,
+  op Support.(+) <- Bool.( || )
+  proof Support.Axioms.* by (delta; smt).  
