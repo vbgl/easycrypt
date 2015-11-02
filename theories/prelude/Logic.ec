@@ -378,6 +378,18 @@ lemma nosmt tuple9_ind :
 by [].
 
 (* -------------------------------------------------------------------- *)
+op choiceb ['a] (P : 'a -> bool) (x0 : 'a) : 'a.
+
+axiom choicebP ['a] (P : 'a -> bool) (x0 : 'a):
+  (exists x, P x) => P (choiceb P x0).
+
+axiom choiceb_dfl ['a] (P : 'a -> bool) (x0 : 'a):
+  (forall x, !P x) => choiceb P x0 = x0.
+
+axiom nosmt eq_choice ['a] (P Q : 'a -> bool) (x0 : 'a):
+  (forall x, P x <=> Q x) => choiceb P x0 = choiceb Q x0.
+
+(* -------------------------------------------------------------------- *)
 axiom nosmt funchoice ['a 'b] (P : 'a -> 'b -> bool):
      (forall x, exists y, P x y)
   => (exists f, forall x, P x (f x)).
