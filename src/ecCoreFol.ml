@@ -1241,27 +1241,60 @@ let is_pr        f = is_from_destr destr_pr        f
 let is_eq_or_iff f = (is_eq f) || (is_iff f)
 
 (* -------------------------------------------------------------------- *)
+let quantif_of_equantif (qt : equantif) =
+  match qt with
+  | `EForall -> Lforall
+  | `EExists -> Lexists
 
-let form_of_expr mem_mt (e: expr) =
-  let mem = 
-    lazy (match mem_mt with 
-    | None -> assert false
-    | Some (mem,mt) -> f_local mem (tmem mt)) in
-  let rec form_of_expr e = 
+(* -------------------------------------------------------------------- *)
+let form_of_expr mem_mt =
+  let mem = lazy (mem_mt
+    |> omap (fun (mem, mt) -> f_local mem (tmem mt))
+    |> oget) in
+
+  let rec form_of_expr (e : expr) =
     match e.e_node with
-    | Eint n -> f_int n
-    | Elocal id -> f_local id e.e_ty
-    | Evar pv -> f_pvar pv e.e_ty (Lazy.force mem)
-    | Eop (op,tys) -> f_op op tys e.e_ty
-    | Eapp (ef,es) -> f_app (form_of_expr ef) (List.map form_of_expr es) e.e_ty
-    | Elet (lpt,e1,e2) -> f_let lpt (form_of_expr e1) (form_of_expr e2)
-    | Etuple es -> f_tuple (List.map form_of_expr es)
-    | Eproj(e1,i) -> f_proj (form_of_expr e1) i e.e_ty
-    | Eif (e1,e2,e3) ->
-      f_if (form_of_expr e1) (form_of_expr e2) (form_of_expr e3)
-    | Elam(b,e) ->
-      f_lambda (List.map (fun (x,ty) -> (x,GTty ty)) b) (form_of_expr e) in
-  form_of_expr e
+    | Eint n ->
+       f_int n
+  
+    | Elocal id ->
+       f_local id e.e_ty
+  
+    | Evar pv ->
+       f_pvar pv e.e_ty (Lazy.force mem)
+  
+    | Eop (op, tys) ->
+       f_op op tys e.e_ty
+  
+    | Eapp (ef, es) ->
+       f_app (form_of_expr ef) (List.map form_of_expr es) e.e_ty
+  
+    | Elet (lpt, e1, e2) ->
+       f_let lpt (form_of_expr e1) (form_of_expr e2)
+  
+    | Etuple es ->
+       f_tuple (List.map form_of_expr es)
+  
+    | Eproj (e1, i) ->
+       f_proj (form_of_expr e1) i e.e_ty
+  
+    | Eif (e1, e2, e3) ->
+       let e1 = form_of_expr e1 in
+       let e2 = form_of_expr e2 in
+       let e3 = form_of_expr e3 in
+       f_if e1 e2 e3
+  
+    | Elam (b, e) ->
+       f_lambda
+         (List.map (fun (x, ty) -> (x, GTty ty)) b)
+         (form_of_expr e)
+  
+    | Equant (qt, b, e) ->
+       let b = List.map (fun (x, ty) -> (x, GTty ty)) b in
+       let e = form_of_expr e in
+       f_quant (quantif_of_equantif qt) b e
+
+  in fun e -> form_of_expr e
 
 (* -------------------------------------------------------------------- *)
 type f_subst = {
