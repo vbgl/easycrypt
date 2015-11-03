@@ -472,11 +472,11 @@ let rec process_rewrite1 ttenv ?target ri tc =
             let ls = EcEnv.Ax.all ~name:(unloc p) env in
 
             let do1 (lemma, _) tc =
-              let pt = PT.pt_of_uglobal !!tc (FApi.tc1_hyps tc) lemma in
-                process_rewrite1_core (theside, o) pt tc in
+              let pt = PT.pt_of_uglobal !!tc hyps lemma in
+                process_rewrite1_core ?target (theside, o) pt tc in
               t_ors (List.map do1 ls) tc
           end else
-            process_rewrite1_core (theside, o) pt tc
+            process_rewrite1_core ?target (theside, o) pt tc
 
         | _ ->
           let pt =
