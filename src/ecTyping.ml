@@ -2227,8 +2227,6 @@ let trans_form_or_pattern env (ps, ue) pf tt =
           ps := Mid.add x ty !ps; f_local x ty
     end
 
-    | PFmem _ -> tyerror f.pl_loc env MemNotAllowed
-
     | PFscope (popsc, f) ->
         let opsc = lookup_scope env popsc in
           transf_r (Some opsc) env f

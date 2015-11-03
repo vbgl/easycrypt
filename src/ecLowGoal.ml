@@ -257,7 +257,9 @@ let t_clears ?leniant xs tc =
 
 (* -------------------------------------------------------------------- *)
 module LowIntro = struct
-  let valid_value_name (x : symbol) = x = "_" || EcIo.is_sym_ident x
+  let valid_value_name (x : symbol) =
+    x = "_" || EcIo.is_sym_ident x || EcIo.is_mem_ident x
+
   let valid_mod_name   (x : symbol) = x = "_" || EcIo.is_mod_ident x
   let valid_mem_name   (x : symbol) = x = "_" || EcIo.is_mem_ident x
   let valid_mdistr_name(x : symbol) = x = "_" || EcIo.is_mdistr_ident x

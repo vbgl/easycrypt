@@ -589,6 +589,7 @@ _lident:
 %inline _ident:
 | x=_lident { x }
 | x=_uident { x }
+| x=_mident { x }
 
 %inline ident:
 | x=loc(_ident) { x }
@@ -634,6 +635,7 @@ genqident(X):
 %inline _boident:
 | x=_lident { x }
 | x=_uident { x }
+| x=_mident { x }
 | x=PUNIOP  { x }
 | x=PBINOP  { x }
 
@@ -720,8 +722,8 @@ is_uniop: uniop EOF {}
 
 (* -------------------------------------------------------------------- *)
 pside_:
-| x=_lident     { (0, Printf.sprintf "%s" x) }
-| x=word        { (0, Printf.sprintf "%d" x) }
+| x=_lident     { (0, Printf.sprintf "&%s" x) }
+| x=word        { (0, Printf.sprintf "&%d" x) }
 | PLUS x=pside_ { (1 + fst x, snd x) }
 
 pside:
@@ -883,20 +885,23 @@ expr_chained_orderings:
               (peapp_symb op.pl_loc (unloc op) ti [le; e2])],
          e2) }
 
-%inline pty_varty:
-| x=ident+
+%inline pty_varty(X):
+| x=X+
    { let loc = EcLocation.make $startpos $endpos in
        (x, mk_loc loc PTunivar) }
 
-| x=ident+ COLON ty=loc(type_exp)
+| x=X+ COLON ty=loc(type_exp)
    { (x, ty) }
 
-ptybinding1:
-| LPAREN bds=plist1(pty_varty, COMMA) RPAREN { bds }
-| x=ident { [[x], mk_loc x.pl_loc PTunivar] }
+ptybinding1_r(X):
+| LPAREN bds=plist1(pty_varty(X), COMMA) RPAREN { bds }
+| x=X { [[x], mk_loc x.pl_loc PTunivar] }
 
-ptybindings:
-| x=ptybinding1+ { List.flatten x }
+ptybindings_r(X):
+| x=ptybinding1_r(X)+ { List.flatten x }
+
+%inline ptybindings:
+| x=ptybindings_r(ident) { x }
 
 (* -------------------------------------------------------------------- *)
 (* Formulas                                                             *)
@@ -933,12 +938,6 @@ sform_u(P):
 
 | x=qoident ti=tvars_app?
    { PFident (x, ti) }
-
-| x=mident
-   { PFmem (x, `Mem) }
-
-| x=mdident
-   { PFmem (x, `Distr) }
 
 | se=sform_r(P) op=loc(FROM_INT)
    { let id = PFident(mk_loc op.pl_loc EcCoreLib.s_real_of_int, None) in
@@ -994,7 +993,7 @@ sform_u(P):
 | EAGER LBRACKET eb=eager_body(P) RBRACKET { eb }
 
 | PR LBRACKET
-    mp=loc(fident) args=paren(plist0(form_r(P), COMMA)) AT pn=mident
+    mp=loc(fident) args=paren(plist0(form_r(P), COMMA)) AT pn=ident
     COLON event=form_r(P)
   RBRACKET
     { PFprob (mp, args, pn, event) }
@@ -1113,7 +1112,8 @@ eager_body(P):
     { PFeagerF (pre, (s1, mp1, mp2,s2), post) }
 
 pgtybinding1:
-| x=ptybinding1 { List.map (fun (xs,ty) -> xs, PGTY_Type ty) x }
+| x=ptybinding1_r(or_(lident, uident))
+    { List.map (fun (xs,ty) -> xs, PGTY_Type ty) x }
 
 | LPAREN x=uident LTCOLON mi=mod_type_restr RPAREN
     { [[x], PGTY_ModTy mi] }
@@ -3121,3 +3121,7 @@ __rlist1(X, S):                         (* left-recursive *)
 %inline ior_(X, Y):
 | x=X { `Left  x }
 | y=Y { `Right y }
+
+%inline or_(X, Y):
+| x=X { x }
+| y=Y { y }

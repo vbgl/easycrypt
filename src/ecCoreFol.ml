@@ -35,9 +35,9 @@ type quantif =
 type binding  = (EcIdent.t * gty)
 type bindings = binding list
 
-let mhr    = EcIdent.create "hr"
-let mleft  = EcIdent.create "1"
-let mright = EcIdent.create "2"
+let mhr    = EcIdent.create "&hr"
+let mleft  = EcIdent.create "&1"
+let mright = EcIdent.create "&2"
 
 type hoarecmp = FHle | FHeq | FHge
 
