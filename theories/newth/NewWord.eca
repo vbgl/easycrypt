@@ -1,0 +1,177 @@
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2012-2015 - IMDEA Software Institute and INRIA
+ * Distributed under the terms of the CeCILL-B licence.
+ * -------------------------------------------------------------------- *)
+
+(* -------------------------------------------------------------------- *)
+require import Option Pred Fun Int Real List.
+require (*ab*) FinType Subtype Tuple.
+
+(* -------------------------------------------------------------------- *)
+clone import FinType as Alphabet.
+
+op l : {int | 0 < l} as gt0_l.
+
+type word.
+
+clone include Subtype with
+  type T    <- t list,
+  type sT   <- word,
+  pred P xs <- size xs = l.
+
+(* -------------------------------------------------------------------- *)
+op "_.[_]" (w : word) (i : int): t = Array."_.[_]" (val w) i
+  axiomatized by selE.
+
+op "_.[_<-_]" w i x = insubd (Array."_.[_<-_]" (val w) i x)
+  axiomatized by updE.
+
+lemma wordP (w1 w2 : word):
+      w1 = w2
+  <=> forall (i:int), 0 <= i < l => w1.[i] = w2.[i].
+proof.
+split=> //= h.
+by apply/val_inj/Array.arrayP; rewrite !valP /= => i /h; rewrite !selE.
+qed.
+
+lemma sel_upd (w : word) (x : t) (i j : int):
+    w.[i <- x].[j]
+  = if 0 <= i < l /\ j = i then x else w.[j].
+proof.
+rewrite !selE updE val_insubd Array.size_set valP /= -(valP w).
+exact Array.get_set.
+qed.
+
+lemma upd_out (n : int) (a : t) (w : word):
+  !(0 <= n < l) =>
+  w.[n <- a] = w.
+proof.
+move=> n_out_of_bounds; apply/wordP=> i i_in_bounds.
+by rewrite sel_upd n_out_of_bounds.
+qed.
+
+lemma upd_neg (n : int) (a : t) (w : word):
+  n < 0 =>
+  w.[n <- a] = w.
+proof. by rewrite ltzNge=> gt0_n; rewrite upd_out 1:gt0_n. qed.
+
+lemma upd_gt_l (n : int) (a : t) (w : word):
+  l <= n =>
+  w.[n <- a] = w.
+proof. by rewrite lezNgt=> lel_n; rewrite upd_out 1:lel_n. qed.
+
+lemma upd_upd (w : word) (n n' : int) (x x' : t):
+  forall i,
+       w.[n <- x].[n' <- x'].[i]
+    =  if   n = n'
+       then w.[n' <- x'].[i]
+       else w.[n' <- x'].[n <- x].[i].
+proof.
+case (n = n')=> [->> /= |].
+  move=> i; rewrite !sel_upd; case (i = n')=> //=.
+  by case (0 <= n' < l).
+move=> ne_n_n' i; case (i = n')=> [->> /= {i} |].
+  by rewrite !sel_upd /= @(eq_sym n') ne_n_n'.
+move=> ne_i_n'; case (i = n)=> [->> /= {i} |].
+  by rewrite !sel_upd /= ne_n_n'.
+by move=> ne_i_n; rewrite !sel_upd ne_i_n ne_i_n'.
+qed.
+
+lemma upd_upd_eq (w : word) (n : int) (x x' : t) i:
+  w.[n <- x].[n <- x'].[i] = w.[n <- x'].[i].
+proof. by rewrite upd_upd. qed.
+
+(* -------------------------------------------------------------------- *)
+op mkword f: word = insubd (mkseq f l)
+  axiomatized by mkwordE.
+
+lemma sel_mkword f i: 0 <= i < l => (mkword f).[i] = f i.
+proof.
+by move=> i_bnd; rewrite mkwordE selE val_insubd size_mkseq; smt.
+qed.
+
+(* -------------------------------------------------------------------- *)
+op map (f: t -> t) (w : word): word = insubd (map f (val w))
+  axiomatized by mapE.
+
+lemma sel_map f w i: 0 <= i < l => (map f w).[i] = f w.[i].
+proof.
+move=> i_bnd; rewrite mapE !selE val_insubd size_map valP /=.
+by rewrite !Array.getE; apply/nth_map; rewrite valP.
+qed.
+
+(* -------------------------------------------------------------------- *)
+op map2 (f: t -> t -> t) (w1 w2 : word): word =
+  mkword (fun i => f w1.[i] w2.[i])
+  axiomatized by map2E.
+
+lemma sel_map2 f w1 w2 i: 0 <= i < l =>
+  (map2 f w1 w2).[i] = f w1.[i] w2.[i].
+proof. by move=> i_in_bounds; rewrite map2E sel_mkword. qed.
+
+(* -------------------------------------------------------------------- *)
+clone Tuple as Witness with
+  type t            <- t,
+    op Support.enum <- enum
+proof * by exact/enum_spec.
+
+clone include FinType with
+  type t    <- word,
+    op enum = map (odflt witness \o insub) (Witness.wordn l)
+proof *.
+  realize enum_spec.
+  move=> x; have <- := Witness.word_spec l (val x) _.
+    by rewrite valP /max gt0_l.
+  rewrite count_map; apply/eq_in_count.
+  move=> w; rewrite /preim /(\o) /pred1 /=.
+  rewrite Witness.wordnP /max gt0_l /= => h.
+  have [[x'] [_ [-> <-]]|]:= insubP w; last by rewrite h.
+  by split; 2:exact/val_inj.
+  qed.
+
+lemma word_card: card = Alphabet.card^l.
+proof.
+rewrite /card /enum size_map Witness.size_wordn /Witness.Support.card.
+by rewrite /max gt0_l.
+qed.
+
+lemma non_empty: 0 < card
+by [].
+
+(* -------------------------------------------------------------------- *)
+theory DWord.
+  require import Distr FSet Duni.
+
+  op dword : word distr = dU (FSet.oflist enum)
+    axiomatized by dwordE.
+
+  (** FIXME: This currently pokes holes through the abstraction, so we
+             can't simply let the user deal with it. Once a better
+             solution is found, remove this Dword subtheory from the
+             library and let the user define the distribution directly
+             as "dU enum", which would be the "list as multiset"
+             distribution. **)
+  lemma muP p: mu dword p = (size (filter p enum))%r/card%r.
+  proof.
+  rewrite dwordE mu_dU /Self.card !cardE.
+  have <-:= perm_eq_size enum (elems (oflist enum)) _.
+    by rewrite -{1}(undup_id enum) 1:enum_uniq// oflistK.
+  have <- //=:= perm_eq_size (filter p enum) (elems (filter p (oflist enum))).
+  rewrite filterE; apply (perm_eq_trans (filter p (elems (oflist enum)))).
+    apply/perm_eq_filter.
+    by rewrite -{1}(undup_id enum) 1:enum_uniq// oflistK.
+  pose s:= filter p (elems (oflist enum)).
+  by rewrite -{1}(undup_id s) /s 1:filter_uniq 1:uniq_elems// oflistK.
+  qed.
+
+  lemma muxP w: mu dword (pred1 w) = 1%r/card%r.
+  proof.
+  by rewrite muP size_filter count_uniq_mem 1:enum_uniq// enumP.
+  qed.
+
+  lemma supportP w: support dword w.
+  proof. rewrite /support /in_supp /mu_x muxP smt. qed.
+
+  lemma dword_ll: mu dword predT = 1%r.
+  proof. rewrite muP filter_predT -/card StdRing.RField.divrr // smt. qed.
+end DWord.

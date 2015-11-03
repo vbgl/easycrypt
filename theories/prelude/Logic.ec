@@ -156,15 +156,6 @@ proof. smt. qed.
 lemma orb_id2r (a b c : bool) : (! b => a = c) <=> (a \/ b) = (c \/ b).
 proof. smt. qed.
 
-lemma nosmt imp_nor (a b : bool) : (a => b) <=> (!a \/ b)
-by [].
-
-lemma nosmt excl_midl (a : bool) : a \/ !a
-by [].
-
-lemma nosmt absurd_and_n (a:bool) : !(a /\ !a)
-by [].
-
 (** Distributivity and/or *)
 lemma nosmt orDand : forall (a b c : bool),
   ((a \/ b) /\ c) = ((a /\ c) \/ (b /\ c))
@@ -305,80 +296,6 @@ lemma nosmt eq_trans : forall (x y z : 'a), x = y => y = z => x = z by [].
 
 lemma nosmt eq_sym_imp : forall (x y : 'a), x = y => y = x by [].
 
-(** tuples *) 
-lemma nosmt tuple2_ind : 
-  forall 
-    (p: ('a1*'a2) -> bool) 
-    (t:'a1*'a2),
-    (forall (x1:'a1) (x2:'a2), 
-       t = (x1,x2) => p (x1,x2)) => 
-    p t
-by [].
-
-lemma nosmt tuple3_ind : 
-  forall 
-    (p: ('a1*'a2*'a3) -> bool) 
-    (t:'a1*'a2*'a3),
-    (forall (x1:'a1) (x2:'a2) (x3:'a3), 
-       t = (x1,x2,x3) => p (x1,x2,x3)) => 
-    p t
-by [].
-
-lemma nosmt tuple4_ind : 
-  forall 
-    (p: ('a1*'a2*'a3*'a4) -> bool) 
-    (t:'a1*'a2*'a3*'a4),
-    (forall (x1:'a1) (x2:'a2) (x3:'a3) (x4:'a4), 
-       t = (x1,x2,x3,x4) => p (x1,x2,x3,x4)) => 
-    p t
-by [].
-
-lemma nosmt tuple5_ind : 
-  forall 
-    (p: ('a1*'a2*'a3*'a4*'a5) -> bool) 
-    (t:'a1*'a2*'a3*'a4*'a5),
-    (forall (x1:'a1) (x2:'a2) (x3:'a3) (x4:'a4) (x5:'a5), 
-       t = (x1,x2,x3,x4,x5) => p (x1,x2,x3,x4,x5)) => 
-    p t
-by [].
-
-lemma nosmt tuple6_ind : 
-  forall 
-    (p: ('a1*'a2*'a3*'a4*'a5*'a6) -> bool) 
-    (t:'a1*'a2*'a3*'a4*'a5*'a6),
-    (forall (x1:'a1) (x2:'a2) (x3:'a3) (x4:'a4) (x5:'a5) (x6:'a6), 
-       t = (x1,x2,x3,x4,x5,x6) => p (x1,x2,x3,x4,x5,x6)) => 
-    p t
-by [].
-
-lemma nosmt tuple7_ind : 
-  forall 
-    (p: ('a1*'a2*'a3*'a4*'a5*'a6*'a7) -> bool) 
-    (t:'a1*'a2*'a3*'a4*'a5*'a6*'a7),
-    (forall (x1:'a1) (x2:'a2) (x3:'a3) (x4:'a4) (x5:'a5) (x6:'a6) (x7:'a7), 
-       t = (x1,x2,x3,x4,x5,x6,x7) => p (x1,x2,x3,x4,x5,x6,x7)) => 
-    p t
-by [].
-
-lemma nosmt tuple8_ind :
-  forall 
-    (p: ('a1*'a2*'a3*'a4*'a5*'a6*'a7*'a8) -> bool) 
-    (t:'a1*'a2*'a3*'a4*'a5*'a6*'a7*'a8),
-    (forall (x1:'a1) (x2:'a2) (x3:'a3) (x4:'a4) (x5:'a5) (x6:'a6) (x7:'a7) (x8:'a8), 
-       t = (x1,x2,x3,x4,x5,x6,x7,x8) => p (x1,x2,x3,x4,x5,x6,x7,x8)) => 
-    p t
-by [].
-
-lemma nosmt tuple9_ind :
-  forall 
-    (p: ('a1*'a2*'a3*'a4*'a5*'a6*'a7*'a8*'a9) -> bool) 
-    (t:'a1*'a2*'a3*'a4*'a5*'a6*'a7*'a8*'a9),
-    (forall (x1:'a1) (x2:'a2) (x3:'a3) (x4:'a4) (x5:'a5) (x6:'a6) (x7:'a7) (x8:'a8) 
-      (x9:'a9), 
-       t = (x1,x2,x3,x4,x5,x6,x7,x8,x9) => p (x1,x2,x3,x4,x5,x6,x7,x8,x9)) => 
-    p t
-by [].
-
 (* -------------------------------------------------------------------- *)
 op choiceb ['a] (P : 'a -> bool) (x0 : 'a) : 'a.
 
@@ -395,17 +312,3 @@ axiom nosmt eq_choice ['a] (P Q : 'a -> bool) (x0 : 'a):
 axiom nosmt funchoice ['a 'b] (P : 'a -> 'b -> bool):
      (forall x, exists y, P x y)
   => (exists f, forall x, P x (f x)).
-
-(* -------------------------------------------------------------------- *)
-(* NOTE: these *internal* lemmas are only for use for tactics           *)
-lemma nosmt muhoare_if_conseq_t (a b c : bool):
-  (a /\ (b \/ c)) /\ b => a /\ b
-by [].
-
-lemma nosmt muhoare_if_conseq_f (a b c : bool):
-  (a /\ (b \/ c)) /\ !b => a /\ c
-by [].
-
-lemma nosmt muhoare_if_conseq_pre (a b : bool):
-  (a => b) => (a => a /\ b)
-by [].

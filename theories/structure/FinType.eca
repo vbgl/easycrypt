@@ -1,0 +1,26 @@
+(* --------------------------------------------------------------------
+ * Copyright (c) - 2012-2015 - IMDEA Software Institute and INRIA
+ * Distributed under the terms of the CeCILL-B licence.
+ * -------------------------------------------------------------------- *)
+
+(* -------------------------------------------------------------------- *)
+require import Pred Int List.
+
+(* -------------------------------------------------------------------- *)
+type t.
+
+op enum : t list.
+
+op card : int = size enum.
+
+axiom enum_spec : forall x, count (pred1 x) enum = 1.
+
+(* -------------------------------------------------------------------- *)
+lemma enumP : forall x, mem enum x.
+proof.
+move=> x; have: 0 < count (pred1 x) enum by rewrite enum_spec.
+by move/has_count/hasP; case=> y [h @/pred1 <-].
+qed.
+
+lemma enum_uniq : uniq enum.
+proof. by apply/count_mem_uniq=> x; rewrite enumP enum_spec. qed.

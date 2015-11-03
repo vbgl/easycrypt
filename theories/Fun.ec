@@ -5,7 +5,7 @@
  * Distributed under the terms of the CeCILL-B-V1 license
  * -------------------------------------------------------------------- *)
 
-(* Parts of this API have been imported from the [seq] library of
+(* Parts of this API have been imported from the [ssrfun] library of
  * the ssreflect library that is (c) Copyright Microsoft Corporation
  * and Inria. *)
 
@@ -17,6 +17,13 @@ op idfun (x:'a) = x.
 
 (* -------------------------------------------------------------------- *)
 pred preim ['a 'b] (f : 'a -> 'b) p x = p (f x).
+
+(* -------------------------------------------------------------------- *)
+op eta (f : 'a -> 'b) = fun x => f x
+  axiomatized by etaE.
+
+lemma nosmt etaP (f : 'a -> 'b): eta f = f.
+proof. by apply/fun_ext; rewrite etaE. qed.
 
 (* -------------------------------------------------------------------- *)
 op (\o) ['a 'b 'c] (g : 'b -> 'c) (f : 'a -> 'b) =
@@ -258,3 +265,11 @@ pred associative (o:'a -> 'a -> 'a) =
 
 pred interchange op1 op2 =
   forall (x:'a) y z t, op1 (op2 x y) (op2 z t) = op2 (op1 x z) (op1 y t).
+
+(* -------------------------------------------------------------------- *)
+(* Any extensional equality can be used to rewrite *)
+lemma ext_rewrite (ext : 'a -> 'a -> bool) (a1 a2 : 'a) P:
+     (forall x y, ext x y => x = y) (* subrel ext (=) *)
+  => ext a1 a2
+  => P a1 <=> P a2.
+proof. by move=> ext_eq /ext_eq ->. qed.

@@ -220,7 +220,10 @@ lemma nosmt set_append_right (xs0 xs1:'x array) (i:int) v:
  (xs0 || xs1).[i <- v] = (xs0 || xs1.[i - length xs0 <- v])
 by smt.
 
-axiom make_append (a:'a) (l1 l2:int) : make (l1 + l2) a = (make l1 a || make l2 a).
+lemma make_append (a:'a) (l1 l2:int):
+  0 <= l1 => 0 <= l2 => make (l1 + l2) a = (make l1 a || make l2 a).
+proof. move=> le0_l1 le0_l2; apply/array_ext; smt. qed.
+
 (* sub *)
 op sub: 'x array -> int -> int -> 'x array.
 
@@ -485,7 +488,7 @@ by smt.
 lemma take_drop (xs:'a array) (l:int):
   0 <= l <= length xs =>
   (take l xs || drop l xs) = xs
-by smt iter.
+by smt full.
 
 (* init_dep: init, but using a function that may depend
    on the rest of the array! *)
@@ -584,7 +587,7 @@ theory Darray.
   proof strict.
   rewrite /mu_x=> len_neg; case (x = empty).
     by intros=> ->; rewrite mu_neg.
-    by rewrite mu_neg // /charfun -neqF=> ->.
+    by rewrite mu_neg// /charfun pred1E=> ->.
   qed.
 
   lemma supp_neg (len:int) (d:'a distr) (x:'a array):
@@ -644,7 +647,7 @@ theory Darray.
     weight (darray len d) = 1%r.
   proof strict.
   intros leq0_len H; rewrite (weight_d d len) // H.
-  smt full ["Alt-Ergo"].
+  smt full.
   qed.
 
   (* if len is negative, then uniformity is easy to prove.
@@ -652,6 +655,6 @@ theory Darray.
      (but we need to know that it is only applied to elements of d's support,
       which justifies leaving it as an axiom for now) *)
   axiom uniform (d:'a distr) len:
-    isuniform d =>
-    isuniform (darray len d).
+    is_uniform d =>
+    is_uniform (darray len d).
 end Darray.
