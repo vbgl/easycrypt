@@ -234,7 +234,9 @@ let pf_form_match (pt : pt_env) ?mode ~ptn subject =
       raise exn
 
 (* -------------------------------------------------------------------- *)
-let pf_find_occurence (pt : pt_env) ?(keyed = false) ~ptn subject =
+let pf_find_occurence
+  (pt : pt_env) ?(withbd = false) ?(keyed = false) ~ptn subject
+=
   let module E = struct exception MatchFound end in
 
   let na = List.length (snd (EcFol.destr_app ptn)) in
@@ -280,9 +282,9 @@ let pf_find_occurence (pt : pt_env) ?(keyed = false) ~ptn subject =
     in
 
     try
-(*      if not (Mid.set_disjoint bds tp.f_fv) then
+      if not withbd && not (Mid.set_disjoint bds tp.f_fv) then
         `Continue
-      else *) begin
+      else begin
         pf_form_match ~mode pt ~ptn tp;
         raise E.MatchFound
       end

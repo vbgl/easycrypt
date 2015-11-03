@@ -16,6 +16,7 @@ type ttenv = {
   tt_provers   : EcParsetree.pprover_infos -> EcProvers.prover_infos;
   tt_smtmode   : [`Admit | `Strict | `Standard | `Report];
   tt_implicits : bool;
+  tt_withbd    : bool;
 }
 
 type engine  = ptactic_core -> backward
@@ -48,10 +49,10 @@ module LowRewrite : sig
   val find_rewrite_pattern:
     rwside -> pt_ev -> pt_ev * (form * form)
 
-  val t_rewrite_r: ?target:EcIdent.t ->
+  val t_rewrite_r: ?target:EcIdent.t -> ?withbd:bool ->
     rwside * EcMatching.occ option -> pt_ev -> backward
 
-  val t_rewrite:?target:EcIdent.t ->
+  val t_rewrite:?target:EcIdent.t -> ?withbd:bool ->
     rwside * EcMatching.occ option -> proofterm -> backward
 
   val t_autorewrite: EcPath.path list -> backward

@@ -37,6 +37,7 @@ type ttenv = {
   tt_provers   : EcParsetree.pprover_infos -> EcProvers.prover_infos;
   tt_smtmode   : [`Admit | `Strict | `Standard | `Report];
   tt_implicits : bool;
+  tt_withbd    : bool;
 }
 
 type engine = ptactic_core -> FApi.backward
@@ -195,14 +196,14 @@ module LowRewrite = struct
           find_rewrite_pattern dir pt
     end
 
-  let t_rewrite_r ?target (s, o) pt tc =
+  let t_rewrite_r ?target ?withbd (s, o) pt tc =
     let hyps, tgfp = FApi.tc1_flat ?target tc in
 
     let (pt, (f1, f2)) = find_rewrite_pattern s pt in
 
     let fp = match s with `LtoR -> f1 | `RtoL -> f2 in
 
-    (try  PT.pf_find_occurence ~keyed:true pt.PT.ptev_env ~ptn:fp tgfp
+    (try  PT.pf_find_occurence ?withbd ~keyed:true pt.PT.ptev_env ~ptn:fp tgfp
      with EcMatching.MatchFailure -> raise (RewriteError LRW_NothingToRewrite));
 
     if not (PT.can_concretize pt.PT.ptev_env) then
@@ -217,12 +218,12 @@ module LowRewrite = struct
 
     EcLowGoal.t_rewrite ?target pt (s, Some cpos) tc
 
-  let t_rewrite ?target (s, o) pt (tc : tcenv1) =
+  let t_rewrite ?target ?withbd (s, o) pt (tc : tcenv1) =
     let hyps   = FApi.tc1_hyps ?target tc in
     let pt, ax = LowApply.check `Elim pt (`Hyps (hyps, !!tc)) in
     let ptenv  = ptenv_of_penv hyps !!tc in
 
-    t_rewrite_r ?target (s, o)
+    t_rewrite_r ?target ?withbd (s, o)
       { ptev_env = ptenv; ptev_pt = pt; ptev_ax = ax; }
       tc
 
@@ -246,9 +247,9 @@ let t_rewrite_prept info pt tc =
   LowRewrite.t_rewrite_r info (pt_of_prept tc pt) tc
 
 (* -------------------------------------------------------------------- *)
-let process_rewrite1_core ?target (s, o) pt tc =
+let process_rewrite1_core ?target ?withbd (s, o) pt tc =
   try
-    LowRewrite.t_rewrite_r ?target (s, o) pt tc
+    LowRewrite.t_rewrite_r ?target ?withbd (s, o) pt tc
   with
   | LowRewrite.RewriteError e ->
       match e with
@@ -411,6 +412,8 @@ let rec process_rewrite1 ttenv ?target ri tc =
   | `Implicit -> ttenv.tt_implicits
   | `Explicit -> false in
 
+  let withbd = ttenv.tt_withbd && EcUtils.is_none target in
+
   match unloc ri with
   | RWDone b ->
       let tt = if b then t_simplify ?target:None ~delta:false else t_id in
@@ -454,7 +457,7 @@ let rec process_rewrite1 ttenv ?target ri tc =
 
           let do1 lemma tc =
             let pt = PT.pt_of_uglobal !!tc hyps lemma in
-              process_rewrite1_core ?target (theside, o) pt tc in
+              process_rewrite1_core ~withbd ?target (theside, o) pt tc in
             t_ors (List.map do1 ls) tc
 
         | { fp_head = FPNamed (p, None); fp_args = []; }
@@ -472,17 +475,17 @@ let rec process_rewrite1 ttenv ?target ri tc =
             let ls = EcEnv.Ax.all ~name:(unloc p) env in
 
             let do1 (lemma, _) tc =
-              let pt = PT.pt_of_uglobal !!tc hyps lemma in
-                process_rewrite1_core ?target (theside, o) pt tc in
+              let pt = PT.pt_of_uglobal !!tc (FApi.tc1_hyps tc) lemma in
+                process_rewrite1_core ~withbd ?target (theside, o) pt tc in
               t_ors (List.map do1 ls) tc
           end else
-            process_rewrite1_core ?target (theside, o) pt tc
+            process_rewrite1_core ~withbd ?target (theside, o) pt tc
 
         | _ ->
           let pt =
             PT.process_full_pterm ~implicits:(implicits mode)
               (PT.ptenv_of_penv hyps !!tc) pt
-          in process_rewrite1_core ?target (theside, o) pt tc
+          in process_rewrite1_core ~withbd ?target (theside, o) pt tc
         in
 
       let doall tc = t_ors (List.map do1 pts) tc in

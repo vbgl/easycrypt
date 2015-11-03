@@ -67,9 +67,11 @@ val apply_pterm_to_hole  : ?loc:EcLocation.t -> pt_ev -> pt_ev
 val apply_pterm_to_holes : ?loc:EcLocation.t -> int -> pt_ev -> pt_ev
 
 (* pattern matching - raise [MatchFailure] on failure. *)
-val pf_form_match     : pt_env -> ?mode:fmoptions -> ptn:form -> form -> unit
-val pf_unify          : pt_env -> ty -> ty -> unit
-val pf_find_occurence : pt_env -> ?keyed:bool -> ptn:form -> form -> unit
+val pf_form_match : pt_env -> ?mode:fmoptions -> ptn:form -> form -> unit
+val pf_unify      : pt_env -> ty -> ty -> unit
+
+val pf_find_occurence :
+  pt_env -> ?withbd:bool -> ?keyed:bool -> ptn:form -> form -> unit
 
 val pattern_form :
      ?name:symbol -> LDecl.hyps -> ptn:form -> form

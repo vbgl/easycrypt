@@ -237,9 +237,11 @@ end
 (* -------------------------------------------------------------------- *)
 module KnownFlags = struct
   let implicits = "implicits"
+  let withbd    = "withbd"
 
   let flags = [
     (implicits, false);
+    (withbd   , false);
   ]
 end
 
@@ -417,6 +419,12 @@ module Options = struct
 
   let set_implicits scope value =
     set scope KnownFlags.implicits value
+
+  let get_withbd scope =
+    get scope KnownFlags.withbd
+
+  let set_withbd scope value =
+    set scope KnownFlags.withbd value
 end
 
 (* -------------------------------------------------------------------- *)
@@ -697,7 +705,8 @@ module Tactics = struct
         let ttenv = {
           EcHiGoal.tt_provers    = pi scope;
           EcHiGoal.tt_smtmode    = htmode;
-          EcHiGoal.tt_implicits  = Options.get_implicits scope; } in
+          EcHiGoal.tt_implicits  = Options.get_implicits scope;
+          EcHiGoal.tt_withbd     = Options.get_withbd scope; } in
 
         let (hds, juc) =
           try  TTC.process ttenv tac juc
