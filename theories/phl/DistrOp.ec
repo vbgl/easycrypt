@@ -5,14 +5,17 @@
  * Distributed under the terms of the CeCILL-B-V1 license
  * -------------------------------------------------------------------- *)
 
-require import NewList.
+(* -------------------------------------------------------------------- *)
+require import List.
 require export DistrF.
 import Real Fun.
 
+pragma +withbd.
+
+(* -------------------------------------------------------------------- *)
 lemma distr_ext (d1 d2 : 'a distr):
        (forall (f : 'a -> real), $[f | d1] = $[f | d2]) <=> d1 = d2.
 proof. split=> //;apply eq_distr_ext. qed.
-
 
 (* ----------------------------------------------------------------- *)
 op PR (d:'a distr) (P:'a -> bool) = muf (fun x => b2r (P x)) d.

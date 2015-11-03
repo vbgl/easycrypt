@@ -6,7 +6,9 @@
  * -------------------------------------------------------------------- *)
 
 require export Indep.
-import NewList Real Int StdBigop StdRing.
+import List Real Int StdBigop StdRing.
+
+pragma +withbd.
 
 pred indepsi (d:'m distr) (Xi: int -> 'm -> 'a) (i j : int) = 
  forall (Ps : int -> 'a -> bool),
@@ -35,9 +37,9 @@ proof.
     apply (eq_trans _ (BRM.bigi predT
               (fun (k : int) => $[fun (m : 'm) => b2r (Ps (k - i) (Xi k m)) | d]) i j)).
     + rewrite -Hi;congr;apply muf_eq_compat=> m Hm {Hi}/=;congr.
-      rewrite {4}(_: i = 0 + i) 1:// BBM.big_addn; apply BBM.eq_big_nat => /= i0 Hi0.
+      rewrite {4}(_: i = 0 + i) 1:// BBM.big_addn; apply BBM.eq_big_int => /= i0 Hi0.
       rewrite (nth_map witness) 1:size_range 1:[smt ml=0] nth_range //; smt ml=0.
-    rewrite {2}(_: i = 0 + i) // BRM.big_addn; apply BRM.eq_big_nat => /= i0 Hi0.
+    rewrite {2}(_: i = 0 + i) // BRM.big_addn; apply BRM.eq_big_int => /= i0 Hi0.
     apply muf_eq_compat => m Hm.
     rewrite (nth_map witness) 1:size_range 1:[smt ml=0] nth_range //; smt ml=0.
   cut {Hi} /= [ | Hi] := Hi (fun k => Ps (k + i));1:smt.
@@ -47,9 +49,9 @@ proof.
           $[fun (x : 'm) => b2r (Ps (i0 + i) (nth witness (map Xi (range i j)) i0 x)) | d])
               0 (j - i))).
   + rewrite -Hi;congr;apply muf_eq_compat=> m Hm {Hi}/=;congr.
-      rewrite {1}(_: i = 0 + i) 1:// BBM.big_addn; apply BBM.eq_big_nat => /= i0 Hi0.
+      rewrite {1}(_: i = 0 + i) 1:// BBM.big_addn; apply BBM.eq_big_int => /= i0 Hi0.
       rewrite (nth_map witness) 1:size_range 1:[smt ml=0] nth_range //; smt ml=0.
-    rewrite {4}(_: i = 0 + i)// BRM.big_addn; apply BRM.eq_big_nat => /= i0 Hi0.
+    rewrite {4}(_: i = 0 + i)// BRM.big_addn; apply BRM.eq_big_int => /= i0 Hi0.
     apply muf_eq_compat => m Hm.
     rewrite (nth_map witness) 1:size_range 1:[smt ml=0] nth_range //; smt ml=0.  
 qed.
@@ -96,8 +98,8 @@ abstract theory INDEPi.
           $[fun m => $[fun v => b2r (Ps k (T m).[i m<- v].[fromint (T m) k]) | d] | mu]) 0 (I + 1).
   proof.
     move=> Hd Hs Hind Ps.
-    case (0 <= I) => Hi1;[right | by left;smt]. 
-    rewrite BBM.big_nat_recr // BRM.big_nat_recr //=.
+    case (0 <= I) => Hi1;[right | by left;smt].
+    rewrite BBM.big_int_recr // BRM.big_int_recr //=.
     cut ->:
       $[fun m =>  $[fun v =>
          b2r
@@ -107,14 +109,14 @@ abstract theory INDEPi.
                  | d ]| mu].
     + move:Hs;apply square_eq => /= m Hm;progress.
       apply muf_eq_compat => /= v Hv;congr;congr;2:smt.
-      apply BBM.congr_big_nat=> //=; smt.
+      apply BBM.congr_big_int=> //=; smt.
     rewrite b2r_and muf_mulc_l muf_mulc_r.
     cut ->:
       BRM.bigi predT
         (fun k => $[fun m => $[fun v => b2r (Ps k (T m).[i m <- v].[fromint (T m) k]) | d] | mu]) 0 I =
       BRM.bigi predT
         (fun k => $[fun m => b2r (Ps k (T m).[fromint (T m) k]) | mu]) 0 I.
-    + apply BRM.congr_big_nat=> //= k [_ Hk].
+    + apply BRM.congr_big_int=> //= k [_ Hk].
       move:Hs;apply square_eq => m Hm {Hm};progress. 
       rewrite -(muf_c_ll (b2r (Ps k (T m).[fromint (T m) k])) d) //.
       apply muf_eq_compat => /= v Hv;smt.

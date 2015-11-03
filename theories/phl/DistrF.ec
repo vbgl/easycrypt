@@ -10,8 +10,9 @@ require import Int Real StdRing StdOrder.
 (*---*) import RField RealOrder.
 require export Distr.
 
-(* ----------------------------------------------------------------- *)
+pragma +withbd.
 
+(* ----------------------------------------------------------------- *)
 pred positive (f:'a -> real) = forall x, 0%r <= f x.
 
 lemma add_positive (f1 f2:'a -> real) :
@@ -116,7 +117,7 @@ lemma muf_congr (f1 f2: 'a -> real) (d1 d2:'a distr):
   d1 = d2 =>
   (forall a, f1 a = f2 a) =>
   $[f1 | d1] = $[f2 | d2].
-proof. by move=> -> Hf;congr; rewrite -fun_ext. qed.
+proof. by move=> -> Hf; congr; rewrite -fun_ext. qed.
 
 lemma muf_sub (f1 f2:'a -> real) (d:'a distr):
   $[fun x => f1 x - (f2 x) | d] = $[f1 | d] - $[f2 | d].
@@ -160,8 +161,8 @@ qed.
 
 lemma muf_1_le1 (d : 'a distr): $[fun x => 1%r | d] <= 1%r.
 proof.
-  have /= <- := muf_b2r True d; rewrite b2r_true.
-  by have [] := mu_bounded d True.
+  have /= <- := muf_b2r predT d; rewrite b2r_true.
+  by have [] := mu_bounded d predT.
 qed.
 
 lemma muf_c_le c (d : 'a distr): 0 <= c => $[fun x => c%r | d] <= c%r.

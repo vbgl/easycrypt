@@ -390,3 +390,10 @@ theory Dapply.
          move: x0_g; rewrite /pred1. (* Why? *)
   qed.
 end Dapply.
+
+(* ---------------------------------------------------------------------- *)
+(* intergral of f in a distribution d *)
+op muf : ('a -> real) -> 'a distr -> real.
+
+(* Injection of bool into real *) 
+op b2r (b:bool) = if b then 1%r else 0%r.
