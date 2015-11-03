@@ -1208,6 +1208,53 @@ module TypeClass = struct
 
   let get_instances env = env.env_tci
 end
+
+(* -------------------------------------------------------------------- *)
+module BaseRw = struct
+  type t = Sp.t 
+    
+  let by_path_opt (p: EcPath.path) (env:env) = 
+    let ip = IPPath p in
+    Mip.find_opt ip env.env_rwbase
+
+  let by_path (p:EcPath.path) env = 
+    match by_path_opt p env with
+    | None -> lookup_error (`Path p)
+    | Some obj -> obj
+
+  let lookup qname env =
+    let _ip, p = MC.lookup_rwbase qname env in
+    p, by_path p env
+
+  let lookup_opt name env =
+    try_lf (fun () -> lookup name env)   
+
+  let is_base name env = 
+    match lookup_opt name env with
+    | None -> false
+    | Some _ -> true
+
+  let bind name env = 
+    let p = EcPath.pqname (root env) name in
+    let env = MC.bind_rwbase name p env in
+    let ip = IPPath p in
+    { env with 
+      env_rwbase = Mip.add ip Sp.empty env.env_rwbase;
+      env_item   = CTh_baserw name :: env.env_item
+    }
+
+  let bind_addrw p l env =
+    { env with
+      env_rwbase = 
+        Mip.change 
+          (omap (fun s -> List.fold_left (fun s r -> Sp.add r s) s l)) 
+          (IPPath p)
+          env.env_rwbase;
+      env_item = CTh_addrw(p,l) :: env.env_item
+    }
+    
+end
+
 (* -------------------------------------------------------------------- *)
 module Ty = struct
   type t = EcDecl.tydecl
@@ -1427,55 +1474,6 @@ module MemDistr = struct
     set_active (EcMemory.memory memenv)
       (push memenv env)
 end
-
-
-(* -------------------------------------------------------------------- *)
-module BaseRw = struct
-  type t = Sp.t 
-    
-  let by_path_opt (p: EcPath.path) (env:env) = 
-    let ip = IPPath p in
-    Mip.find_opt ip env.env_rwbase
-
-  let by_path (p:EcPath.path) env = 
-    match by_path_opt p env with
-    | None -> lookup_error (`Path p)
-    | Some obj -> obj
-
-  let lookup qname env =
-    let _ip, p = MC.lookup_rwbase qname env in
-    p, by_path p env
-
-  let lookup_opt name env =
-    try_lf (fun () -> lookup name env)   
-
-  let is_base name env = 
-    match lookup_opt name env with
-    | None -> false
-    | Some _ -> true
-
-  let bind name env = 
-    let p = EcPath.pqname (root env) name in
-    let env = MC.bind_rwbase name p env in
-    let ip = IPPath p in
-    { env with 
-      env_rwbase = Mip.add ip Sp.empty env.env_rwbase;
-      env_item   = CTh_baserw name :: env.env_item
-    }
-
-  let bind_addrw p l env =
-    { env with
-      env_rwbase = 
-        Mip.change 
-          (omap (fun s -> List.fold_left (fun s r -> Sp.add r s) s l)) 
-          (IPPath p)
-          env.env_rwbase;
-      env_item = CTh_addrw(p,l) :: env.env_item
-    }
-    
-end
-
-
 
 (* -------------------------------------------------------------------- *)
 module Fun = struct
