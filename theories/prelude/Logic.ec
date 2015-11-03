@@ -312,3 +312,17 @@ axiom nosmt eq_choice ['a] (P Q : 'a -> bool) (x0 : 'a):
 axiom nosmt funchoice ['a 'b] (P : 'a -> 'b -> bool):
      (forall x, exists y, P x y)
   => (exists f, forall x, P x (f x)).
+
+(* -------------------------------------------------------------------- *)
+(* NOTE: these *internal* lemmas are only for use for tactics           *)
+lemma nosmt muhoare_if_conseq_t (a b c : bool):
+  (a /\ (b \/ c)) /\ b => a /\ b
+by [].
+
+lemma nosmt muhoare_if_conseq_f (a b c : bool):
+  (a /\ (b \/ c)) /\ !b => a /\ c
+by [].
+
+lemma nosmt muhoare_if_conseq_pre (a b : bool):
+  (a => b) => (a => a /\ b)
+by [].
