@@ -2218,11 +2218,13 @@ let pp_node mode fmt node =
     pp_node_r mode stats 0 [] fmt node
 
 (* -------------------------------------------------------------------- *)
-let pp_pre (ppe : PPEnv.t) fmt pre =
+let pp_pre ?(ld=false) (ppe : PPEnv.t) fmt pre =
+  let pp_form = if ld then pp_ldform else pp_form in
   Format.fprintf fmt "@[<hov 2>pre =@ %a@]\n" (pp_form ppe) pre
 
 (* -------------------------------------------------------------------- *)
-let pp_post (ppe : PPEnv.t) fmt post =
+let pp_post ?(ld=false) (ppe : PPEnv.t) fmt post =
+  let pp_form = if ld then pp_ldform else pp_form in
   Format.fprintf fmt "@[<hov 2>post =@ %a@]\n" (pp_form ppe) post
 
 (* -------------------------------------------------------------------- *)
@@ -2249,9 +2251,9 @@ let pp_hoareS (ppe : PPEnv.t) fmt hs =
 
 (* -------------------------------------------------------------------- *)
 let pp_muhoareF (ppe : PPEnv.t) fmt hf =
-  Format.fprintf fmt "%a@\n@\n%!" (pp_ldform ppe) hf.muhf_pr;
+  Format.fprintf fmt "%a@\n%!" (pp_pre ~ld:true ppe) hf.muhf_pr;
   Format.fprintf fmt "    %a@\n%!" (pp_funname ppe) hf.muhf_f;
-  Format.fprintf fmt "@\n%a%!" (pp_ldform ppe) hf.muhf_po
+  Format.fprintf fmt "@\n%a%!" (pp_post ~ld:true ppe) hf.muhf_po
 
 (* -------------------------------------------------------------------- *)
 let pp_muhoareS (ppe : PPEnv.t) fmt hs =
@@ -2264,11 +2266,11 @@ let pp_muhoareS (ppe : PPEnv.t) fmt hs =
 (*    Format.fprintf fmt "Context : %a@\n%!" (pp_funname ppe) 
       (EcMemory.xpath (fst hs.muh_pr));
     Format.fprintf fmt "@\n%!"; *)
-    Format.fprintf fmt "%a@\n%!" (pp_ldform ppe) hs.muh_pr;
+    Format.fprintf fmt "%a@\n%!" (pp_pre ~ld:true ppe) hs.muh_pr;
     Format.fprintf fmt "@\n%!";
     Format.fprintf fmt "%a" (pp_node `Left) ppnode;
     Format.fprintf fmt "@\n%!";
-    Format.fprintf fmt "%a%!" (pp_ldform ppe) hs.muh_po
+    Format.fprintf fmt "%a%!" (pp_post ~ld:true ppe) hs.muh_po
 
 (* -------------------------------------------------------------------- *)
 let string_of_hrcmp = function
