@@ -1392,13 +1392,16 @@ module Memory = struct
     | []     -> None
     | (m,ty) :: _ -> Some (m, destr_tmem (Ty.hnorm ty env))
 
-  let lookup (me : symbol) (env : env) =
+  let rec lookup (me : symbol) (env : env) =
     let mems = MMsym.all me env.env_locals in
     let mems = List.filter (fun (_id,ty) -> is_tmem (Ty.hnorm ty env)) mems in
     try
        let id,ty = List.hd mems in
        Some(id, destr_tmem (Ty.hnorm ty env))
-    with Failure _ | Invalid_argument _ -> None
+    with Failure _ | Invalid_argument _ ->
+      if me <> "" && me.[0] <> '&' then
+        lookup ("&" ^ me) env
+      else None
 
   let set_active (me : memory) (env : env) =
     match byid me env with
