@@ -722,9 +722,9 @@ is_uniop: uniop EOF {}
 
 (* -------------------------------------------------------------------- *)
 pside_:
-| x=_lident     { (0, Printf.sprintf "&%s" x) }
-| x=word        { (0, Printf.sprintf "&%d" x) }
-| PLUS x=pside_ { (1 + fst x, snd x) }
+| x=_lident { x }
+| x=_mident { x }
+| x=word    { Printf.sprintf "&%d" x }
 
 pside:
 | x=brace(pside_) { x }

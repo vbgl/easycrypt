@@ -1125,7 +1125,6 @@ let enter mode (name : symbol) (env : env) =
   | _, _ ->
       raise InvalidStateForEnter
 
-
 (* -------------------------------------------------------------------- *)
 let ipath_of_mpath (p : mpath) =
   match p.EcPath.m_top with
@@ -1372,9 +1371,7 @@ type meerror =
 
 exception MEError of meerror
 
-
 module Memory = struct
-
   let all env =
     MMsym.fold (fun _ l all ->
       List.fold_left (fun all (id,ty) ->
@@ -1395,13 +1392,13 @@ module Memory = struct
     | []     -> None
     | (m,ty) :: _ -> Some (m, destr_tmem (Ty.hnorm ty env))
 
-  let lookup (g : int) (me : symbol) (env : env) =
+  let lookup (me : symbol) (env : env) =
     let mems = MMsym.all me env.env_locals in
     let mems = List.filter (fun (_id,ty) -> is_tmem (Ty.hnorm ty env)) mems in
-    try  
-      let id,ty = List.nth mems g in
-      Some(id, destr_tmem (Ty.hnorm ty env))
-    with Failure _ -> None
+    try
+       let id,ty = List.hd mems in
+       Some(id, destr_tmem (Ty.hnorm ty env))
+    with Failure _ | Invalid_argument _ -> None
 
   let set_active (me : memory) (env : env) =
     match byid me env with
@@ -1428,7 +1425,6 @@ end
 
 (* -------------------------------------------------------------------- *)
 module MemDistr = struct
-
   let byid (me : memory) (env : env) =
     (* FIXME: we should check that m is realy a memory i.e check its type) *)
     let memories = MMsym.all (EcIdent.name me) env.env_locals in
@@ -1441,13 +1437,13 @@ module MemDistr = struct
     | []     -> None
     | (m,ty) :: _ -> Some (m, destr_tdmem (Ty.hnorm ty env))
       
-  let lookup (g : int) (me : symbol) (env : env) =
+  let lookup (me : symbol) (env : env) =
     let mems = MMsym.all me env.env_locals in
     let mems = List.filter (fun (_id,ty) -> is_tdmem (Ty.hnorm ty env)) mems in
     try  
-      let id,ty = List.nth mems g in
+      let id,ty = List.hd mems in
       Some(id, destr_tdmem (Ty.hnorm ty env))
-    with Failure _ -> None  
+    with Failure _ | Invalid_argument _ -> None  
 
   let set_active (me : memory) (env : env) =
     match byid me env with
