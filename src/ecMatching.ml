@@ -218,6 +218,19 @@ module MEV = struct
     let v = EV.fold (fun x k v -> f x (`Form k) v) m.evm_form v in
     let v = EV.fold (fun x k v -> f x (`Mod  k) v) m.evm_mod  v in
     v
+
+  let assubst ue ev =
+    let tysubst = { ty_subst_id with ts_u = EcUnify.UniEnv.assubst ue } in
+    let subst = Fsubst.f_subst_init ~sty:tysubst () in
+
+    fold
+      (fun x v s ->
+        match v with
+        | `Form f ->
+            Fsubst.f_bind_local s x (Fsubst.f_subst subst f)
+        | `Mod m ->
+            Fsubst.f_bind_mod s x m)
+      ev subst
 end
 
 (* -------------------------------------------------------------------- *)
@@ -232,6 +245,7 @@ let fmsearch = { fm_delta = false; fm_conv = false; }
 let fmrigid  = { fm_delta = false; fm_conv = true ; }
 let fmdelta  = { fm_delta = true ; fm_conv = true ; }
 
+(* -------------------------------------------------------------------- *)
 (* Rigid unification *)
 let f_match_core opts hyps (ue, ev) ~ptn subject =
   let ue  = EcUnify.UniEnv.copy ue in
@@ -253,6 +267,7 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
     let default () =
       if opts.fm_conv then begin
         let subject = Fsubst.f_subst subst subject in
+        let ptn = Fsubst.f_subst (MEV.assubst ue !ev) ptn in
           if not (EcReduction.is_conv hyps ptn subject) then
             failure ()
       end else failure ()
@@ -289,6 +304,7 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
 
           | Some (`Set a) -> begin
               let ssbj = Fsubst.f_subst subst subject in
+
               if not (EcReduction.is_conv hyps ssbj a) then
                 failure ();
               try  EcUnify.unify env ue ptn.f_ty subject.f_ty
@@ -329,7 +345,8 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
                    let nx = EcIdent.fresh x in
                    let xsubst =
                      Mid.find_opt x mxs
-                       |> omap (fun y -> Fsubst.f_bind_local xsubst y (f_local nx xty))
+                       |> omap (fun y -> Fsubst.f_bind_local
+                            xsubst y (f_local nx xty))
                        |> odfl xsubst
                    in (xsubst, (nx, GTty xty)))
                 Fsubst.f_subst_id fs1 in
