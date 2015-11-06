@@ -1,4 +1,4 @@
-; Generated on Tue Jul 28 11:42:53 2015
+; Generated on Fri Nov  6 09:59:06 2015
 
 (defvar easycrypt-bytac-keywords '(
   "exact"
@@ -11,6 +11,7 @@
 
 (defvar easycrypt-dangerous-keywords '(
   "admit"
+  "admitted"
 ))
 
 (defvar easycrypt-global-keywords '(
@@ -18,9 +19,9 @@
   "axiomatized"
   "lemma"
   "realize"
-  "choice"
   "proof"
   "qed"
+  "abort"
   "goal"
   "end"
   "import"
@@ -44,14 +45,15 @@
   "instance"
   "print"
   "search"
-  "why3"
   "as"
   "Pr"
   "clone"
   "with"
+  "rename"
   "prover"
   "timeout"
   "why3"
+  "dump"
   "Top"
   "Self"
 ))
@@ -117,7 +119,9 @@
   "idtac"
   "move"
   "modpath"
+  "field"
   "fieldeq"
+  "ring"
   "ringeq"
   "algebra"
   "transitivity"
