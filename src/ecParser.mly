@@ -321,8 +321,11 @@
 %token<[`Raw|`Eq]> RING
 %token<[`Raw|`Eq]> FIELD
 
+
+%token ABORT
 %token ABSTRACT
 %token ADMIT
+%token ADMITTED
 %token ALGNORM
 %token ALIAS
 %token AMP
@@ -559,13 +562,15 @@
 (* -------------------------------------------------------------------- *)
 _lident:
 | x=LIDENT { x }
-| DUMP     { "dump"   }
-| EXPECT   { "expect" }
-| FIRST    { "first"  }
-| LAST     { "last"   }
-| LEFT     { "left"   }
-| RIGHT    { "right"  }
-| STRICT   { "strict" }
+| DUMP     { "dump"     }
+| EXPECT   { "expect"   }
+| FIRST    { "first"    }
+| LAST     { "last"     }
+| LEFT     { "left"     }
+| RIGHT    { "right"    }
+| STRICT   { "strict"   }
+| ADMITTED { "admitted" }
+| ABORT    { "abort"    }
 
 | x=RING  { match x with `Eq -> "ringeq"  | `Raw -> "ring"  }
 | x=FIELD { match x with `Eq -> "fieldeq" | `Raw -> "field" }
@@ -1685,6 +1690,11 @@ axiom:
 | l=local MUHOARE x=ident pd=pgtybindings? COLON p=loc(  hoare_body(none)) ao=axiom_tc
 | l=local  PHOARE x=ident pd=pgtybindings? COLON p=loc(muhoare_body(none)) ao=axiom_tc
     { mk_axiom ~local:l (x, None, pd, p) ao }
+
+proofend:
+| QED      { `Qed   }
+| ADMITTED { `Admit }
+| ABORT    { `Abort }
 
 (* -------------------------------------------------------------------- *)
 (* Theory interactive manipulation                                      *)
@@ -3002,11 +3012,10 @@ global_action:
 | x=loc(realize)   { Grealize     x  }
 | gprover_info     { Gprover_info $1 }
 | addrw            { Gaddrw       $1 }
-
-| x=loc(QED)       { Gsave x.pl_loc }
-| PRINT p=print    { Gprint     p   }
-| SEARCH x=search+ { Gsearch    x   }
-| WHY3 x=STRING    { GdumpWhy3  x   }
+| x=loc(proofend)  { Gsave        x  }
+| PRINT p=print    { Gprint       p  }
+| SEARCH x=search+ { Gsearch      x  }
+| WHY3 x=STRING    { GdumpWhy3    x  }
 
 | PRAGMA       x=pragma { Gpragma x }
 | PRAGMA PLUS  x=pragma { Goption (x, true ) }

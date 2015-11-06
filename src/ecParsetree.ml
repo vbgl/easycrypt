@@ -885,6 +885,9 @@ type tcdump = {
 }
 
 (* -------------------------------------------------------------------- *)
+type save = [ `Qed | `Admit | `Abort ]
+
+(* -------------------------------------------------------------------- *)
 type global_action =
   | Gdeclare     of pdeclare
   | Gmodule      of pmodule_def
@@ -910,7 +913,7 @@ type global_action =
   | Gtactics     of [`Proof of proofmode | `Actual of ptactic list]
   | Gtcdump      of (tcdump * ptactic list)
   | Gprover_info of pprover_infos
-  | Gsave        of EcLocation.t
+  | Gsave        of save located
   | Gpragma      of psymbol
   | Goption      of (psymbol * bool)
   | GdumpWhy3    of string
