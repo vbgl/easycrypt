@@ -200,7 +200,7 @@ lemma dsrestr_def (d:'a distr) (p:'a -> bool) (f:'a -> real):
     $[f | d || p] = 
        $[fun (x : 'a) => b2r (p x) * f x | d] / 
        $[fun (x : 'a) => b2r (p x) | d].
-proof. by rewrite /(||) dscale_def !drestr_def /weight /PR drestr_def. qed.
+proof. by rewrite /(||) dscale_def !drestr_def. qed.
 
 lemma dsrestr_ll (d:'a distr) (p:'a -> bool): 
     $[fun x => 1%r | d] = 1%r =>
