@@ -49,7 +49,7 @@ proof. by move: d; elim/distrW=> m dm; rewrite muK //; case: dm. qed.
 lemma eq_distr (d1 d2 : 'a distr):
   (d1 = d2) <=> (forall x, mu d1 x = mu d2 x).
 proof.
-  split=> [->//|eq_mu]; rewrite -@(mkK d1) -@(mkK d2).
+  split=> [->//|eq_mu]; rewrite -(@mkK d1) -(@mkK d2).
   by congr; apply/fun_ext.
 qed.
 
@@ -105,7 +105,7 @@ theory MUnit.
   lemma dunitE ['a] (E : 'a -> bool) (x : 'a):
     pr E (dunit x) = if E x then 1%r else 0%r.
   proof.
-    rewrite @(prE_fin E [x]) //.
+    rewrite (@prE_fin E [x]) //.
       by move=> y; rewrite dunit1E; case: (x = y).
     by rewrite big_mkcond big_seq1 /= dunit1xx.
   qed.
@@ -122,7 +122,7 @@ theory MUniform.
     + rewrite /muniform; case: (mem _ _) => //=.
       by apply/divr_ge0=> //; rewrite from_intMle size_ge0.
     + pose F := fun (x : 'a) => 1%r / m%r.
-      rewrite @(bigID _ _ (mem s)) @(eq_bigr _ _ F).
+      rewrite (@bigID _ _ (mem s)) (@eq_bigr _ _ F).
         by rewrite /muniform; move=> x [_ ->].
       rewrite /F big_const big1.
         by rewrite /muniform /predC; move=> x [_ ->].
@@ -141,7 +141,7 @@ theory MUniform.
      => (duniform s1 = duniform s2).
   proof.
     rewrite eq_distr => h x; rewrite !duniform1E -h.
-    case: (mem _ _)=> //=; rewrite -@(perm_eq_size (undup s2)) //.
+    case: (mem _ _)=> //=; rewrite -(@perm_eq_size (undup s2)) //.
       rewrite uniq_perm_eq ?undup_uniq //.
     by move=> y; rewrite !mem_undup h.
   qed.
@@ -150,7 +150,7 @@ theory MUniform.
     let n = 1%r / (size (undup s))%r in
     pr E (duniform s) = (count E s)%r * n.
   proof.
-    rewrite @(prE_fin E (undup s)) ?undup_uniq //.
+    rewrite (@prE_fin E (undup s)) ?undup_uniq //.
       by move=> x; rewrite duniform1E mem_undup; case: (mem _ _).
     admit.
   qed.

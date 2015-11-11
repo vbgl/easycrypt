@@ -44,7 +44,7 @@ case: (lim_sy _ gt0e) => {lim_sy} Ny lim_sy.
 case: (max_is_ub Nx Ny); (pose N := max _ _).
 move=> /lim_sx {lim_sx} lim_sx /lim_sy {lim_sy} lim_sy.
 have := ltr_add _ _ _ _ lim_sx lim_sy; rewrite ltrNge.
-by rewrite /e double_half @(distrC (s N)) ler_dist_add.
+by rewrite /e double_half (@distrC (s N)) ler_dist_add.
 qed.
 
 lemma eq_cnv s1 s2 l:
