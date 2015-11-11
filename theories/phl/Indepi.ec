@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------- *)
 
 require export Indep.
-(*---*) import List Real Int StdBigop StdRing Bigreal.BMul.
+(*---*) import List Real Int StdBigop StdRing Bigreal.BRM.
 
 pragma +withbd.
 

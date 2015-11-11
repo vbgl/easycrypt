@@ -8,7 +8,7 @@
 (* -------------------------------------------------------------------- *)
 require import List.
 require import StdBigop StdRing.
-(*---*) import Int Real Fun Option Bigreal.BMul.
+(*---*) import Int Real Fun Option Bigreal.BRM.
 require export DistrOp.
 
 pragma +withbd.
