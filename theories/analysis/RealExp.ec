@@ -129,23 +129,3 @@ qed.
 lemma rpowe_sum (P : 'a -> bool) (F : 'a -> real) s:
   e^(BRA.big P F s) = BRM.big P (fun a => e^(F a)) s.
 proof. by rewrite rpoweE exp_sum; apply/eq_bigr=> x _ /=; rewrite rpoweE. qed.
-
-
-
-(*
-lemma rpowD (x n m : real) : 0%r <= x => x ^ (n + m) = x^n * x^m.
-proof.
-rewrite /(^); case: (x < 0%r)=> //.
-
-axiom rpow_mul (x n m:real): x^(n * m) = (x^n)^m.
-axiom rpow_add (x n m:real): x^(n + m) = x^n * x^m.
-axiom rpow_mulD (x y n:real): (x*y)^n = x^n*y^n.
-axiom rpow_invD (x n:real): 0%r <> x => (inv x)^n = inv (x^n).
-
-
-
-op log : real -> real.
-axiom e_log (x:real) : e^(log x) = x.
-
-
-*)
