@@ -73,7 +73,7 @@ let destr_square env p =
   check_mu fmu;
   let fbody = f_app_simpl f [f_local mhr (EcTypes.tmem mt)] EcTypes.treal in
   (* check that f = b2r (! p ) *)
-  let np = destr_op_app1 EcCoreLib.CI_Distr.p_real_of_bool fbody in
+  let np = destr_op_app1 EcCoreLib.CI_Real.p_b2r fbody in
   let p = destr_not np in
   mt, p
 

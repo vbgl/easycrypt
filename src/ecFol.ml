@@ -114,10 +114,10 @@ let f_mu   env f1 f2 = f_mu_ty (EcUnify.destr_tdistr env f1.f_ty) f1 f2
 let fop_weight ty = f_op EcCoreLib.CI_Distr.p_weight [ty] (tfun (tdistr ty) treal) (* CORELIB *)
 let f_weight ty d = f_app (fop_weight ty) [d] treal
 
-let fop_real_of_bool = 
-  f_op EcCoreLib.CI_Distr.p_real_of_bool [] (toarrow [tbool] treal) (* CORELIB *)
+let fop_b2r = 
+  f_op EcCoreLib.CI_Real.p_b2r [] (toarrow [tbool] treal) (* CORELIB *)
 
-let f_real_of_bool f = f_app fop_real_of_bool [f] treal
+let f_real_of_bool f = f_app fop_b2r [f] treal
 
 let fop_muf ty = 
  f_op EcCoreLib.CI_Distr.p_muf [ty] (toarrow [toarrow [ty] treal; tdistr ty] treal) (* CORELIB *)
@@ -732,7 +732,7 @@ let destr_muf_b2r_not env f =
   let f1, fmu = destr_op_app2  EcCoreLib.CI_Distr.p_muf f in
   let x,t,fbody = get_lambda1 env f1 in
   (* check that fbody = b2r (! p ) *)
-  let np = destr_op_app1 EcCoreLib.CI_Distr.p_real_of_bool fbody in
+  let np = destr_op_app1 EcCoreLib.CI_Real.p_b2r fbody in
   let p = destr_not np in
   f_lambda [x,GTty t] p, fmu
 

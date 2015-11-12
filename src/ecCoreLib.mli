@@ -84,6 +84,7 @@ module CI_Real : sig
   val p_Real : path
   val p_real : path
 
+  val p_b2r         : path
   val p_real_opp    : path
   val p_real_add    : path
   val p_real_sub    : path
@@ -113,9 +114,7 @@ module CI_Distr : sig
   val p_mu      : path
   val p_mu_x    : path
   val p_weight  : path
-
-  val p_real_of_bool : path
-  val p_muf          : path 
+  val p_muf     : path 
 end
 
 (* -------------------------------------------------------------------- *)

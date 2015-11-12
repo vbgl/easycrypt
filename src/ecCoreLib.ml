@@ -82,6 +82,7 @@ module CI_Real = struct
   let p_real_ge     = _Real ">="
   let p_real_gt     = _Real ">"
   let p_rle_ge_sym  = _Real "le_ge_sym"
+  let p_b2r         = _Real "b2r"
   let p_real_of_int = List.fold_left EcPath.pqname p_Real ["FromInt"; "from_int"]
 end
 
@@ -101,7 +102,6 @@ module CI_Distr = struct
   let p_mu      = _Pervasive "mu"
   let p_mu_x    = _Distr "mu_x"
   let p_weight  = _Distr "weight"
-  let p_real_of_bool = _Distr "b2r"
   let p_muf     = _Distr "muf"
 
 end
