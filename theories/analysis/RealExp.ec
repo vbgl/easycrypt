@@ -34,6 +34,9 @@ proof. by apply/(@ltr_le_trans 2%r)/ge2_e. qed.
 lemma nosmt e_ge0 : 0%r <= e.
 proof. by apply/ltrW/e_gt0. qed.
 
+lemma nosmt exp_neq0 x : exp x <> 0%r.
+proof. by have := (exp_gt0 x); rewrite ltr_neqAle eq_sym => []. qed.
+
 lemma nosmt ln0 : ln 0%r = 0%r.
 proof. by rewrite ln_le0. qed.
 
@@ -41,7 +44,10 @@ lemma nosmt inj_exp : injective exp.
 proof. by apply/mono_inj/exp_mono. qed.
 
 lemma nosmt expN (x : real) : exp (- x) = inv (exp x).
-proof. admit. qed.
+proof.
+apply/(mulfI _ (exp_neq0 x)); rewrite -expD addrN exp0.
+by rewrite mulrV // exp_neq0.
+qed.
 
 lemma nosmt exp_mono_ltr (x y : real): (exp x < exp y) <=> (x < y).
 proof. by apply/lerW_mono/exp_mono. qed.
@@ -81,6 +87,21 @@ proof. by rewrite /(^) ltrNge => ->. qed.
 lemma nosmt rpoweE (a : real) : e^a = exp a.
 proof. by rewrite rpowE 1:e_gt0 // lnK mulr1. qed.
 
+(* -------------------------------------------------------------------- *)
+lemma rpow0 x : x^0%r = 1%r.
+proof. by rewrite /(^); case: (x <= 0%r)=> // _; rewrite mul0r exp0. qed.
+
+lemma rpow1 x : 0%r < x => x^1%r = x.
+proof. by move=> gt0x; rewrite rpowE // mul1r expK. qed.
+
+(* -------------------------------------------------------------------- *)
+lemma rpow0r n : 0%r^n = b2r (n = 0%r).
+proof. by rewrite /(^) lerr /=. qed.
+
+lemma rpow1r n : 1%r^n = 1%r.
+proof. by rewrite rpowE // ln1 mulr0 exp0. qed.
+
+(* -------------------------------------------------------------------- *)
 lemma rpoweK (x : real) : 0%r < x => e^(ln x) = x.
 proof. by rewrite rpoweE; apply/expK. qed.
 
@@ -91,17 +112,21 @@ lemma rpowe_hmono (n m:real): n <= m => e^n <= e^m.
 proof. by rewrite rpowe_mono. qed.
 
 (* -------------------------------------------------------------------- *)
-lemma rpow0 x : x^0%r = 1%r.
-proof. by rewrite /(^); case: (x <= 0%r)=> // _; rewrite mul0r exp0. qed.
+lemma rpow_gt0 (x n : real): 0%r < x => 0%r < x^n.
+proof. by move/rpowE=> ->; apply/exp_gt0. qed.
 
-lemma rpow0r n : 0%r^n = b2r (n = 0%r).
-proof. by rewrite /(^) lerr /=. qed.
+lemma rpow_ge0 (x n : real): 0%r <= x => 0%r <= x^n.
+proof.
+rewrite ler_eqVlt => [<-|/rpow_gt0 /(_ n) /ltrW] //.
+by rewrite rpow0r; case: (n = 0%r).
+qed.
 
+(* -------------------------------------------------------------------- *)
 lemma rpowD (x n m : real) : 0%r < x => x^(n + m) = x^n * x^m.
 proof. by move=> gt0x; rewrite !rpowE // mulrDl expD. qed.
 
 lemma rpowM (x n m : real) : 0%r < x => x^(n * m) = (x ^ n) ^ m.
-proof. admit. qed.
+proof. by move=> gt0x; rewrite !rpowE ?exp_gt0 // lnK mulrCA mulrA. qed.
 
 lemma rpowMr (x y n : real) :
   0%r < x => 0%r < y => (x * y)^n = x^n * y^n.
@@ -120,15 +145,6 @@ proof. by move=> gt0x gt0y; rewrite !divrE rpowMr ?invr_gt0 // rpowVr. qed.
 lemma rpow_int x n : 0%r <= x => x^(n%r) = x^n.
 proof. admit. qed.
 
-lemma rpow_gt0 (x n : real): 0%r < x => 0%r < x^n.
-proof. by move/rpowE=> ->; apply/exp_gt0. qed.
-
-lemma rpow_ge0 (x n : real): 0%r <= x => 0%r <= x^n.
-proof.
-rewrite ler_eqVlt => [<-|/rpow_gt0 /(_ n) /ltrW] //.
-by rewrite rpow0r; case: (n = 0%r).
-qed.
-
 (* -------------------------------------------------------------------- *)
 lemma rpowe_gt0 (x : real): 0%r < e^x.
 proof. by rewrite rpoweE exp_gt0. qed.
@@ -138,7 +154,7 @@ proof. by rewrite rpoweE ltrW ?exp_gt0. qed.
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt rpoweM (x y : real): e^(x * y) = (e^x)^y.
-proof. by rewrite rpowM // e_ge0. qed.
+proof. by rewrite rpowM // e_gt0. qed.
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt rpow_mono (x y n : real):
