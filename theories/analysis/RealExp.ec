@@ -43,6 +43,14 @@ proof. by apply/mono_inj/exp_mono. qed.
 lemma nosmt exp_mono_ltr (x y : real): (exp x < exp y) <=> (x < y).
 proof. by apply/lerW_mono/exp_mono. qed.
 
+lemma nosmt ln_mono (x y : real):
+  0%r < x => 0%r < y => (ln x <= ln y) <=> (x <= y).
+proof. by move=> gt0x gt0y; rewrite -exp_mono !expK. qed.
+
+lemma nosmt ln_mono_ltr (x y : real):
+  0%r < x => 0%r < y => (ln x < ln y) <=> (x < y).
+proof. by move=> gt0x gt0y; rewrite -exp_mono_ltr !expK. qed.
+
 lemma nosmt ln1 : ln 1%r = 0%r.
 proof. by rewrite -exp0 lnK. qed.
 
@@ -54,18 +62,18 @@ by rewrite expD !expK.
 qed.
 
 lemma nosmt ln_ge0 (x:real): 1%r <= x => 0%r <= ln x.
-proof. admitted.
+proof. by move=> ge1x; rewrite -exp_mono exp0 expK // (ltr_le_trans 1%r). qed.
 
 (* -------------------------------------------------------------------- *)
 op ( ^ ) (x a : real) =
-  if x < 0%r then b2r (a = 0%r) else exp (a * ln x).
+  if x <= 0%r then b2r (a = 0%r) else exp (a * ln x).
 
 (* -------------------------------------------------------------------- *)
-lemma rpowE (x a : real) : 0%r <= x => x^a = exp (a * ln x).
+lemma rpowE (x a : real) : 0%r < x => x^a = exp (a * ln x).
 proof. by rewrite /(^) ltrNge => ->. qed.
 
-lemma rpoweE (a : real) : e^a = exp a.
-proof. by rewrite rpowE 1:e_ge0 // lnK mulr1. qed.
+lemma nosmt rpoweE (a : real) : e^a = exp a.
+proof. by rewrite rpowE 1:e_gt0 // lnK mulr1. qed.
 
 lemma rpoweK (x : real) : 0%r < x => e^(ln x) = x.
 proof. by rewrite rpoweE; apply/expK. qed.
@@ -76,18 +84,17 @@ proof. by rewrite !rpoweE exp_mono. qed.
 lemma rpowe_hmono (n m:real): n <= m => e^n <= e^m.
 proof. by rewrite rpowe_mono. qed.
 
-lemma le_rpow (x y n : real):
-  0%r <= n => 0%r <= x <= y => x ^ n <= y ^ n.
-proof. admit. qed.
-
 (* -------------------------------------------------------------------- *)
 lemma rpow0 x : x^0%r = 1%r.
-proof. by rewrite /(^); case: (x < 0%r)=> // _; rewrite mul0r exp0. qed.
+proof. by rewrite /(^); case: (x <= 0%r)=> // _; rewrite mul0r exp0. qed.
 
-lemma rpowD (x n m : real) : x^(n + m) = x^n * x^m.
+lemma rpow0r n : 0%r^n = b2r (n = 0%r).
+proof. by rewrite /(^) lerr /=. qed.
+
+lemma rpowD (x n m : real) : 0%r <= x => x^(n + m) = x^n * x^m.
 proof. admit. qed.
 
-lemma rpowM (x n m : real) : x^(n * m) = (x^n)^m.
+lemma rpowM (x n m : real) : 0%r <= x => x^(n * m) = (x^n)^m.
 proof. admit. qed.
 
 lemma rpowMr (x y n : real) : (x*y)^n = x^n * y^n.
@@ -99,21 +106,51 @@ proof. admit. qed.
 lemma rpowMVr (x y n : real): y <> 0%r => (x/y)^n = x^n/y^n.
 proof. admit. qed.
 
-lemma rpow_gt0 (x n : real): 0%r <= x => 0%r < x^n.
+lemma rpow_int x n : 0%r <= x => x^(n%r) = x^n.
+proof. admit. qed.
+
+lemma rpow_gt0 (x n : real): 0%r < x => 0%r < x^n.
 proof. by move/rpowE=> ->; apply/exp_gt0. qed.
 
 lemma rpow_ge0 (x n : real): 0%r <= x => 0%r <= x^n.
-proof. by move/rpow_gt0/(_ n)/ltrW. qed.
+proof.
+rewrite ler_eqVlt => [<-|/rpow_gt0 /(_ n) /ltrW] //.
+by rewrite rpow0r; case: (n = 0%r).
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt rpoweM (x y : real): e^(x * y) = (e^x)^y.
+proof. by rewrite rpowM // e_ge0. qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt rpow_mono (x y n : real):
+     0%r < n => 0%r < x => 0%r < y
+  => (x^n <= y^n) <=> (x <= y).
+proof.
+move=> gt0n gt0x gt0y; rewrite !rpowE //.
+by rewrite exp_mono ler_pmul2l // ln_mono.
+qed.
+
+lemma nosmt rpow_hmono (x y n : real):
+  0%r <= n => 0%r <= x <= y => x ^ n <= y ^ n.
+proof.
+rewrite ler_eqVlt=> [<-|gt0n]; first by rewrite !rpow0 lerr.
+case; rewrite ler_eqVlt=> [<-|gt0x] ge0y.
+  move: gt0n; rewrite rpow0r ltr_neqAle eq_sym.
+  by case=> [-> _]; apply/rpow_ge0.
+by rewrite rpow_mono //; apply/(ltr_le_trans x).
+qed.
+
+lemma nosmt rpowr_hmono (x n m : real) :
+  1%r <= x => 0%r <= n <= m => x^n <= x^m.
+proof.
+move=> ge1x [ge0n lenm]; have ge0m: 0%r <= m by apply/(ler_trans n).
+rewrite !rpowE 1,2:(ltr_le_trans 1%r) // exp_mono.
+by apply/ler_wpmul2r=> //; apply/ln_ge0.
+qed.
 
 lemma nosmt le1Dx_rpowe (x : real): 0%r <= x => 1%r+x <= e^x.
-proof. admit. qed.
-
-lemma nosmt rpow_hmono (x n m : real) :
-  1%r <= x => 0%r <= n <= m => x^n <= x^m.
-proof. admit. qed.
-
-lemma rpow_nat x n : 0 <= n => x^(n%r) = x^n.
-proof. admit. qed.
+proof. admitted.
 
 (* -------------------------------------------------------------------- *)
 require import StdBigop.
