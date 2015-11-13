@@ -769,7 +769,7 @@ exception IntroCollect of [
 exception CollectBreak
 exception CollectCore of ipcore located
 
-let rec process_mintros ?(cf = true) pis gs =
+let rec process_mintros ?withbd ?(cf = true) pis gs =
   let module ST = IntroState in
 
   let mk_intro ids (hyps, form) =
@@ -920,7 +920,7 @@ let rec process_mintros ?(cf = true) pis gs =
     let h = EcIdent.create "_" in
     let rwt tc =
       let pt = PT.pt_of_hyp !!tc (FApi.tc1_hyps tc) h in
-      process_rewrite1_core (s, o) pt tc
+      process_rewrite1_core ?withbd (s, o) pt tc
     in t_seqs [t_intros_i [h]; rwt; t_clear h] tc
 
   and intro1_unfold (_ : ST.state) (s, o) p tc =
@@ -1000,8 +1000,8 @@ let rec process_mintros ?(cf = true) pis gs =
   end
 
 (* -------------------------------------------------------------------- *)
-let process_intros ?cf pis tc =
-  process_mintros ?cf pis (FApi.tcenv_of_tcenv1 tc)
+let process_intros ttenv ?cf pis tc =
+  process_mintros ~withbd:ttenv.tt_withbd ?cf pis (FApi.tcenv_of_tcenv1 tc)
 
 (* -------------------------------------------------------------------- *)
 let process_generalize1 pattern (tc : tcenv1) =
@@ -1320,7 +1320,7 @@ let process_subst syms (tc : tcenv1) =
 (* -------------------------------------------------------------------- *)
 type cut_t = intropattern * pformula * (ptactics located) option
 
-let process_cut engine ((ip, phi, t) : cut_t) tc =
+let process_cut ttenv engine ((ip, phi, t) : cut_t) tc =
   let phi = TTC.tc1_process_formula tc phi in
   let tc  = EcLowGoal.t_cut phi tc in
   let tc  =
@@ -1330,12 +1330,12 @@ let process_cut engine ((ip, phi, t) : cut_t) tc =
        let t = mk_loc (loc t) (Pby (Some (unloc t))) in
        FApi.t_first (engine t) tc
 
-  in FApi.t_last (process_intros ip) tc
+  in FApi.t_last (process_intros ttenv ip) tc
 
 (* -------------------------------------------------------------------- *)
 type cutdef_t = intropattern * pcutdef
 
-let process_cutdef (ip, pt) (tc : tcenv1) =
+let process_cutdef ttenv (ip, pt) (tc : tcenv1) =
   let pt = { 
       fp_mode = `Implicit;
       fp_head = FPNamed (pt.ptcd_name, pt.ptcd_tys);
@@ -1350,7 +1350,7 @@ let process_cutdef (ip, pt) (tc : tcenv1) =
   let pt, ax = PT.concretize pt in
 
   FApi.t_sub
-    [EcLowGoal.t_apply pt; process_intros ip]
+    [EcLowGoal.t_apply pt; process_intros ttenv ip]
     (t_cut ax tc)
 
 (* -------------------------------------------------------------------- *)
