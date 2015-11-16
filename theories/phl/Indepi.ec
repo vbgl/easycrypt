@@ -80,9 +80,9 @@ abstract theory INDEPi.
   axiom get_set_neq m x y (v:'to): wf_from m x => wf_from m y => x <> y => m.[x <- v].[y] = m.[y].
 
   op fromint : 'to map -> int -> from.
-  axiom fromint_inj (t:'a map) : Fun.injective (fromint t). 
 
   lemma indepsi_update (T:'m -> 'to map) (i:'m -> from) I (mu:'m distr) (d:'to distr):
+    (forall m i j, 0 <= i <= I => 0 <= j <= I => fromint (T m) i = fromint (T m) j => i = j) =>
     $[fun m=> 1%r | d] = 1%r =>
     $@[fun m => i m = fromint (T m) I /\ 
                 forall k, 0 <= k <= I => wf_from (T m) (fromint (T m) k) | mu] =>
@@ -97,8 +97,8 @@ abstract theory INDEPi.
        (fun (k : int) =>
           $[fun m => $[fun v => b2r (Ps k (T m).[i m<- v].[fromint (T m) k]) | d] | mu]) 0 (I + 1).
   proof.
-    move=> Hd Hs Hind Ps.
-    case (0 <= I) => Hi1;[right | by left;smt].
+    move=> Hinj Hd Hs Hind Ps.
+    case (0 <= I) => Hi1;[right | by left;smt ml=0].
     rewrite BBM.big_int_recr // big_int_recr //=.
     cut ->:
       $[fun m =>  $[fun v =>
@@ -108,8 +108,8 @@ abstract theory INDEPi.
       $[fun m=> $[fun v=>b2r(BBM.bigi predT (fun k => Ps k (T m).[fromint (T m) k]) 0 I /\ Ps I v) 
                  | d ]| mu].
     + move:Hs;apply square_eq => /= m Hm;progress.
-      apply muf_eq_compat => /= v Hv;congr;congr;2:smt.
-      apply BBM.congr_big_int=> //=; smt.
+      apply muf_eq_compat => /= v Hv;congr;congr;2:by rewrite H get_set_eq //;apply H0.
+      apply BBM.congr_big_int=> //= i0 [_ Hi0];cut := get_set_neq (T m);smt ml = 0.
     rewrite b2r_and muf_mulc_l muf_mulc_r.
     cut ->:
       bigi predT
@@ -119,22 +119,23 @@ abstract theory INDEPi.
     + apply congr_big_int=> //= k [_ Hk].
       move:Hs;apply square_eq => m Hm {Hm};progress. 
       rewrite -(muf_c_ll (b2r (Ps k (T m).[fromint (T m) k])) d) //.
-      apply muf_eq_compat => /= v Hv;smt.
+      apply muf_eq_compat => /= v Hv;cut:=get_set_neq (T m);smt ml=0.
     cut -> :
      $[fun (m : 'm) => $[fun v => b2r (Ps I (T m).[i m <- v].[fromint (T m) I]) | d] | mu] =
      $[fun v => b2r (Ps I v) | d] * $[fun (m : 'm) => 1%r| mu].
     + rewrite -muf_mulc_l;move:Hs;apply square_eq => m Hm {Hm};progress. 
-      apply muf_eq_compat => /= v Hv;smt.
+      by apply muf_eq_compat => /= v Hv;rewrite H get_set_eq //;apply H0.
     cut := Hind Ps;rewrite -ora_or => {Hind} [] Hind.
-    cut -> /= : I = 0 by smt.
+    cut -> /= : I = 0 by smt ml=0.
     + by rewrite Power_0 -One /Int.one /= BBM.big_geq // 
       big_geq //= b2r_true RField.mulrC.
     cut -> : I - 0 - 1 = I - 1 by ringeq.
     cut -> : I + 1 - 1 = I - 1 + 1 by ringeq.
-    move=> <-;rewrite Power_s 1:smt;ringeq.
+    move=> <-;rewrite Power_s 1:[smt ml=0];ringeq.
   qed.
  
   lemma followsi_update (T:'m -> 'to map) (i:'m -> from) I (mu:'m distr) (d:'to distr):
+    (forall m i j, 0 <= i <= I => 0 <= j <= I => fromint (T m) i = fromint (T m) j => i = j) =>
     $[fun m=> 1%r | d] = 1%r =>
     $@[fun m => i m = fromint (T m) I /\ forall k, 0 <= k <= I => wf_from (T m) (fromint (T m) k) | mu] =>
     followsi mu (fun i m => (T m).[fromint (T m) i]) d 0 I =>
@@ -144,7 +145,7 @@ abstract theory INDEPi.
       $[fun m => $[fun v => f (T m).[i m <- v].[fromint (T m) k] | d] | mu] =
       $[f | d] * $[fun m => 1%r | mu].
   proof.
-    move=> Hd Hs Hind k Hk f.
+    move=> Hinj Hd Hs Hind k Hk f.
     case (k < I) => HkI.  
     + rewrite -(Hind k _ f);1:by move:Hk.
       move: Hs;apply square_eq => m Hm;progress. 
