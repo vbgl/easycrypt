@@ -254,12 +254,12 @@ qed.
 (* TODO: move this *)
 lemma Rpow_bounded r n : 0%r <= r <= 1%r => 0 <= n => 0%r <= r ^ n <= 1%r.
 proof. 
-  move=> Hr. elim /Induction.induction n; smt. 
+  move=> Hr. elim: n; smt. 
 qed.
 
 lemma Rpow_bounded_lt r n : 0%r < r <= 1%r => 0 <= n => 0%r < r ^ n <= 1%r.
 proof. 
-  move=> Hr. elim /Induction.induction n; smt. 
+  move=> Hr. elim: n; smt. 
 qed.
 
 lemma Rpow_S (x:real) (n:int) : 0 <= n => x ^ (n+1) = x * x ^ n.
