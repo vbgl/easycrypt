@@ -2179,6 +2179,9 @@ logtactic:
 | ELIM SLASH p=qident COLON? e=genpattern*
    { Pelim (e, Some p) }
 
+| APPLY
+   { Papply (`Top `Apply) }
+
 | APPLY COLON? e=pterm
    { Papply (`Apply ([e], `Apply)) }
 
@@ -2187,6 +2190,9 @@ logtactic:
 
 | APPLY COLON? e=pterm IN x=ident
    { Papply (`ApplyIn (e, x)) }
+
+| EXACT
+   { Papply (`Top `Exact) }
 
 | EXACT COLON? e=pterm
    { Papply (`Apply ([e], `Exact)) }
