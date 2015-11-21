@@ -450,9 +450,14 @@ let process_apply_top tc =
   | _ -> tc_error !!tc "no top assumption"
 
 (* -------------------------------------------------------------------- *)
-let process_rewrite1_core ?target ?withbd (s, o) pt tc =
+let process_rewrite1_core ?(close = true) ?target ?withbd (s, o) pt tc =
   try
-    LowRewrite.t_rewrite_r ?target ?withbd (s, o) pt tc
+    let tc = LowRewrite.t_rewrite_r ?target ?withbd (s, o) pt tc in
+    let cl = fun tc ->
+      if EcFol.f_equal f_true (FApi.tc1_goal tc) then
+        t_true tc
+      else t_id tc
+    in if close then FApi.t_last cl tc else tc
   with
   | LowRewrite.RewriteError e ->
       match e with
@@ -1101,7 +1106,7 @@ let rec process_mintros ?withbd ?(cf = true) pis gs =
     let h = EcIdent.create "_" in
     let rwt tc =
       let pt = PT.pt_of_hyp !!tc (FApi.tc1_hyps tc) h in
-      process_rewrite1_core ?withbd (s, o) pt tc
+      process_rewrite1_core ~close:false ?withbd (s, o) pt tc
     in t_seqs [t_intros_i [h]; rwt; t_clear h] tc
 
   and intro1_unfold (_ : ST.state) (s, o) p tc =
