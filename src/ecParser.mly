@@ -1948,6 +1948,9 @@ rwarg1:
 | LBRACKET SMT pi=smt_info RBRACKET
    { RWSmt pi }
 
+| AMP f=pterm
+   { RWApp f }
+
 rwpterms:
 | f=pterm
     { [(`LtoR, f)] }
