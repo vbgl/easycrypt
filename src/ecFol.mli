@@ -159,6 +159,7 @@ type sform =
   | SFglob  of mpath * form
 
   | SFif    of form * form * form
+  | SFmatch of form * form list * ty
   | SFlet   of lpattern * form * form
   | SFtuple of form list
   | SFproj  of form * int

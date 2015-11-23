@@ -553,6 +553,7 @@ type sform =
   | SFglob  of EcPath.mpath * form
 
   | SFif    of form * form * form
+  | SFmatch of form * form list * ty
   | SFlet   of lpattern * form * form
   | SFtuple of form list
   | SFproj  of form * int
@@ -598,6 +599,7 @@ let rec sform_of_form fp =
   | Fglob (m, me) -> SFglob  (m, me)
 
   | Fif    (c, f1, f2)  -> SFif    (c, f1, f2)
+  | Fmatch (b, fs, ty)  -> SFmatch (b, fs, ty)
   | Flet   (lv, f1, f2) -> SFlet   (lv, f1, f2)
   | Ftuple fs           -> SFtuple fs
   | Fproj (f, i)        -> SFproj  (f,i)
