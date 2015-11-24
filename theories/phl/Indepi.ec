@@ -6,6 +6,7 @@
  * -------------------------------------------------------------------- *)
 
 require export Indep.
+require import IntDiv.
 (*---*) import List Real Int StdBigop StdRing Bigreal.BRM.
 
 pragma +withbd.
@@ -193,7 +194,7 @@ theory Matrix.
   axiom get_seq_eq m x (v:'a): wf_index m x => m.[x <- v].[x] = v.
   axiom get_set_neq m x y (v:'a): wf_index m x => wf_index m y => x <> y => m.[x <- v].[y] = m.[y].
 
-  op fromint (m:'a matrix) (k:int) = (k /% (size m).`1, k %% (size m).`1).
+  op fromint (m:'a matrix) (k:int) = (k %/ (size m).`1, k %% (size m).`1).
 
   lemma fromint_inj (t:'a matrix) : Fun.injective (fromint t)
   by [].
