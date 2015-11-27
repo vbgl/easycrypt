@@ -22,26 +22,27 @@ module TTC = EcProofTyping
 module Low = struct
   (* ------------------------------------------------------------------ *)
   let transitivity_side_cond hyps prml prmr poml pomr p q p1 q1 pomt p2 q2 =
-    assert false
-(*
     let env = LDecl.toenv hyps in
+    let mright = (mright, snd prmr) in
+    let mleft  = (mleft , snd prml) in
+
     let cond1 =
-      let fv1 = PV.fv env mright p1 in
-      let fv2 = PV.fv env mleft  p2 in
+      let fv1 = PV.fv env (f_mem mright) p1 in
+      let fv2 = PV.fv env (f_mem mleft)  p2 in
       let fv  = PV.union fv1 fv2 in
       let elts, glob = PV.elements fv in
       let bd, s = generalize_subst env mhr elts glob in
-      let s1 = PVM.of_mpv s mright in
-      let s2 = PVM.of_mpv s mleft in
+      let s1 = PVM.of_mpv s (fst mright) in
+      let s2 = PVM.of_mpv s (fst mleft) in
       let concl = f_and (PVM.subst env s1 p1) (PVM.subst env s2 p2) in
       f_forall_mems [prml;prmr] (f_imp p (f_exists bd concl)) in
     let cond2 =
-      let m2 = LDecl.fresh_id hyps "&m" in
-      let q1 = Fsubst.f_subst_mem mright m2 q1 in
-      let q2 = Fsubst.f_subst_mem mleft  m2 q2 in
-      f_forall_mems [poml;(m2,pomt);pomr] (f_imps [q1;q2] q) in
+      let m  = LDecl.fresh_id hyps "&m" in
+      let q1 = curry Fsubst.f_subst_mem mright m q1 in
+      let q2 = curry Fsubst.f_subst_mem mleft  m q2 in
+      f_forall_mems [poml; (m, pomt); pomr] (f_imps [q1; q2] q) in
     (cond1, cond2)
-*)
+
   (* ------------------------------------------------------------------ *)
   let t_equivS_trans_r (mt, c2) (p1, q1) (p2, q2) tc =
     let hyps = FApi.tc1_hyps tc in
@@ -52,7 +53,7 @@ module Low = struct
         m1 m3 m1 m3 es.es_pr es.es_po p1 q1 mt p2 q2 in
     let cond3 =
       f_equivS_r { es with
-        es_mr = (mright,mt);
+        es_mr = (mright, mt);
         es_sr = c2;
         es_pr = p1;
         es_po = q1;
