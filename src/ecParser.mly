@@ -3038,7 +3038,12 @@ gprover_info:
     { { empty_pprover with pprov_cpufactor = Some t; } }
 
 addrw:
-| HINT REWRITE p=lqident COLON l=lqident* {p,l}
+| HINT REWRITE p=lqident COLON l=lqident*
+    { (p, l) }
+
+addat:
+| HINT EXACT COLON l=qident*
+    { l }
 
 (* -------------------------------------------------------------------- *)
 (* Search pattern                                                       *)
@@ -3071,6 +3076,7 @@ global_action:
 | x=loc(realize)   { Grealize     x  }
 | gprover_info     { Gprover_info $1 }
 | addrw            { Gaddrw       $1 }
+| addat            { Gaddat       $1 }
 | x=loc(proofend)  { Gsave        x  }
 | PRINT p=print    { Gprint       p  }
 | SEARCH x=search+ { Gsearch      x  }
