@@ -50,7 +50,7 @@ type tyerror =
 | UniVarNotAllowed
 | FreeTypeVariables
 | TypeVarNotAllowed
-| OnlyMonoTypeAllowed
+| OnlyMonoTypeAllowed    of symbol option
 | TmemNotAllowed         of ty
 | TmemTyNotFound         of symbol * ty
 | UnboundTypeParameter   of symbol

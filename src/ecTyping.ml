@@ -60,7 +60,7 @@ type tyerror =
 | UniVarNotAllowed
 | FreeTypeVariables
 | TypeVarNotAllowed
-| OnlyMonoTypeAllowed
+| OnlyMonoTypeAllowed    of symbol option
 | TmemNotAllowed         of ty
 | TmemTyNotFound         of symbol * ty
 | UnboundTypeParameter   of symbol
@@ -156,10 +156,12 @@ let pp_tyerror env fmt error =
   | TypeVarNotAllowed ->
       msg "type variables not allowed"
 
-  | OnlyMonoTypeAllowed ->
-      msg "%s, %s"
+  | OnlyMonoTypeAllowed s ->
+      msg "%s, %s%a"
         "only monomorphic types are allowed"
         "you may have to add type annotations"
+        (fun fmt -> oiter (Format.fprintf fmt " on %s")) s
+        
 
   | TmemNotAllowed ty ->
     msg "type of variable should not depend of memory %a"
@@ -1874,12 +1876,14 @@ and transstruct1 (env : EcEnv.env) (st : pstructure_item located) =
         transbody ue symbols !env retty (mk_loc st.pl_loc body)
       in
       (* Close all types *)
-      let su      = Tuni.offun (UE.close ue) in
-      let retty   = fundef_check_type su env (retty, decl.pfd_tyresult.pl_loc) in
+      let su      = Tuni.offun (UE.assubst ue) in
+      let retty   = fundef_check_type su env None (retty, decl.pfd_tyresult.pl_loc) in
       let params  = List.map (fundef_check_decl  su env) params in
       let locals  = List.map (fundef_check_decl  su env) locals in
       let prelude = List.map (fundef_check_iasgn su env) prelude in
 
+      if not (UE.closed ue) then
+        tyerror st.pl_loc env (OnlyMonoTypeAllowed None); 
       let clsubst = { EcTypes.e_subst_id with es_ty = su } in
       let stmt    = s_subst clsubst stmt
       and result  = result |> omap (e_subst clsubst) in
@@ -1998,9 +2002,7 @@ and transbody ue symbols (env : EcEnv.env) retty pbody =
         unify_or_fail !env ue pe.pl_loc ~expct:retty ety;
         Some e
   in
-    if not (UE.closed ue) then
-      tyerror loc !env OnlyMonoTypeAllowed;
-    (!env, body, result, List.rev !prelude, List.rev !locals)
+    (!env, body, result, List.rev !prelude, List.rev !locals) 
 
 (* -------------------------------------------------------------------- *)
 and fundef_add_symbol env symbols x =  (* for locals dup check *)
@@ -2008,23 +2010,24 @@ and fundef_add_symbol env symbols x =  (* for locals dup check *)
     tyerror x.pl_loc env (DuplicatedLocal x.pl_desc);
   symbols := Sstr.add x.pl_desc !symbols
 
-and fundef_check_type subst_uni env (ty, loc) = 
+and fundef_check_type subst_uni env os (ty, loc) = 
   let ty = subst_uni ty in
   if not (EcUid.Suid.is_empty (Tuni.fv ty)) then
-    tyerror loc env OnlyMonoTypeAllowed;
+    tyerror loc env (OnlyMonoTypeAllowed os);
   if as_tmem env ty then 
     tyerror loc env (TmemNotAllowed ty);
   ty
 
 and fundef_check_decl subst_uni env (decl, loc) =
   { decl with
-      v_type = fundef_check_type subst_uni env (decl.v_type, loc) }
+      v_type = 
+      fundef_check_type subst_uni env (Some decl.v_name) (decl.v_type, loc) }
 
 and fundef_check_iasgn subst_uni env ((mode, pl), init, loc) =
   let pl =
     List.map
       (fun (p, ty) ->
-        (p, fundef_check_type subst_uni env (ty, loc)))
+        (p, fundef_check_type subst_uni env None (ty, loc)))
       pl
   in
   let pl =
