@@ -329,7 +329,6 @@ type 'a ppt_head =
 type ppt_arg =
   | EA_none
   | EA_form  of pformula
-  | EA_mem   of pmemory * [`Mem | `Distr]
   | EA_mod   of pmsymbol located
   | EA_proof of (pformula option) gppterm
 

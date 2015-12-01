@@ -44,47 +44,44 @@ and pt_ev_arg_r =
 
 (* -------------------------------------------------------------------- *)
 type apperror = [
-  | `FormWanted
-  | `MemoryWanted
-  | `MemDistrWanted
-  | `ModuleWanted
-  | `PTermWanted
+  | `WrongArgKind       of (argkind * argkind)
   | `CannotInfer
   | `CannotInferMod
   | `NotFunctional
-  | `InvalidArgForm
+  | `InvalidArgForm     of invalid_arg_form
   | `InvalidArgMod
-  | `InvalidArgProof    of form
+  | `InvalidArgProof    of (form * form)
   | `InvalidArgModRestr of EcTyping.restriction_error
 ]
 
+and argkind = [`Form | `Mod | `PTerm]
+
+and invalid_arg_form = [
+  | `Mismatch of (ty * ty)
+  | `TyError of env * EcTyping.tyerror
+]
+
 (* -------------------------------------------------------------------- *)
-let tc_pterm_apperror pte ?loc (kind : apperror) =
-  let msg fmt =
-    match kind with
-    | `FormWanted      -> Format.fprintf fmt "%s" "expecting a formula"
-    | `MemoryWanted    -> Format.fprintf fmt "%s" "expecting a memory"
-    | `MemDistrWanted    -> Format.fprintf fmt "%s" "expecting a memdistr"
-    | `ModuleWanted    -> Format.fprintf fmt "%s" "expecting a module expression"
-    | `PTermWanted     -> Format.fprintf fmt "%s" "expecting a proof-term"
-    | `CannotInfer     -> Format.fprintf fmt "%s" "cannot infer this place-holder"
-    | `CannotInferMod  -> Format.fprintf fmt "%s" "cannot infer module arguments"
-    | `NotFunctional   -> Format.fprintf fmt "%s" "too many argument"
-    | `InvalidArgForm  -> Format.fprintf fmt "%s" "invalid argument (incompatible type)"
-    | `InvalidArgMod   -> Format.fprintf fmt "%s" "invalid argument (incompatible module type)"
+let string_of_argkind (ak : argkind) =
+  match ak with
+  | `Form     -> "formula"
+  | `Mod      -> "module"
+  | `PTerm    -> "proof-term"
 
-    | `InvalidArgProof wt ->
-        let ppe = EcPrinting.PPEnv.ofenv (LDecl.toenv pte.pte_hy) in
-        Format.fprintf fmt
-          "invalid proof-term argument for: @[%a@]"
-          (EcPrinting.pp_form ppe) wt
+(* -------------------------------------------------------------------- *)
+let argkind_of_parg arg : argkind option =
+  match arg with
+  | EA_mod   _ -> Some `Mod
+  | EA_form  _ -> Some `Form
+  | EA_proof _ -> Some `PTerm
+  | EA_none    -> None
 
-    | `InvalidArgModRestr e ->
-         Format.fprintf fmt "%a"
-           (EcTyping.pp_restriction_error (LDecl.toenv pte.pte_hy))
-           e
-  in
-    EcCoreGoal.tc_error_lazy pte.pte_pe ?loc msg
+(* -------------------------------------------------------------------- *)
+let argkind_of_ptarg arg : argkind =
+  match arg with
+  | PVAFormula _ -> `Form
+  | PVAModule  _ -> `Mod
+  | PVASub     _ -> `PTerm
 
 (* -------------------------------------------------------------------- *)
 let ptenv pe hyps (ue, ev) =
@@ -146,6 +143,56 @@ let concretize_form pe f =
 let rec concretize ({ ptev_env = pe } as pt) =
   let (CPTEnv subst) as cptenv = concretize_env pe in
   (concretize_e_pt cptenv pt.ptev_pt, Fsubst.f_subst subst pt.ptev_ax)
+
+(* -------------------------------------------------------------------- *)
+let tc_pterm_apperror pte ?loc (kind : apperror) =
+  let hyps = pte.pte_hy in
+  let ue   = EcUnify.UniEnv.copy pte.pte_ue in
+  let pe   = !(pte.pte_ev) in
+
+  let msg fmt =
+    let msg x = Format.fprintf fmt x in
+
+    match kind with
+    | `WrongArgKind (src, dst) ->
+         msg "expecting a `%s', not a `%s'"
+           (string_of_argkind dst) (string_of_argkind src)
+
+    | `CannotInfer     -> msg "%s" "cannot infer this place-holder"
+    | `CannotInferMod  -> msg "%s" "cannot infer module arguments"
+    | `NotFunctional   -> msg "%s" "too many argument"
+
+    | `InvalidArgForm (`Mismatch (src, dst)) ->
+       let ppe = EcPrinting.PPEnv.ofenv (LDecl.toenv hyps) in
+       let dst = Tuni.offun (EcUnify.UniEnv.assubst ue) dst in
+
+       msg "This expression has type@\n";
+       msg "  @[<hov 2>%a@]@\n@\n" (EcPrinting.pp_type ppe) src;
+       msg "but is expected to have type@\n";
+       msg "  @[<hov 2>%a@]" (EcPrinting.pp_type ppe) dst
+
+    | `InvalidArgForm (`TyError (env, err)) ->
+       msg "This proof-term argument is not a valid formula:@\n@\n";
+       msg "  @[<hov 2>%a@]@\n" (EcTyping.pp_tyerror env) err
+
+    | `InvalidArgMod ->
+       msg "%s" "invalid argument (incompatible module type)"
+
+    | `InvalidArgProof (src, dst) ->
+        let ppe = EcPrinting.PPEnv.ofenv (LDecl.toenv hyps) in
+        let sb  = CPTEnv (EcMatching.MEV.assubst ue pe) in
+        let src = concretize_e_form sb src in
+        let dst = concretize_e_form sb dst in
+
+        msg "this proof-term proves:@\n@\n";
+        msg "  @[<hov 2>%a@]@\n@\n" (EcPrinting.pp_form ppe) src;
+        msg "but is expected to prove:@\n@\n";
+        msg "  @[<hov 2>%a@]@\n" (EcPrinting.pp_form ppe) dst
+
+    | `InvalidArgModRestr e ->
+         msg "%a" (EcTyping.pp_restriction_error (LDecl.toenv pte.pte_hy)) e
+  in
+    EcCoreGoal.tc_error_lazy pte.pte_pe ?loc msg
 
 (* -------------------------------------------------------------------- *)
 let pt_of_hyp pf hyps x =
@@ -455,32 +502,41 @@ and trans_pterm_arg_value pe ?name { pl_desc = arg; pl_loc = loc; } =
   let name = name |> omap (Printf.sprintf "?%s") in
 
   match arg with
-  | EA_mod _ | EA_mem _ | EA_proof _ ->
-      tc_pterm_apperror ~loc pe `FormWanted
+  | EA_mod _ | EA_proof _ ->
+      let ak = oget (argkind_of_parg arg) in
+      tc_pterm_apperror ~loc pe (`WrongArgKind (ak, `Form))
 
   | EA_none ->
       let aty = EcUnify.UniEnv.fresh pe.pte_ue in
       let x   = EcIdent.create (ofdfl dfl name) in
-        pe.pte_ev := EcMatching.MEV.add x `Form !(pe.pte_ev);
-        { ptea_env = pe; ptea_arg = PVAFormula (f_local x aty); }
+      pe.pte_ev := EcMatching.MEV.add x `Form !(pe.pte_ev);
+      { ptea_env = pe; ptea_arg = PVAFormula (f_local x aty); }
 
   | EA_form fp ->
       let env = LDecl.toenv pe.pte_hy in
-      let fp  = (fun () -> EcTyping.trans_form_opt env pe.pte_ue fp None) in
-      let fp  = Exn.recast_pe pe.pte_pe pe.pte_hy fp in
-        { ptea_env = pe; ptea_arg = PVAFormula fp; }
+      let fp  =
+        try  EcTyping.trans_form_opt env pe.pte_ue fp None
+        with EcTyping.TyError (loc, env, err) ->
+          tc_pterm_apperror ~loc pe (`InvalidArgForm (`TyError (env, err))) in
+      { ptea_env = pe; ptea_arg = PVAFormula fp; }
 
 (* ------------------------------------------------------------------ *)
 and trans_pterm_arg_mod pe { pl_desc = arg; pl_loc = loc; } =
   let mp =
     match arg with
-    | EA_none    -> tc_pterm_apperror ~loc pe `CannotInferMod
-    | EA_mem _
-    | EA_proof _ -> tc_pterm_apperror ~loc pe `ModuleWanted
-    | EA_mod mp  -> mp
+    | EA_mod mp ->
+       mp
+
+    | EA_none ->
+       tc_pterm_apperror ~loc pe `CannotInferMod
+
+    | EA_proof _ ->
+       let ak = oget (argkind_of_parg arg) in
+       tc_pterm_apperror ~loc pe (`WrongArgKind (ak, `Mod))
+
     | EA_form fp ->
       match pmsymbol_of_pform fp with
-      | None    -> tc_pterm_apperror ~loc pe `ModuleWanted
+      | None    -> tc_pterm_apperror ~loc pe (`WrongArgKind (`Form, `Mod))
       | Some mp -> mk_loc loc mp
   in
 
@@ -490,7 +546,6 @@ and trans_pterm_arg_mod pe { pl_desc = arg; pl_loc = loc; } =
 
     { ptea_env = pe; ptea_arg = PVAModule mod_; }
 
-(* ------------------------------------------------------------------ *)
 and process_pterm_arg
     ?implicits ({ ptev_env = pe } as pt) ({ pl_loc = loc; } as arg)
 =
@@ -503,7 +558,9 @@ and process_pterm_arg
 
       | EA_form fp -> begin
           match ffpattern_of_form pe.pte_hy fp with
-          | None    -> tc_pterm_apperror ~loc pe `PTermWanted
+          | None ->
+              tc_pterm_apperror ~loc pe (`WrongArgKind (`Form, `PTerm))
+
           | Some fp ->
               { ptea_env = pe;
                 ptea_arg = PVASub (process_full_pterm ?implicits pe fp); }
@@ -513,8 +570,9 @@ and process_pterm_arg
           { ptea_env = pe;
             ptea_arg = PVASub (process_full_pterm ?implicits pe fp); }
 
-      | _ ->
-          tc_pterm_apperror ~loc pe `PTermWanted
+      | EA_mod _ ->
+          let ak = oget (argkind_of_parg (unloc arg)) in
+          tc_pterm_apperror ~loc pe (`WrongArgKind (ak, `PTerm))
   end
 
   | Some (`Forall (x, xty, _)) -> begin
@@ -534,7 +592,7 @@ and dfl_arg_for_mod   pe   arg = ofdfl (fun () -> (hole_for_mod   pe  ).ptea_arg
 and dfl_arg_for_value pe   arg = ofdfl (fun () -> (hole_for_value pe  ).ptea_arg) arg
 
 (* -------------------------------------------------------------------- *)
-and check_pterm_oarg pe (x, xty) f arg =
+and check_pterm_oarg ?loc pe (x, xty) f arg =
   let env = LDecl.toenv (pe.pte_hy) in
 
   match xty with
@@ -545,9 +603,12 @@ and check_pterm_oarg pe (x, xty) f arg =
           pf_unify pe xty arg.f_ty;
           (Fsubst.f_subst_local x arg f, PAFormula arg)
         with EcUnify.UnificationFailure _ ->
-          tc_pterm_apperror pe `InvalidArgForm
+          tc_pterm_apperror ?loc pe
+            (`InvalidArgForm (`Mismatch (arg.f_ty, xty)))
       end
-      | _ -> tc_pterm_apperror pe `FormWanted
+      | arg ->
+         let ak = argkind_of_ptarg arg in
+         tc_pterm_apperror ?loc pe (`WrongArgKind (ak, `Form))
   end
 
   | GTmodty (emt, restr) -> begin
@@ -559,16 +620,18 @@ and check_pterm_oarg pe (x, xty) f arg =
           (Fsubst.f_subst_mod x mp f, PAModule (mp, mt))
         with
         | EcTyping.TymodCnvFailure _ ->
-            tc_pterm_apperror pe `InvalidArgMod
+            tc_pterm_apperror ?loc pe `InvalidArgMod
         | EcTyping.RestrictionError e ->
-            tc_pterm_apperror pe (`InvalidArgModRestr e)
+            tc_pterm_apperror ?loc pe (`InvalidArgModRestr e)
       end
-      | _ -> tc_pterm_apperror pe `ModuleWanted
+      | arg ->
+         let ak = argkind_of_ptarg arg in
+         tc_pterm_apperror ?loc pe (`WrongArgKind (ak, `Mod))
   end
 
 (* -------------------------------------------------------------------- *)
-and check_pterm_arg pe (x, xty) f arg =
-  check_pterm_oarg pe (x, xty) f (Some arg)
+and check_pterm_arg ?loc pe (x, xty) f arg =
+  check_pterm_oarg ?loc pe (x, xty) f (Some arg)
 
 (* -------------------------------------------------------------------- *)
 and apply_pterm_to_oarg ?loc ({ ptev_env = pe; ptev_pt = rawpt; } as pt) oarg =
@@ -588,13 +651,15 @@ and apply_pterm_to_oarg ?loc ({ ptev_env = pe; ptev_pt = rawpt; } as pt) oarg =
                 pf_form_match ~mode:EcMatching.fmdelta pe ~ptn:f1 arg.ptev_ax;
                 (f2, PASub (Some arg.ptev_pt))
               with EcMatching.MatchFailure ->
-                tc_pterm_apperror ?loc pe (`InvalidArgProof f1)
+                tc_pterm_apperror ?loc pe (`InvalidArgProof (arg.ptev_ax, f1))
             end
-            | _ -> tc_pterm_apperror ?loc pe `PTermWanted
+            | arg ->
+               let ak = argkind_of_ptarg arg in
+               tc_pterm_apperror ?loc pe (`WrongArgKind (ak, `Form))
         end
 
         | `Forall (x, xty, f) ->
-             check_pterm_oarg pe (x, xty) f oarg
+             check_pterm_oarg ?loc pe (x, xty) f oarg
       in
 
       let rawargs = rawpt.pt_args @ [newarg] in
