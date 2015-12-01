@@ -458,6 +458,12 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
               failure ()
       end
 
+      | (Flocal x1, args1), _ when LDecl.can_unfold x1 hyps ->
+          doit_lreduce env ((doit env ilc)^~ subject) ptn.f_ty x1 args1
+
+      | _, (Flocal x2, args2) when LDecl.can_unfold x2 hyps ->
+          doit_lreduce env (doit env ilc ptn) subject.f_ty x2 args2
+
       | (Fop (op1, tys1), args1), _ when EcEnv.Op.reducible env op1 ->
           doit_reduce env ((doit env ilc)^~ subject) ptn.f_ty op1 tys1 args1
 
@@ -471,12 +477,17 @@ let f_match_core opts hyps (ue, ev) ~ptn subject =
       raise MatchFailure;
     List.iter2 (doit env ilc) fs1 fs2
 
-  and doit_reduce env cb ty op tys f =
+  and doit_reduce env cb ty op tys args =
     let reduced =
-      try  f_app (EcEnv.Op.reduce env op tys) f ty
-      with NotReducible -> raise MatchFailure
-    in
-      cb (odfl reduced (EcReduction.h_red_opt EcReduction.beta_red hyps reduced))
+      try  f_app (EcEnv.Op.reduce env op tys) args ty
+      with NotReducible -> raise MatchFailure in
+    cb (odfl reduced (EcReduction.h_red_opt EcReduction.beta_red hyps reduced))
+
+  and doit_lreduce _env cb ty x args =
+    let reduced =
+      try  f_app (LDecl.unfold x hyps) args ty
+      with LookupFailure _ -> raise MatchFailure in
+    cb (odfl reduced (EcReduction.h_red_opt EcReduction.beta_red hyps reduced))
 
   and doit_bindings env (subst, mxs) q1 q2 =
     let doit_binding (env, subst, mxs) (x1, gty1) (x2, gty2) =
