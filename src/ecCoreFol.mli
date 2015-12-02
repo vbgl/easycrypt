@@ -326,6 +326,12 @@ module FSmart : sig
 end
 
 (* -------------------------------------------------------------------- *)
+val destr_app1 : name:string -> (path -> bool) -> form -> form
+val destr_app2 : name:string -> (path -> bool) -> form -> form * form
+
+val destr_app1_eq : name:string -> path -> form -> form
+val destr_app2_eq : name:string -> path -> form -> form * form
+
 val destr_local     : form -> EcIdent.t
 val destr_pvar      : form -> prog_var * form
 val destr_tuple     : form -> form list
