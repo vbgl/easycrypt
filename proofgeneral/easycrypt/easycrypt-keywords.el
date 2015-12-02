@@ -1,4 +1,4 @@
-; Generated on Fri Nov  6 09:59:06 2015
+; Generated on Wed Dec  2 17:38:31 2015
 
 (defvar easycrypt-bytac-keywords '(
   "exact"
@@ -36,6 +36,8 @@
   "const"
   "op"
   "pred"
+  "notation"
+  "abbrev"
   "require"
   "theory"
   "abstract"
