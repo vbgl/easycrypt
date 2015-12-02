@@ -1970,7 +1970,7 @@ let pp_axiom ?(long=false) (ppe : PPEnv.t) fmt (x, ax) =
   and pp_tags fmt =
     let tags = tags_of_axkind ax.ax_kind in
     if not (List.is_empty tags) then
-      Format.fprintf fmt "[@[%a@]]" (pp_list "@ " pp_symbol) tags
+      Format.fprintf fmt "[@[%a@]] " (pp_list "@ " pp_symbol) tags
   in
   
   let pp_long fmt x = 
@@ -1979,7 +1979,7 @@ let pp_axiom ?(long=false) (ppe : PPEnv.t) fmt (x, ax) =
        if fst qs <> [] then
          Format.fprintf fmt "(* %a *)@ " EcSymbols.pp_qsymbol qs in
   let pp_decl fmt () =
-    Format.fprintf fmt "@[<hov 2>%s %t %t:@ %t.@]"
+    Format.fprintf fmt "@[<hov 2>%s %t%t:@ %t.@]"
       (string_of_axkind ax.ax_kind) pp_tags pp_name pp_spec in
 
   Format.fprintf fmt "@[<v>%a%a@]" pp_long x pp_decl ()
