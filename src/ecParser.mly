@@ -1643,10 +1643,10 @@ nt_argty:
 
 nt_arg1:
 | x=ident
-    { (x, None) }
+    { (x, ([], None)) }
 
 | LPAREN x=ident COLON ty=nt_argty RPAREN
-    { (x, Some ty) }
+    { (x, snd_map some ty) }
 
 nt_bindings:
 | DASHLT bd=plist0(nt_binding1, COMMA) GT
@@ -1654,12 +1654,13 @@ nt_bindings:
 
 notation:
 | NOTATION x=loc(NOP) tv=tyvars_decl? bd=nt_bindings? 
-    args=nt_arg1* EQ body=expr
-  { { nt_name = x;
-      nt_tv   = tv;
-      nt_bd   = odfl [] bd;
-      nt_args = args;
-      nt_body = body; } }
+    args=nt_arg1* codom=prefix(COLON, loc(type_exp))? EQ body=expr
+  { { nt_name  = x;
+      nt_tv    = tv;
+      nt_bd    = odfl [] bd;
+      nt_args  = args;
+      nt_codom = ofdfl (fun () -> mk_loc (loc body) PTunivar) codom;
+      nt_body  = body; } }
 
 abbreviation:
 | ABBREV x=oident tyvars=tyvars_decl? args=ptybindings_decl?
