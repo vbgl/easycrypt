@@ -610,7 +610,7 @@ and rwarg1 =
   | RWRw    of (rwoptions * (rwside * ppterm) list)
   | RWPr    of (psymbol * pformula option)
   | RWDone  of bool
-  | RWSmt   of (pprover_infos * bool)
+  | RWSmt   of pprover_infos
   | RWApp   of ppterm
 
 and rwoptions = rwside * trepeat option * rwocc
@@ -629,6 +629,7 @@ type intropattern1 =
   | IPSubst  of rwside
   | IPClear  of psymbol list
   | IPDone   of bool
+  | IPSmt    of pprover_infos
   | IPSimplify
   | IPBreak
 

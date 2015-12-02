@@ -71,8 +71,8 @@ val t_rewrite_prept: rwside * EcMatching.occ option -> prept -> backward
 (* -------------------------------------------------------------------- *)
 val process_reflexivity : backward
 val process_assumption  : backward
-val process_intros      : ttenv -> ?cf:bool -> intropattern -> backward
-val process_mintros     : ?withbd:bool -> ?cf:bool -> intropattern -> tactical
+val process_intros      : ?cf:bool -> ttenv -> intropattern -> backward
+val process_mintros     : ?withbd:bool -> ?cf:bool -> ttenv -> intropattern -> tactical
 val process_generalize  : genpattern list -> backward
 val process_move        : ppterm list -> genpattern list -> backward
 val process_clear       : psymbol list -> backward
@@ -81,7 +81,7 @@ val process_apply       : implicits:bool -> apply_t -> backward
 val process_delta       : ?target:psymbol -> (rwside * EcMatching.occ option * pformula) -> backward
 val process_rewrite     : ttenv -> ?target:psymbol -> rwarg list -> backward
 val process_subst       : pformula list -> backward
-val process_cut         : ttenv -> engine -> cut_t -> backward
+val process_cut         : engine -> ttenv -> cut_t -> backward
 val process_cutdef      : ttenv -> cutdef_t -> backward
 val process_left        : backward
 val process_right       : backward

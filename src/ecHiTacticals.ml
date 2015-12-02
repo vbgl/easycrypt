@@ -143,7 +143,7 @@ and process1_logic (ttenv : ttenv) (t : logtactic located) (tc : tcenv1) =
     | Ptrivial          -> process_trivial
     | Pelim pe          -> process_elim pe
     | Papply pe         -> process_apply ~implicits:ttenv.tt_implicits pe
-    | Pcut (ip, f, t)   -> process_cut ttenv engine (ip, f, t)
+    | Pcut (ip, f, t)   -> process_cut engine ttenv (ip, f, t)
     | Pcutdef (ip, f)   -> process_cutdef ttenv (ip, f)
     | Pgeneralize l     -> process_generalize l
     | Pmove (v, l)      -> process_move v l
@@ -315,7 +315,7 @@ and process (ttenv : ttenv) (t : ptactic) (tc : tcenv) =
   in
 
   let tc = process_core ttenv t.pt_core tc in
-  let tc = EcHiGoal.process_mintros ~cf t.pt_intros tc in
+  let tc = EcHiGoal.process_mintros ~cf ttenv t.pt_intros tc in
     tc
 
 (* -------------------------------------------------------------------- *)
