@@ -173,6 +173,8 @@
     "const"       , CONST      ;        (* KW: global *)
     "op"          , OP         ;        (* KW: global *)
     "pred"        , PRED       ;        (* KW: global *)
+    "notation"    , NOTATION   ;        (* KW: global *)
+    "abbrev"      , ABBREV     ;        (* KW: global *)
     "require"     , REQUIRE    ;        (* KW: global *)
     "theory"      , THEORY     ;        (* KW: global *)
     "abstract"    , ABSTRACT   ;        (* KW: global *)
@@ -379,6 +381,7 @@ rule main = parse
 
   (* punctuation *)
   | '_'   { [UNDERSCORE] }
+  | "#<"  { [DASHLT    ] }
   | '('   { [LPAREN    ] }
   | ')'   { [RPAREN    ] }
   | '{'   { [LBRACE    ] }

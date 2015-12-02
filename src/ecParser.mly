@@ -326,6 +326,7 @@
 
 
 %token ABORT
+%token ABBREV
 %token ABSTRACT
 %token ADMIT
 %token ADMITTED
@@ -437,6 +438,7 @@
 %token NE
 %token NOSMT
 %token NOT
+%token NOTATION
 %token OF
 %token OP
 %token PCENT
@@ -519,7 +521,7 @@
 %token WP
 %token ZETA
 %token <string> NOP LOP1 ROP1 LOP2 ROP2 LOP3 ROP3 LOP4 ROP4
-%token LTCOLON GT LT GE LE
+%token LTCOLON DASHLT GT LT GE LE
 
 %nonassoc prec_below_comma
 %nonassoc COMMA ELSE
@@ -1606,6 +1608,8 @@ opptn(BOP):
 | x1=ident op=loc(ordering_op) tvi=tvars_app? x2=ident
     { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
+(* -------------------------------------------------------------------- *)
+(* Predicate definitions                                                *)
 predicate:
 | PRED x = oident
    { { pp_name   = x;
@@ -1621,6 +1625,53 @@ predicate:
    { { pp_name   = x;
        pp_tyvars = tyvars;
        pp_def    = PPconcr(p,f); } }
+
+(* -------------------------------------------------------------------- *)
+(* Notations                                                            *)
+nt_binding1:
+| x=ident
+    { (x, mk_loc (loc x) PTunivar) }
+
+| x=ident COLON ty=loc(type_exp)
+    { (x, ty) }
+
+nt_argty:
+| ty=loc(type_exp)
+    { ([], ty) }
+
+| xs=plist0(ident, COMMA) LONGARROW ty=loc(type_exp)
+    { (xs, ty) }
+
+nt_arg1:
+| x=ident
+    { (x, None) }
+
+| LPAREN x=ident COLON ty=nt_argty RPAREN
+    { (x, Some ty) }
+
+nt_bindings:
+| DASHLT bd=plist0(nt_binding1, COMMA) GT
+    { bd }
+
+notation:
+| NOTATION x=loc(NOP) tv=tyvars_decl? bd=nt_bindings? 
+    args=nt_arg1* EQ body=expr
+  { { nt_name = x;
+      nt_tv   = tv;
+      nt_bd   = odfl [] bd;
+      nt_args = args;
+      nt_body = body; } }
+
+abbreviation:
+| ABBREV x=oident tyvars=tyvars_decl? args=ptybindings_decl?
+    sty=prefix(COLON, loc(type_exp))? EQ b=expr
+
+  { let sty  = sty |> ofdfl (fun () -> mk_loc (loc b) PTunivar) in
+
+    { ab_name = x;
+      ab_tv   = tyvars;
+      ab_args = odfl [] args;
+      ab_def  = (sty, b); } }
 
 (* -------------------------------------------------------------------- *)
 top_decl:
@@ -3015,6 +3066,8 @@ global_action:
 | tycinstance      { Gtycinstance $1 }
 | operator         { Goperator    $1 }
 | predicate        { Gpredicate   $1 }
+| notation         { Gnotation    $1 }
+| abbreviation     { Gabbrev      $1 }
 | axiom            { Gaxiom       $1 }
 | tactics_or_prf   { Gtactics     $1 }
 | tactic_dump      { Gtcdump      $1 }
