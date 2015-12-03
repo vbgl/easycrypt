@@ -1587,7 +1587,7 @@ opbr:
     { { pop_name = x; pop_pattern = p; } }
 
 opptn(BOP):
-| c=qoident tvi=tvars_app? ps=bdident*
+| c=qoident tvi=tvars_app? ps=bdident(ident)*
     { PPApp ((c, tvi), ps) }
 
 | LBRACKET tvi=tvars_app? RBRACKET {
@@ -1595,16 +1595,16 @@ opptn(BOP):
     PPApp ((pqsymb_of_symb loc EcCoreLib.s_nil, tvi), [])
   }
 
-| op=loc(uniop) tvi=tvars_app? x=bdident
+| op=loc(uniop) tvi=tvars_app? x=bdident(ident)
     { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x]) }
 
-| x1=bdident op=loc(NE) tvi=tvars_app? x2=bdident
+| x1=bdident(ident) op=loc(NE) tvi=tvars_app? x2=bdident(ident)
     { PPApp ((pqsymb_of_symb op.pl_loc "[!]", tvi), [x1; x2]) }
 
-| x1=bdident op=loc(BOP) tvi=tvars_app? x2=bdident
+| x1=bdident(ident) op=loc(BOP) tvi=tvars_app? x2=bdident(ident)
     { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
-| x1=bdident op=loc(ordering_op) tvi=tvars_app? x2=bdident
+| x1=bdident(ident) op=loc(ordering_op) tvi=tvars_app? x2=bdident(ident)
     { PPApp ((pqsymb_of_symb op.pl_loc op.pl_desc, tvi), [x1; x2]) }
 
 (* -------------------------------------------------------------------- *)
