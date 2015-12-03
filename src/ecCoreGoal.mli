@@ -146,11 +146,15 @@ type location = {
   plc_loc    : EcLocation.t;
 }
 
+type tcemsg =
+| TCEUser : 'a * ('a -> string) -> tcemsg
+| TCEExn  : exn -> tcemsg
+
 type tcerror =  {
   tc_catchable : bool;
   tc_proofenv  : proofenv option;
   tc_location  : location option;
-  tc_message   : string Lazy.t;
+  tc_message   : tcemsg;
   tc_reloced   : (symbol * bool) option;
 }
 
@@ -186,7 +190,9 @@ val tc_error :
      proofenv -> ?catchable:bool -> ?loc:EcLocation.t -> ?who:string
   -> ('a, Format.formatter, unit, 'b) format4 -> 'a
 
-val tacuerror : ?catchable:bool -> ('a, Format.formatter, unit, 'b) format4 -> 'a
+val tc_error_exn :
+     proofenv -> ?catchable:bool -> ?loc:EcLocation.t -> ?who:string
+  -> exn -> 'a
 
 val tc_error_lazy :
      proofenv -> ?catchable:bool -> ?loc:EcLocation.t -> ?who:string
@@ -195,6 +201,13 @@ val tc_error_lazy :
 val tc_error_clear :
      proofenv -> ?catchable:bool -> ?loc:EcLocation.t -> ?who:string
   -> clearerror Lazy.t -> 'a
+
+(* -------------------------------------------------------------------- *)
+val tacuerror :
+  ?catchable:bool -> ('a, Format.formatter, unit, 'b) format4 -> 'a
+
+val tacuerror_exn :
+  ?catchable:bool -> exn -> 'a
 
 (* -------------------------------------------------------------------- *)
 type symkind = [`Lemma | `Operator | `Local]
@@ -229,6 +242,7 @@ module FApi : sig
   val as_tcenv1 : tcenv -> tcenv1
 
   val get_pregoal_by_id : handle -> proofenv -> pregoal
+  val get_main_pregoal  : proofenv -> pregoal
 
   (* Create a new opened goal for the given [form] in the backward
    * environment [tcenv]. If no local context [LDecl.hyps] is given,
