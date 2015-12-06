@@ -146,8 +146,7 @@ let process_clear symbols tc =
   in
 
   try  t_clears (List.map toid symbols) tc
-  with ClearError err -> tc_error_clear !!tc err
-
+  with (ClearError _) as err -> tc_error_exn !!tc err
 
 (* -------------------------------------------------------------------- *)
 let process_algebra mode kind eqs (tc : tcenv1) =
@@ -1359,8 +1358,8 @@ let process_generalize1 pattern (tc : tcenv1) =
 let process_generalize patterns (tc : tcenv1) =
   try
     FApi.t_seqs (List.rev_map process_generalize1 patterns) tc
-  with EcCoreGoal.ClearError err ->
-    tc_error_clear !!tc err
+  with (EcCoreGoal.ClearError _) as err ->
+    tc_error_exn !!tc err
 
 (* -------------------------------------------------------------------- *)
 let process_move views patterns (tc : tcenv1) =

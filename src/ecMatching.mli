@@ -171,3 +171,8 @@ module FPosition : sig
 
   val topattern : ?x:EcIdent.t -> ptnpos -> form -> EcIdent.t * form
 end
+
+(* -------------------------------------------------------------------- *)
+type cptenv = CPTEnv of f_subst
+
+val can_concretize : mevmap -> EcUnify.unienv -> bool
