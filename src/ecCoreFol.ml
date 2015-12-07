@@ -1172,6 +1172,11 @@ let destr_int f =
 
   | _ -> destr_error "destr_int"
 
+let destr_mem f =
+  match f.f_node, f.f_ty.ty_node with
+  | Flocal x, Tmem mt -> (x, mt)
+  | _, _ -> destr_error "destr_mem"
+
 (* -------------------------------------------------------------------- *)
 let is_op_and_sym  p = EcPath.p_equal EcCoreLib.CI_Bool.p_and p
 let is_op_and_asym p = EcPath.p_equal EcCoreLib.CI_Bool.p_anda p

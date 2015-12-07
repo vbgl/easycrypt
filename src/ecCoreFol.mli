@@ -370,6 +370,7 @@ val destr_bdHoareS  : form -> bdHoareS
 val destr_pr        : form -> pr
 val destr_programS  : [`Left | `Right] option -> form -> memenv * stmt
 val destr_int       : form -> zint
+val destr_mem       : form -> memory * memtype
 
 (* -------------------------------------------------------------------- *)
 val is_true      : form -> bool

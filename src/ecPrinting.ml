@@ -1388,7 +1388,9 @@ and try_pp_notations (ppe : PPEnv.t) outer fmt f =
     let ov = EcUnify.UniEnv.opentvi ue tv None in
     let ti = Tvar.subst ov in
     let hy = EcEnv.LDecl.init ppe.PPEnv.ppe_env [] in
-    let bd = form_of_expr mhr nt.ont_body in
+    let mr = EcEnv.Memory.get_active ppe.PPEnv.ppe_env in
+    let mr = odfl (mhr, None) (mr |> omap destr_mem) in
+    let bd = form_of_expr (Some mr) nt.ont_body in
     let bd = Fsubst.subst_tvar ov bd in
 
     try
@@ -1671,7 +1673,9 @@ and pp_ldform ppe fmt f =
   pp_form ppe fmt f 
 
 and pp_expr ppe fmt e =
-  pp_form ppe fmt (form_of_expr None e)
+  let mr = EcEnv.Memory.get_active ppe.PPEnv.ppe_env in
+  let mr = odfl (mhr, None) (mr |> omap destr_mem) in
+  pp_form ppe fmt (form_of_expr (Some mr) e)
 
 (* -------------------------------------------------------------------- *)
 let pp_typedecl (ppe : PPEnv.t) fmt (x, tyd) =
