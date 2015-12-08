@@ -74,7 +74,7 @@ val process_assumption  : backward
 val process_intros      : ?cf:bool -> ttenv -> intropattern -> backward
 val process_mintros     : ?withbd:bool -> ?cf:bool -> ttenv -> intropattern -> tactical
 val process_generalize  : genpattern list -> backward
-val process_move        : ppterm list -> genpattern list -> backward
+val process_move        : ppterm list -> psymbol list -> genpattern list -> backward
 val process_clear       : psymbol list -> backward
 val process_smt         : ?loc:EcLocation.t -> ttenv -> pprover_infos -> backward
 val process_apply       : implicits:bool -> apply_t -> backward
