@@ -2554,6 +2554,10 @@ module Op = struct
     try  EcDecl.is_fix (by_path p env)
     with LookupFailure _ -> false
 
+  let is_abbrev env p =
+    try  EcDecl.is_abbrev (by_path p env)
+    with LookupFailure _ -> false
+
   type notation = env_notation
 
   let get_notations env =
