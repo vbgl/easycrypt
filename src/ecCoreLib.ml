@@ -149,6 +149,8 @@ module CI_Logic = struct
 
   let p_case_eq_bool  = _Logic "bool_case_eq"
 
+  let p_ip_dup        = _Logic "_ip_dup"
+
   let p_muhoare_if_conseq_t   = _Logic "muhoare_if_conseq_t"
   let p_muhoare_if_conseq_f   = _Logic "muhoare_if_conseq_f"
   let p_muhoare_if_conseq_pre = _Logic "muhoare_if_conseq_pre"
