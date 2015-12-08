@@ -186,6 +186,9 @@ end = struct
   
     | NotAFunction ->
         msg "too many arguments"
+
+    | AbbrevLowArgs ->
+        msg "this abbreviation is not applied enough"
   
     | UnknownVarOrOp (name, []) ->
         msg "unknown variable or constant: `%a'" pp_qsymbol name

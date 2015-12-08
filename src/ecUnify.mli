@@ -46,12 +46,13 @@ val hastc : EcEnv.env -> unienv -> ty -> Sp.t -> unit
 
 val tfun_expected : unienv -> EcTypes.ty list -> EcTypes.ty
 
+type sbody = ((EcIdent.t * ty) list * expr) Lazy.t
+
 val select_op :
      ?filter:(operator -> bool) -> tvi -> EcEnv.env -> qsymbol -> unienv
-  -> dom -> ((EcPath.path * ty list) * ty * unienv) list
+  -> dom -> ((EcPath.path * ty list) * ty * unienv * sbody option) list
 
 (* -------------------------------------------------------------------- *)
-
 val destr_tfun   : EcEnv.env -> ty -> ty * ty
 val destr_tmem   : EcEnv.env -> ty -> memtype
 val destr_tdistr : EcEnv.env -> ty -> ty
@@ -64,7 +65,3 @@ val is_tdmem  : EcEnv.env -> ty -> bool
 
 val tfun_dom     : EcEnv.env -> ty -> ty
 val tfun_dommem  : EcEnv.env -> ty -> memtype
-
-
-
-
