@@ -75,6 +75,7 @@
     "beta"        , BETA       ;        (* KW: tactic *)
     "iota"        , IOTA       ;        (* KW: tactic *)
     "zeta"        , ZETA       ;        (* KW: tactic *)
+    "eta"         , ETA        ;        (* KW: tactic *)
     "logic"       , LOGIC      ;        (* KW: tactic *)
     "delta"       , DELTA      ;        (* KW: tactic *)
     "simplify"    , SIMPLIFY   ;        (* KW: tactic *)

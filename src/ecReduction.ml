@@ -190,6 +190,7 @@ type reduction_info = {
   delta_h : (ident -> bool);
   zeta    : bool;
   iota    : bool;
+  eta     : bool;
   logic   : bool;
   modpath : bool;
 }
@@ -200,6 +201,7 @@ let full_red = {
   delta_h = EcUtils.predT;
   zeta    = true;
   iota    = true;
+  eta     = true;
   logic   = true;
   modpath = true;
 }
@@ -210,6 +212,7 @@ let no_red = {
   delta_h = EcUtils.pred0;
   zeta    = false;
   iota    = false;
+  eta     = false;
   logic   = false;
   modpath = false;
 }
@@ -441,6 +444,11 @@ let rec h_red ri env hyps f =
   | Fapp ({ f_node = Fop (p, tys) }, args) when ri.delta_p p ->
       let op = reduce_op ri env p tys in
       f_app_simpl op args f.f_ty
+
+    (* η-reduction *)
+  | Fquant (Llambda, [x, GTty _], { f_node = Fapp (f, [{ f_node = Flocal y }]) })
+      when id_equal x y && not (Mid.mem x f.f_fv)
+    -> f
 
     (* contextual rule - let *)
   | Flet (lp, f1, f2) -> f_let lp (h_red ri env hyps f1) f2
