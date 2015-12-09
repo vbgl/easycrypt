@@ -35,7 +35,6 @@ val f_eqglob:
 (* soft-constructors - ordering *)
 val f_int_le  : form -> form -> form
 val f_int_lt  : form -> form -> form
-val f_int_sub : form -> form -> form
 
 (* soft-constructors - reals *)
 val f_rint : zint -> form
@@ -48,10 +47,12 @@ val f_r1 : form
 val f_real_le : form -> form -> form
 val f_real_lt : form -> form -> form
 
-val f_real_div : form -> form -> form
 val f_real_add : form -> form -> form
+val f_real_opp : form -> form
 val f_real_sub : form -> form -> form
 val f_real_mul : form -> form -> form
+val f_real_div : form -> form -> form
+val f_real_abs : form -> form
 
 (* soft constructors - distributions *)
 val fop_in_supp : EcTypes.ty -> form
@@ -109,10 +110,12 @@ val f_real_le_simpl : form -> form -> form
 val f_real_lt_simpl : form -> form -> form
 
 val f_int_add_simpl : form -> form -> form
+val f_int_opp_simpl : form -> form
 val f_int_sub_simpl : form -> form -> form
 val f_int_mul_simpl : form -> form -> form
 
 val f_real_add_simpl : form -> form -> form
+val f_real_opp_simpl : form -> form
 val f_real_sub_simpl : form -> form -> form
 val f_real_mul_simpl : form -> form -> form
 val f_real_div_simpl : form -> form -> form
@@ -135,12 +138,11 @@ type op_kind = [
   | `Real_le
   | `Real_lt
   | `Int_add
-  | `Int_sub
   | `Int_mul
   | `Int_pow
   | `Int_opp
   | `Real_add
-  | `Real_sub
+  | `Real_opp
   | `Real_mul
   | `Real_div
 ]
@@ -187,10 +189,29 @@ type sform =
 
 val sform_of_form : form -> sform
 
-
 (* ---------------------------------------------------------------------- *)
 val get_lambda1       : EcEnv.env -> form -> EcIdent.t * ty * form
 val open_mu_binding   : EcEnv.env -> form -> (EcIdent.t * memtype) * form
 val close_mu_binding  : EcIdent.t * memtype -> form -> form
 val is_muf_b2r_not    : EcEnv.env -> form -> bool
 val destr_muf_b2r_not : EcEnv.env -> form -> form * form
+
+(* -------------------------------------------------------------------- *)
+module type DestrRing = sig
+  val le  : form -> form * form
+  val lt  : form -> form * form
+  val add : form -> form * form
+  val opp : form -> form
+  val sub : form -> form * form
+  val mul : form -> form * form
+end
+
+module DestrInt : DestrRing
+
+module DestrReal : sig
+  include DestrRing
+
+  val inv : form -> form
+  val div : form -> form * form
+  val abs : form -> form
+end
