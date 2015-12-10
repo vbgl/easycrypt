@@ -398,7 +398,6 @@
 %token FUN
 %token FUSION
 %token FWDS
-%token GENERALIZE
 %token GLOB
 %token GOAL
 %token HAT
@@ -2176,9 +2175,6 @@ logtactic:
 
 | ASSUMPTION
     { Passumption }
-
-| GENERALIZE l=genpattern+
-   { Pgeneralize l }
 
 | MOVE vw=prefix(SLASH, pterm)*
    { Pmove (vw, [], []) }

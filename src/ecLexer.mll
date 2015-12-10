@@ -86,7 +86,6 @@
     "split"       , SPLIT      ;        (* KW: tactic *)
     "left"        , LEFT       ;        (* KW: tactic *)
     "right"       , RIGHT      ;        (* KW: tactic *)
-    "generalize"  , GENERALIZE ;        (* KW: tactic *)
     "case"        , CASE       ;        (* KW: tactic *)
 
     "intros"      , INTROS     ;        (* KW: tactic *)

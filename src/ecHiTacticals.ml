@@ -145,7 +145,6 @@ and process1_logic (ttenv : ttenv) (t : logtactic located) (tc : tcenv1) =
     | Papply pe         -> process_apply ~implicits:ttenv.tt_implicits pe
     | Pcut (m, ip, f, t)-> process_cut ~mode:m engine ttenv (ip, f, t)
     | Pcutdef (ip, f)   -> process_cutdef ttenv (ip, f)
-    | Pgeneralize l     -> process_generalize l
     | Pmove (v, cl, l)  -> process_move v cl l
     | Pclear l          -> process_clear l
     | Prewrite (ri, x)  -> process_rewrite ttenv ?target:x ri
@@ -308,7 +307,6 @@ and process (ttenv : ttenv) (t : ptactic) (tc : tcenv) =
     match unloc t.pt_core with
     | Plogic Pintro _
     | Plogic (Prewrite _)
-    | Plogic (Pgeneralize _ )
     | Plogic (Pmove _)
     | Pidtac _ -> true
     | _ -> false
