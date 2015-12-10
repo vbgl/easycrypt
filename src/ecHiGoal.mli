@@ -76,7 +76,7 @@ val process_assumption  : backward
 val process_intros      : ?cf:bool -> ttenv -> intropattern -> backward
 val process_mintros     : ?withbd:bool -> ?cf:bool -> ttenv -> intropattern -> tactical
 val process_generalize  : genpattern list -> backward
-val process_move        : ppterm list -> psymbol list -> genpattern list -> backward
+val process_move        : ppterm list -> prevert -> backward
 val process_clear       : psymbol list -> backward
 val process_smt         : ?loc:EcLocation.t -> ttenv -> pprover_infos -> backward
 val process_apply       : implicits:bool -> apply_t -> backward
@@ -88,8 +88,8 @@ val process_cutdef      : ttenv -> cutdef_t -> backward
 val process_left        : backward
 val process_right       : backward
 val process_split       : backward
-val process_elim        : genpattern list * pqsymbol option -> backward
-val process_case        : genpattern list -> backward
+val process_elim        : prevert * pqsymbol option -> backward
+val process_case        : prevertv -> backward
 val process_exists      : ppt_arg located list -> backward
 val process_congr       : backward
 val process_trivial     : backward
