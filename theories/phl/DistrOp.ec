@@ -251,7 +251,7 @@ qed.
 
 lemma dprod_comp_r (d1:'a distr) (d2:'b distr) r: d_compat d2 r => d_compat (d1 * d2) r.
 proof.
-  rewrite /d_compat=> [H1 | ->];2:by rewrite dprod0r.  
+  rewrite /d_compat=> -[H1 | ->];2:by rewrite dprod0r.  
   case (weight d1 = 0%r) => Hw1.
   + by right;cut := (w0_dzero d1);rewrite Hw1 /= => ->; rewrite dprod0l.
   case (weight d2 = 0%r) => Hw2.
@@ -263,7 +263,7 @@ qed.
 
 lemma dprod_comp_l (d1:'a distr) (d2:'b distr) r: d_compat d1 r => d_compat (d1 * d2) r.
 proof.
-  rewrite /d_compat=> [H1 | ->];2:by rewrite dprod0l.  
+  rewrite /d_compat=> -[H1 | ->];2:by rewrite dprod0l.  
   case (weight d1 = 0%r) => Hw1.
   + by right;cut := (w0_dzero d1);rewrite Hw1 /= => ->; rewrite dprod0l.
   case (weight d2 = 0%r) => Hw2.
@@ -321,7 +321,7 @@ proof. by rewrite /weight /PR dcomp_def. qed.
 
 lemma d_compat_dcomp  r d (g:'a -> 'b):  d_compat d r => d_compat (d \o g) r.
 proof.
-  by rewrite /d_compat;rewrite weight_dcomp => [ ] -> //; rewrite dzero_dcomp.
+  by rewrite /d_compat;rewrite weight_dcomp => -[ ] -> //; rewrite dzero_dcomp.
 qed.
 
 (* ------------------------------------------------------------------ *)

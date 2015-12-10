@@ -237,7 +237,7 @@ proof. rewrite !square_supp /=;smt. qed.
 
 lemma nosmt square_exists (d :'a distr) (p : 'b -> 'a -> bool) : 
   (exists b, $@[p b | d]) => $@[fun x => exists b, p b x | d].
-proof. by rewrite !square_supp /= => [b Hb] x Hx;exists b;apply Hb. qed.
+proof. by rewrite !square_supp /= => -[b Hb] x Hx;exists b;apply Hb. qed.
 
 lemma nosmt square_rweq (d:'a distr) (X Y:'a ->'b) (f :'a -> 'b -> real) :
   $@[ fun m => X m = Y m | d] =>

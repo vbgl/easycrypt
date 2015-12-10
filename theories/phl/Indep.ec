@@ -184,7 +184,7 @@ proof.
   cut Hc : d_compat (d \o fpair X Y) (DistrOp.weight d).
   + by apply d_compat_dcomp;apply d_compat_weight.
   split => Hind.
-  + rewrite -pw_eq => [a b];rewrite /mu_x !muf_b2r dmulc_def //.
+  + rewrite -pw_eq => -[a b];rewrite /mu_x !muf_b2r dmulc_def //.
     rewrite dcomp_def /= /Fun.(\o) /fpair pred1E /= anda_and (Hind ((=) a) ((=) b)).
     by rewrite /PR dprod_def /= !dcomp_def /(\o) anda_and b2r_and muf_mulc_l muf_mulc_r.
   move=> P1 P2;rewrite /PR.
@@ -200,7 +200,7 @@ proof.
   cut Hc : d_compat (d \o fpair X Y) (DistrOp.weight d).
   + by apply d_compat_dcomp;apply d_compat_weight.
   split => Hind.
-  + rewrite -pw_eq => [a b];rewrite /mu_x !muf_b2r dmulc_def //.
+  + rewrite -pw_eq => -[a b];rewrite /mu_x !muf_b2r dmulc_def //.
     rewrite dcomp_def /= /Fun.(\o) /fpair !pred1E /= anda_and (Hind a b).
     by rewrite /PR dprod_def /= !dcomp_def /(\o) anda_and b2r_and muf_mulc_l muf_mulc_r.
   move=> a b;rewrite /PR.
@@ -642,7 +642,7 @@ proof.
   + by rewrite dcomp_dcomp /(\o) map_cons drop_cons /= drop0.
   move:Hind;rewrite /eindeps. 
   rewrite (_:size Xs - 1 + 1 = size Xs) 1:smt.
-  rewrite (_: size (X :: Xs) - 1 = size Xs) 1:smt => [ | H];1:smt.
+  rewrite (_: size (X :: Xs) - 1 = size Xs) 1:smt => -[ | H];1:smt.
   rewrite -dcomp_dmulc 1:smt H.
   cut -> : (dlist (map ((\o) d) (X :: Xs))) \o
              (fun (l : 'a list) => (head Option.witness l, drop 1 l)) = 
