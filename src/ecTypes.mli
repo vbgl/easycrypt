@@ -53,6 +53,7 @@ val tconstr : EcPath.path -> ty list -> ty
 val tfun    : ty -> ty -> ty
 val tglob   : EcPath.mpath -> ty 
 val tmem    : memtype -> ty
+val tpred   : ty -> ty
 
 (* -------------------------------------------------------------------- *)
 val tunit   : ty
