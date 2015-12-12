@@ -1833,8 +1833,9 @@ ipcore_renaming:
 
 %inline icasemode:
 | /* empty */ { `One    }
-| STAR        { `Full 1 }
-| i=word STAR { `Full i }
+| STAR        { `Full None }
+| i=word STAR { `Full (Some (`AtMost i)) }
+| NOT STAR    { `Full (Some (`AsMuch)) }
 
 intro_pattern:
 | x=ipcore

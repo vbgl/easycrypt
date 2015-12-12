@@ -625,7 +625,7 @@ and rwtactic  = [`Ring]
 type intropattern1 =
   | IPCore   of ipcore
   | IPDup
-  | IPCase   of ([`One | `Full of int] * intropattern list)
+  | IPCase   of (icasemode * intropattern list)
   | IPView   of ppterm
   | IPRw     of (rwocc * rwside)
   | IPDelta  of ((rwside * rwocc) * pformula)
@@ -635,6 +635,8 @@ type intropattern1 =
   | IPSmt    of pprover_infos
   | IPSimplify
   | IPBreak
+
+
 
 and intropattern = (intropattern1 located) list
 
@@ -649,6 +651,12 @@ and renaming = [
   | `WithRename of string
   | `NoRename   of string
 ]
+
+and icasemode =
+  [`One | `Full of icasemode_full option]
+
+and icasemode_full =
+  [`AtMost of int | `AsMuch]
 
 type genpattern =
   [ `ProofTerm of ppterm | `Form of (rwocc * pformula) ]
