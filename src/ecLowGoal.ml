@@ -766,7 +766,7 @@ let t_elim_false_r ((_, sf) : form * sform) concl tc =
   | SFfalse -> t_apply_s LG.p_false_elim [] ~args:[concl] tc
   | _ -> raise TTC.NoMatch
 
-let t_elim_false tc = t_elim_r [t_elim_false_r] tc
+let t_elim_false ?reduce tc = t_elim_r ?reduce [t_elim_false_r] tc
 
 (* --------------------------------------------------------------------- *)
 let t_elim_and_r ((_, sf) : form * sform) concl tc =
@@ -781,7 +781,7 @@ let t_elim_and_r ((_, sf) : form * sform) concl tc =
 
   | _ -> raise TTC.NoMatch
 
-let t_elim_and goal = t_elim_r [t_elim_and_r] goal
+let t_elim_and ?reduce goal = t_elim_r ?reduce [t_elim_and_r] goal
 
 (* --------------------------------------------------------------------- *)
 let t_elim_or_r ((_, sf) : form * sform) concl tc =
@@ -796,7 +796,7 @@ let t_elim_or_r ((_, sf) : form * sform) concl tc =
 
   | _ -> raise TTC.NoMatch
 
-let t_elim_or tc = t_elim_r [t_elim_or_r] tc
+let t_elim_or ?reduce tc = t_elim_r ?reduce [t_elim_or_r] tc
 
 (* --------------------------------------------------------------------- *)
 let t_elim_iff_r ((_, sf) : form * sform) concl tc =
@@ -805,7 +805,7 @@ let t_elim_iff_r ((_, sf) : form * sform) concl tc =
       t_apply_s LG.p_iff_elim [] ~args:[a1; a2; concl] ~sk:1 tc
   | _ -> raise TTC.NoMatch
 
-let t_elim_iff tc = t_elim_r [t_elim_iff_r] tc
+let t_elim_iff ?reduce tc = t_elim_r ?reduce [t_elim_iff_r] tc
 
 (* -------------------------------------------------------------------- *)
 let t_elim_if_r ((_, sf) : form * sform) concl tc =
@@ -814,7 +814,7 @@ let t_elim_if_r ((_, sf) : form * sform) concl tc =
       t_apply_s LG.p_if_elim [] ~args:[a1; a2; a3; concl] ~sk:2 tc
   | _ -> raise TTC.NoMatch
 
-let t_elim_if tc = t_elim_r [t_elim_if_r] tc
+let t_elim_if ?reduce tc = t_elim_r ?reduce [t_elim_if_r] tc
 
 (* -------------------------------------------------------------------- *)
 let gen_tuple_eq_elim (tys : ty list) : form =
@@ -866,7 +866,7 @@ let t_elim_eq_tuple_r ((_, sf) : form * sform) concl tc =
 
   | _ -> raise TTC.NoMatch
 
-let t_elim_eq_tuple goal = t_elim_r [t_elim_eq_tuple_r] goal
+let t_elim_eq_tuple ?reduce goal = t_elim_r ?reduce [t_elim_eq_tuple_r] goal
 
 (* -------------------------------------------------------------------- *)
 let t_elim_exists_r ((f, _) : form * sform) concl tc =
@@ -879,7 +879,7 @@ let t_elim_exists_r ((f, _) : form * sform) concl tc =
       FApi.tcenv_of_tcenv1 tc
   | _ -> raise TTC.NoMatch
 
-let t_elim_exists tc = t_elim_r [t_elim_exists_r] tc
+let t_elim_exists ?reduce tc = t_elim_r ?reduce [t_elim_exists_r] tc
 
 (* -------------------------------------------------------------------- *)
 (* FIXME: document this function ! *)
