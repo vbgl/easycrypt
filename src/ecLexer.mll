@@ -216,10 +216,10 @@
     ("|"  , (PIPE        , true ));
     (":=" , (CEQ         , true ));
     ("/"  , (SLASH       , true ));
-    ("<-" , (LARROW      , false));
-    ("->" , (RARROW      , false));
-    ("<<-", (LLARROW     , false));
-    ("->>", (RRARROW     , false));
+    ("<-" , (LARROW      , true ));
+    ("->" , (RARROW      , true ));
+    ("<<-", (LLARROW     , true ));
+    ("->>", (RRARROW     , true ));
     ("!"  , (NOT         , false));
     ("^"  , (HAT         , false));
     ("&"  , (AMP         , false));
