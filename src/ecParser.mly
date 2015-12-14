@@ -2726,7 +2726,7 @@ tactic_ip:
 | t=tactic_core %prec prec_below_IMPL
     { mk_core_tactic t }
 
-| t=tactic_core IMPL ip=loc(intro_pattern)+
+| t=tactic_core ip=plist1(prefix(IMPL, loc(intro_pattern)+), empty)
     { { pt_core = t; pt_intros = ip; } }
 
 tactic:

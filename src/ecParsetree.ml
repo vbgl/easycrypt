@@ -744,7 +744,7 @@ and ptactics     = ptactic list
 (* -------------------------------------------------------------------- *)
 and ptactic = {
   pt_core   : ptactic_core;
-  pt_intros : intropattern;
+  pt_intros : intropattern list;
 }
 
 (* -------------------------------------------------------------------- *)
