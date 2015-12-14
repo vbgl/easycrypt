@@ -1828,9 +1828,6 @@ ipcore_renaming:
 | s=ipcore_name
    { `NoRename s }
 
-| s=ipcore_name NOT
-   { `WithRename s }
-
 %inline icasemode:
 | /* empty */
    { `One    }
