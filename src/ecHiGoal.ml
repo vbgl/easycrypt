@@ -546,6 +546,8 @@ let process_apply_top tc =
 
 (* -------------------------------------------------------------------- *)
 let process_rewrite1_core ?(close = true) ?target ?withbd (s, o) pt tc =
+  let o = norm_rwocc o in
+
   try
     let tc = LowRewrite.t_rewrite_r ?target ?withbd (s, o) pt tc in
     let cl = fun tc ->
@@ -570,6 +572,7 @@ let process_rewrite1_core ?(close = true) ?target ?withbd (s, o) pt tc =
 (* -------------------------------------------------------------------- *)
 let process_delta ?target (s, o, p) tc =
   let env, hyps, concl = FApi.tc1_eflat tc in
+  let o = norm_rwocc o in
 
   let idtg, target =
     match target with
@@ -1409,7 +1412,7 @@ let process_generalize1 pattern (tc : tcenv1) =
     | `Form (occ, pf) -> begin
         match pf.pl_desc with
         | PFident ({pl_desc = ([], s)}, None)
-            when occ = None && LDecl.has_name s hyps
+            when is_none occ && LDecl.has_name s hyps
           ->
             let id = fst (LDecl.by_name s hyps) in
             t_generalize_hyp ~clear id tc
@@ -1425,6 +1428,7 @@ let process_generalize1 pattern (tc : tcenv1) =
            with PT.FindOccFailure _ -> tc_error !!tc "cannot find an occurence");
 
           let p    = PT.concretize_form ptenv p in
+          let occ  = norm_rwocc occ in
           let cpos =
             try  FPosition.select_form hyps occ p concl
             with InvalidOccurence -> tacuerror "invalid occurence selector"
@@ -1511,6 +1515,7 @@ let process_move views pr (tc : tcenv1) =
 (* -------------------------------------------------------------------- *)
 let process_pose xsym o p (tc : tcenv1) =
   let (hyps, concl) = FApi.tc1_flat tc in
+  let o = norm_rwocc o in
 
   let (ptenv, p) =
     let (ps, ue), p = TTC.tc1_process_pattern tc p in
