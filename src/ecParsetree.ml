@@ -647,7 +647,6 @@ and ipcore = [
 and renaming = [
   | `NoName
   | `FindName
-  | `WithRename of string
   | `NoRename   of string
 ]
 

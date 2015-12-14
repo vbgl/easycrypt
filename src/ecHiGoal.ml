@@ -1081,7 +1081,6 @@ let rec process_mintros ?withbd ?(cf = true) ttenv pis gs =
             | `NoName       -> EcIdent.create "_"
             | `FindName     -> LDecl.fresh_id hyps name
             | `NoRename s   -> EcIdent.create s
-            | `WithRename s -> LDecl.fresh_id hyps s
           in
             match unloc s with
             | `Temp None     -> Some false, EcIdent.create "_"
