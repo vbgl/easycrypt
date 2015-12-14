@@ -1334,8 +1334,11 @@ let rec process_mintros ?withbd ?(cf = true) ttenv pis gs =
         | `Case (`Full x, pis) ->
             (false, rl (t_onall (intro1_full_case st x pis)) gs)
   
-        | `Rw (o, s) ->
+        | `Rw (o, s, None) ->
             (false, rl (t_onall (intro1_rw st (o, s))) gs)
+
+        | `Rw (o, s, Some i) ->
+            (false, rl (t_onall (t_do `All i (intro1_rw st (o, s)))) gs)
 
         | `Delta ((o, s), p) ->
             (nointro, rl (t_onall (intro1_unfold st (o, s) p)) gs)
