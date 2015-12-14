@@ -1383,14 +1383,15 @@ let rec process_mintros_1  ?withbd ?(cf = true) ttenv pis gs =
   end
 
 (* -------------------------------------------------------------------- *)
-let process_intros_1 ?withbd ?cf ttenv pis tc =
-  process_mintros_1 ?withbd ?cf ttenv pis (FApi.tcenv_of_tcenv1 tc)
-
-(* -------------------------------------------------------------------- *)
 let rec process_mintros ?withbd ?cf ttenv pis tc =
   match pis with [] -> tc | pi :: pis ->
     let tc = process_mintros_1 ?withbd ?cf ttenv pi tc in
     process_mintros ?withbd ~cf:false ttenv pis tc
+
+(* -------------------------------------------------------------------- *)
+let process_intros_1 ?cf ttenv pis tc =
+  process_mintros_1 ~withbd:ttenv.tt_withbd
+    ?cf ttenv pis (FApi.tcenv_of_tcenv1 tc)
 
 (* -------------------------------------------------------------------- *)
 let process_intros ?cf ttenv pis tc =
@@ -1479,6 +1480,25 @@ let process_generalize patterns (tc : tcenv1) =
     FApi.t_seqs (List.rev_map process_generalize1 patterns) tc
   with (EcCoreGoal.ClearError _) as err ->
     tc_error_exn !!tc err
+
+(* -------------------------------------------------------------------- *)
+let rec process_mgenintros ?withbd ?cf ttenv pis tc =
+  match pis with [] -> tc | pi :: pis ->
+    let tc =
+      match pi with
+      | `Ip  pi -> process_mintros_1 ?withbd ?cf ttenv pi tc
+      | `Gen gn ->
+         t_onall (
+           t_seqs [
+               process_clear gn.pr_clear;
+               process_generalize gn.pr_genp
+           ]) tc
+    in process_mgenintros ?withbd ~cf:false ttenv pis tc
+
+(* -------------------------------------------------------------------- *)
+let process_genintros ?cf ttenv pis tc =
+  process_mgenintros ~withbd:ttenv.tt_withbd
+    ?cf ttenv pis (FApi.tcenv_of_tcenv1 tc)
 
 (* -------------------------------------------------------------------- *)
 let process_move views pr (tc : tcenv1) =
