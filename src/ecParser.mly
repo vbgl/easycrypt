@@ -492,8 +492,10 @@
 %token SLASH
 %token SLASHSHARP
 %token SLASHEQ
+%token SLASHTILDEQ
 %token SLASHSLASH
 %token SLASHSLASHEQ
+%token SLASHSLASHTILDEQ
 %token SMT
 %token SP
 %token SPLIT
@@ -1876,16 +1878,22 @@ intro_pattern:
    { IPClear xs }
 
 | SLASHSLASH
-   { IPDone false }
+   { IPDone None }
 
 | SLASHSLASHEQ
-   { IPDone true }
+   { IPDone (Some `Full) }
+
+| SLASHSLASHTILDEQ
+   { IPDone (Some `ProductCompat) }
 
 | SLASHSHARP
    { IPSmt ({ (SMT.mk_smt_option []) with plem_max = Some (Some 0) }) }
 
 | SLASHEQ
-   { IPSimplify }
+   { IPSimplify `Full }
+
+| SLASHTILDEQ
+   { IPSimplify `ProductCompat }
 
 | SLASH f=pterm
    { IPView f }
@@ -1975,16 +1983,22 @@ rwpr_arg:
 
 rwarg1:
 | SLASHSLASH
-   { RWDone false }
+   { RWDone None }
 
 | SLASHSLASHEQ
-   { RWDone true }
+   { RWDone (Some `Full) }
+
+| SLASHSLASHTILDEQ
+   { RWDone (Some `ProductCompat) }
 
 | SLASHSHARP
    { RWSmt ({ (SMT.mk_smt_option []) with plem_max = Some (Some 0) }) }
 
 | SLASHEQ
-   { RWSimpl }
+   { RWSimpl `Full }
+
+| SLASHTILDEQ
+   { RWSimpl `ProductCompat }
 
 | s=rwside r=rwrepeat? o=rwocc? fp=rwpterms
    { RWRw ((s, r, o |> omap (snd_map EcMaps.Sint.of_list)), fp) }
