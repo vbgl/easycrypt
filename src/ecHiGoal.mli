@@ -19,6 +19,7 @@ type ttenv = {
   tt_smtmode   : [`Admit | `Strict | `Standard | `Report];
   tt_implicits : bool;
   tt_withbd    : bool;
+  tt_oldip     : bool;
 }
 
 type engine  = ptactic_core -> backward

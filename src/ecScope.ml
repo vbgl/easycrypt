@@ -241,10 +241,12 @@ end
 module KnownFlags = struct
   let implicits = "implicits"
   let withbd    = "withbd"
+  let oldip     = "oldip"
 
   let flags = [
     (implicits, false);
     (withbd   , false);
+    (oldip    , true );
   ]
 end
 
@@ -429,6 +431,12 @@ module Options = struct
 
   let set_withbd scope value =
     set scope KnownFlags.withbd value
+
+  let get_oldip scope =
+    get scope KnownFlags.oldip
+
+  let set_oldip scope value =
+    set scope KnownFlags.oldip value
 end
 
 (* -------------------------------------------------------------------- *)
@@ -719,7 +727,8 @@ module Tactics = struct
           EcHiGoal.tt_provers    = pi scope;
           EcHiGoal.tt_smtmode    = htmode;
           EcHiGoal.tt_implicits  = Options.get_implicits scope;
-          EcHiGoal.tt_withbd     = Options.get_withbd scope; } in
+          EcHiGoal.tt_withbd     = Options.get_withbd scope;
+          EcHiGoal.tt_oldip      = Options.get_oldip scope; } in
 
         let (hds, juc) =
           try  TTC.process ttenv tac juc
@@ -822,8 +831,8 @@ module Ax = struct
     in
 
     let ip =
-      let ip x = x |> omap (fun x -> `NoRename (unloc x)) |> odfl `NoName in
-      List.map (lmap (fun x -> IPCore (`Renaming (ip x)))) tintro in
+      let ip x = x |> omap (fun x -> `Named (unloc x)) |> odfl `Clear in
+      List.map (lmap (fun x -> IPCore (ip x))) tintro in
     let tintro = mk_loc loc (Plogic (Pmove prevertv0)) in
     let tintro = { pt_core = tintro; pt_intros = [`Ip ip]; } in
 
