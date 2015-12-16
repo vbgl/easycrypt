@@ -380,8 +380,8 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Auto : sig
-  val add1 : path -> env -> env
-  val add  : Sp.t -> env -> env
+  val add1 : local:bool -> path -> env -> env
+  val add  : local:bool -> Sp.t -> env -> env
   val get  : env -> Sp.t
 end
 
