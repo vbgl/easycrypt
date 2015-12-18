@@ -539,6 +539,7 @@ let gty_as_memordistr gty =
   | Tmem mt -> mt
   | Tconstr(_, [{ty_node = Tmem mt}]) -> mt
   | _ -> assert false
+
 (* -------------------------------------------------------------------- *)
 let hoarecmp_opp cmp =
   match cmp with

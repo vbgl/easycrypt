@@ -17,31 +17,16 @@ open EcLowPhlGoal
 module TTC = EcProofTyping
 
 (* -------------------------------------------------------------------- *)
-module LowInternal = struct
-  let get_to_gen pf side f =
-    assert false 
-(*
-    let do_side m =
-      match side with
-      | true  when EcIdent.id_equal m mleft  -> true
-      | true  when EcIdent.id_equal m mright -> false
-      | false when EcIdent.id_equal m mhr    -> true
-      | _ -> assert false
-    in
+let get_to_gens fs =
+  let do_id f = 
+    let id = 
       match f.f_node with
-      | Fpvar (pv, m) ->
-          let id = id_of_pv pv (destr_local m) in
-            (id, do_side (destr_local m), f_pvar pv f.f_ty, f)
+      | Fpvar (pv, m) -> id_of_pv pv (fst (destr_mem m))
+      | Fglob (mp, m) -> id_of_mp mp (fst (destr_mem m))
+      | _             -> EcIdent.create "f"
+    in (id, f)
 
-      | Fglob (mp, m) ->
-          let id = id_of_mp mp (destr_local m) in
-            (id, do_side (destr_local m), f_glob mp, f)
-
-      | _ -> tc_error pf "global memory or variable expected" *)
-
-  let get_to_gens pf side fs =
-    List.map (get_to_gen pf side) fs
-end
+  in List.map do_id fs
 
 (* -------------------------------------------------------------------- *)
 let t_hr_exists_elim_r tc =
@@ -73,10 +58,6 @@ let t_hr_forall_intro_r tc =
   let concl = f_forall bd (set_post ~post goal) in
   FApi.xmutate1 tc `Hlforall [concl]
 
-
-
-
-
 (* -------------------------------------------------------------------- *)
 let t_hr_exists_intro_r fs tc =
   let hyps  = FApi.tc1_hyps tc in
@@ -84,24 +65,30 @@ let t_hr_exists_intro_r fs tc =
   let pre   = tc1_get_pre  tc in
   let post  = tc1_get_post tc in
   let side  = is_equivS concl || is_equivF concl in
-  let gen   = LowInternal.get_to_gens !!tc side fs in
-  let eqs   = List.map (fun (id, _, _, f) -> f_eq (f_local id f.f_ty) f) gen in
-  let bd    = List.map (fun (id, _, _, f) -> (id, GTty f.f_ty)) gen in
+  let gen   = get_to_gens fs in
+  let eqs   = List.map (fun (id, f) -> f_eq (f_local id f.f_ty) f) gen in
+  let bd    = List.map (fun (id, f) -> (id, GTty f.f_ty)) gen in
   let pre   = f_exists bd (f_and (f_ands eqs) pre) in
+  let h     = LDecl.fresh_id hyps "h" in
 
-  let h = LDecl.fresh_id hyps "h" in
-  let ms, (ml, mr) =
+  let ms, subst =
     match side with
     | true ->
         let ml, mr = as_seq2 (LDecl.fresh_ids hyps ["&ml"; "&mr"]) in
-        ([ml; mr], (ml, mr))
+        let s = Fsubst.f_subst_id in
+        let s = Fsubst.f_bind_mem s mleft  None ml in
+        let s = Fsubst.f_bind_mem s mright None mr in
+        ([ml; mr], s)
 
     | false ->
-        let m = LDecl.fresh_id hyps "&m" in ([m], (m, m))
+        let m = LDecl.fresh_id hyps "&m" in 
+        let s = Fsubst.f_subst_id in
+        let s = Fsubst.f_bind_mem s mhr None m in
+        ([m], s)
   in
 
   let args =
-    let do1 (_, side, mk, _) = PAFormula (mk (if side then ml else mr)) in
+    let do1 (_, f) = PAFormula (Fsubst.f_subst subst f) in
     List.map do1 gen
   in
 
@@ -119,7 +106,7 @@ let t_hr_exists_intro_r fs tc =
 
 (* -------------------------------------------------------------------- *)
 let t_hr_exists_elim  = FApi.t_low0 "hr-exists-elim"  t_hr_exists_elim_r
-let t_hr_forall_intro = FApi.t_low0 "hr-forall-intro"  t_hr_forall_intro_r
+let t_hr_forall_intro = FApi.t_low0 "hr-forall-intro" t_hr_forall_intro_r
 let t_hr_exists_intro = FApi.t_low1 "hr-exists-intro" t_hr_exists_intro_r
 
 (* -------------------------------------------------------------------- *)
