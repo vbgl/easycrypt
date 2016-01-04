@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -113,19 +113,19 @@ module TacInternal = struct
     let concl = f_equivS_r {es with es_sl = sl; es_sr=sr; es_po = post} in
     FApi.xmutate1 tc `Wp [concl]
 
-  let t_muhoare_wp i tc = 
+  let t_muhoare_wp i tc =
     let env = FApi.tc1_env tc in
     let muh = tc1_as_muhoareS tc in
     let i = ofdfl (fun () -> EcLowMuHoare.max_wp muh.muh_s) i in
     let s_hd,s_tl = s_split i muh.muh_s in
-    let po = 
-      try EcLowMuHoare.wp_muhoare env (stmt s_tl) muh.muh_po 
+    let po =
+      try EcLowMuHoare.wp_muhoare env (stmt s_tl) muh.muh_po
       with EcLowMuHoare. NoWpMuhoare ->
         tc_error !!tc "not able to compute the wp for muhoare"
     in
     let concl = f_muhoareS_r {muh with muh_s = stmt s_hd; muh_po = po }in
     FApi.xmutate1 tc `Wp [concl]
-       
+
 end
 
 (* -------------------------------------------------------------------- *)

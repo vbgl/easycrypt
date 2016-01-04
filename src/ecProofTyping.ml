@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -91,16 +91,16 @@ let tc1_process_phl_ld_form ?side tc ty pf =
     | FbdHoareS hs, None        -> `Mem hs.bhs_m
     | FequivS   es, Some `Left  -> `Mem (mhr, snd es.es_ml)
     | FequivS   es, Some `Right -> `Mem (mhr, snd es.es_mr)
-    | FmuhoareS hs, None        -> 
+    | FmuhoareS hs, None        ->
       let env = FApi.tc1_env tc in
       let (m,mt), _ = open_mu_binding env hs.muh_pr in
       `Distr(m, mt)
     | _, _ -> assert false
   in
 
-  let ld, hyps = 
-    match memory with 
-    | `Mem memory   -> memory, LDecl.push_active memory hyps 
+  let ld, hyps =
+    match memory with
+    | `Mem memory   -> memory, LDecl.push_active memory hyps
     | `Distr memory -> memory, LDecl.push_active_distr memory hyps
 
   in (ld, pf_process_form !!tc hyps ty pf)

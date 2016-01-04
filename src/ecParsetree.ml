@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -453,7 +453,7 @@ type fun_info = [
 ]
 
 (* -------------------------------------------------------------------- *)
-type app_info = 
+type app_info =
   oside * tac_dir * int doption * pformula doption * p_app_bd_info
 
 (* -------------------------------------------------------------------- *)
@@ -517,7 +517,7 @@ type phltactic =
   | Psplitwhile    of (pexpr * oside * codepos)
   | Pcall          of oside * call_info gppterm
   | Prcond         of (oside * bool * int)
-  | Pcond          of pcond_info 
+  | Pcond          of pcond_info
   | Pswap          of ((oside * swap_kind) located list)
   | Pcfold         of (oside * codepos * int option)
   | Pinline        of inline_info
@@ -528,14 +528,14 @@ type phltactic =
   | Pconseq        of (pcqoptions * (conseq_ppterm option tuple3))
   | Phrex_elim
   | Phrex_intro    of pformula list
-  | Phrforall_intro 
+  | Phrforall_intro
   | Pexfalso
   | Pbydeno        of ([`PHoare | `Equiv ] * (deno_ppterm * bool * pformula option))
   | PPr            of (pformula * pformula) option
   | Pfel           of (int * fel_info)
   | Phoare
   | Pprbounded
-  | Psim           of sim_info 
+  | Psim           of sim_info
   | Ptrans_stmt    of trans_info
   | Psymmetry
   | Pbdhoare_split of bdh_split
@@ -574,13 +574,13 @@ type pprover_list = {
 let empty_pprover_list = {
   pp_use_only = [];
   pp_add_rm   = [];
-} 
+}
 
 type pprover_infos = {
   pprov_max       : int option;
   pprov_timeout   : int option;
   pprov_cpufactor : int option;
-  pprov_names     : pprover_list option; 
+  pprov_names     : pprover_list option;
   pprov_verbose   : int option option;
   pprov_version   : [`Lazy | `Full] option;
   plem_all        : bool option;
@@ -705,11 +705,11 @@ type apply_info = [
 type logtactic =
   | Preflexivity
   | Passumption
-  | Psmt        of pprover_infos 
+  | Psmt        of pprover_infos
   | Psplit
   | Pfield      of psymbol list
   | Pring       of psymbol list
-  | Palg_norm  
+  | Palg_norm
   | Pexists     of ppt_arg located list
   | Pleft
   | Pright

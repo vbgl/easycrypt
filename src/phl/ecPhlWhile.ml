@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -20,8 +20,8 @@ module Sx  = EcPath.Sx
 module TTC = EcProofTyping
 
 (* -------------------------------------------------------------------- *)
-let while_info env e s = 
-  let rec i_info (w,r,c) i = 
+let while_info env e s =
+  let rec i_info (w,r,c) i =
     match i.i_node with
     | Sasgn(lp, e) | Srnd(lp, e) ->
         let r = e_read_r env (EcPV.lp_read_r env r lp) e in
@@ -40,12 +40,12 @@ let while_info env e s =
         let w = match lp with None -> w | Some lp -> lp_write_r env w lp in
         let f = EcEnv.NormMp.norm_xfun env f in
         (w, r, Sx.add f c)
-  
+
     | Sassert e ->
         (w, e_read_r env r e, c)
 
     | Sabstract id ->
-      let add_pv x (pv,ty) = PV.add env pv ty x in 
+      let add_pv x (pv,ty) = PV.add env pv ty x in
       let us = EcEnv.AbsStmt.byid id env in
       let w = List.fold_left add_pv w us.EcModules.aus_writes in
       let r = List.fold_left add_pv r us.EcModules.aus_reads in
@@ -345,22 +345,22 @@ let init_muhoare_while env inv sinv v m =
   mu, mt, inv, mem, tmt, v, sinv, bounded
 
 let muhoare_while_pre env inv sinv v m =
-  let (mu, mt, inv, _mem, tmt, _v, sinv, bounded) = 
+  let (mu, mt, inv, _mem, tmt, _v, sinv, bounded) =
     init_muhoare_while env inv sinv v m in
-  let square  = 
-    f_square (mhr, tmt) (f_ands[sinv; bounded]) mu in 
-  close_mu_binding (mu,mt) (f_and inv square) 
+  let square  =
+    f_square (mhr, tmt) (f_ands[sinv; bounded]) mu in
+  close_mu_binding (mu,mt) (f_and inv square)
 
-let muhoare_while_post env b inv sinv v m = 
-  let (mu, mt, inv, _mem, tmt, _v, sinv, _bounded) = 
+let muhoare_while_post env b inv sinv v m =
+  let (mu, mt, inv, _mem, tmt, _v, sinv, _bounded) =
     init_muhoare_while env inv sinv v m in
   let nb   = f_not (form_of_expr (Some (mhr, mt)) b) in
-  let square  = 
+  let square  =
     f_square (mhr, tmt) (f_ands [sinv; nb]) mu in
   close_mu_binding (mu,mt) (f_and inv square)
 
-let t_low_muhoare_while_bounded_r (inv, sinv) v m q tc = 
-  (* TODO check type of 
+let t_low_muhoare_while_bounded_r (inv, sinv) v m q tc =
+  (* TODO check type of
       inv  : mem distr -> bool
       sinv : mem -> bool
       v    : mem -> int
@@ -378,40 +378,40 @@ let t_low_muhoare_while_bounded_r (inv, sinv) v m q tc =
   if not (EcReduction.is_conv hyps mus.muh_po po) then
     tc_error !!tc "low_muhoare_while_bounded:invalid post-condition";
   (* Generating the sub goals *)
-  let (mu, mt, inv', _mem, tmt, v, sinv, bounded) = 
+  let (mu, mt, inv', _mem, tmt, v, sinv, bounded) =
     init_muhoare_while env inv sinv v m in
   (* the if preserve phi *)
-  let cond1 = 
-    let pr = 
+  let cond1 =
+    let pr =
       close_mu_binding (mu,mt) (f_and inv' (f_square (mhr, tmt) sinv mu)) in
     f_muhoareS pr (s_if (e, c, s_empty)) inv in
   (* the body terminate *)
   let b  = form_of_expr (Some (mhr, mt)) e in
-  let cond2 = 
+  let cond2 =
     let vk  = EcIdent.create "k" in
     let k   = f_local vk tint in
-    let square = 
-      f_square (mhr, tmt) 
+    let square =
+      f_square (mhr, tmt)
         (f_ands [sinv; bounded; f_eq v k; b]) mu in
     let ll = f_mulossless env (f_local mu (tdistr tmt)) in
     let pr = close_mu_binding (mu,mt) (f_and square ll) in
-    let square_po = 
+    let square_po =
       f_square (mhr, tmt) (f_ands [sinv; bounded]) mu in
-    let decr = 
+    let decr =
       f_real_le q (f_muf_b2r (mhr,tmt) (f_int_lt v k) mu) in
     let po = close_mu_binding (mu,mt) (f_ands [square_po; decr; ll]) in
     f_forall [vk,GTty tint;] (f_muhoareS pr c po) in
   (* *)
-  let cond3 = 
+  let cond3 =
     f_forall [mhr, GTty tmt] (f_imps [sinv; f_int_le v f_i0] (f_not b)) in
-  let cond4 = 
+  let cond4 =
     f_real_lt f_r0 q in
-  
+
   FApi.xmutate1 tc `While [cond4; cond3; cond2; cond1]
 
 let t_low_muhoare_while_bounded = FApi.t_low4 "muhoare-while-bound" t_low_muhoare_while_bounded_r
- 
-(* FIXME: improve it such that we can apply it at any position *) 
+
+(* FIXME: improve it such that we can apply it at any position *)
 let t_muhoare_while_bounded (inv,sinv) v m q tc =
   let env = FApi.tc1_env tc in
   let mus = tc1_as_muhoareS tc in
@@ -424,16 +424,16 @@ let t_muhoare_while_bounded (inv,sinv) v m q tc =
   (EcPhlConseq.t_muhoareS_conseq mus.muh_pr po @+ [
     t_logic_trivial;
     t_id;
-    t_app (List.length s.s_node) pr @+ [ 
+    t_app (List.length s.s_node) pr @+ [
       t_low_muhoare_while_bounded (inv,sinv) v m q;
       t_id
-    ] 
+    ]
   ]) tc
 
 (* ----------------------------------------------------------------- *)
 
-let t_low_muhoare_while_decr_r (inv, sinv) v m tc = 
-  (* TODO check type of 
+let t_low_muhoare_while_decr_r (inv, sinv) v m tc =
+  (* TODO check type of
       inv  : mem distr -> bool
       sinv : mem -> bool
       v    : mem -> int
@@ -451,35 +451,35 @@ let t_low_muhoare_while_decr_r (inv, sinv) v m tc =
   if not (EcReduction.is_conv hyps mus.muh_po po) then
     tc_error !!tc "low_muhoare_while_bounded:invalid post-condition";
   (* Generating the sub goals *)
-  let (mu, mt, inv', _mem, tmt, v, sinv, bounded) = 
+  let (mu, mt, inv', _mem, tmt, v, sinv, bounded) =
     init_muhoare_while env inv sinv v m in
   (* the if preserve phi *)
-  let cond1 = 
-    let pr = 
+  let cond1 =
+    let pr =
       close_mu_binding (mu,mt) (f_and inv' (f_square (mhr, tmt) sinv mu)) in
     f_muhoareS pr (s_if (e, c, s_empty)) inv in
   (* the body terminate *)
   let b  = form_of_expr (Some (mhr, mt)) e in
-  let cond2 = 
+  let cond2 =
     let vk  = EcIdent.create "k" in
     let k   = f_local vk tint in
-    let square_pr = 
-      f_square (mhr, tmt) 
+    let square_pr =
+      f_square (mhr, tmt)
         (f_ands [sinv; bounded; f_eq v k; b]) mu in
     let pr = close_mu_binding (mu,mt) square_pr in
-    let square_po = 
+    let square_po =
       f_square (mhr, tmt) (f_ands [sinv; bounded;f_int_lt v k]) mu in
     let po = close_mu_binding (mu,mt) square_po in
     f_forall [vk,GTty tint;] (f_muhoareS pr c po) in
   (* *)
-  let cond3 = 
+  let cond3 =
     f_forall [mhr, GTty tmt] (f_imps [sinv; f_int_le v f_i0] (f_not b)) in
   FApi.xmutate1 tc `While [cond3; cond2; cond1]
 
-let t_low_muhoare_while_decr = 
+let t_low_muhoare_while_decr =
   FApi.t_low3 "muhoare-while-bound" t_low_muhoare_while_decr_r
- 
-(* FIXME: improve it such that we can apply it at any position *) 
+
+(* FIXME: improve it such that we can apply it at any position *)
 let t_muhoare_while_decr (inv,sinv) v m tc =
   let env = FApi.tc1_env tc in
   let mus = tc1_as_muhoareS tc in
@@ -492,10 +492,10 @@ let t_muhoare_while_decr (inv,sinv) v m tc =
   (EcPhlConseq.t_muhoareS_conseq mus.muh_pr po @+ [
     t_logic_trivial;
     t_id;
-    t_app (List.length s.s_node) pr @+ [ 
+    t_app (List.length s.s_node) pr @+ [
       t_low_muhoare_while_decr (inv,sinv) v m;
       t_id
-    ] 
+    ]
   ]) tc
 
 
@@ -510,10 +510,10 @@ let t_muhoare_while         = FApi.t_low1 "muhoare-while" t_muhoare_while
 
 (* -------------------------------------------------------------------- *)
 
-let split_muinv env inv0 = 
+let split_muinv env inv0 =
   let (mu,mt),inv = open_mu_binding env inv0 in
-  try 
-    let inv, sinv = destr_and inv in 
+  try
+    let inv, sinv = destr_and inv in
     let sinv = close_mu_binding (mu,mt) sinv in
     let sinv = snd (EcPhlCoreView.destr_square env sinv) in
     let sinv = f_lambda [mhr,gtmem mt] sinv in
@@ -521,7 +521,7 @@ let split_muinv env inv0 =
     inv, sinv
   with DestrError _ ->
     inv0, f_lambda [mhr,gtmem mt] f_true
-    
+
 
 let process_while side winfos tc =
   let { EcParsetree.wh_inv  = phi ;
@@ -571,15 +571,15 @@ let process_while side winfos tc =
       | _ -> tc_error !!tc "invalid arguments"
   end
 
-  | FmuhoareS _ -> 
-    if side <> None then 
+  | FmuhoareS _ ->
+    if side <> None then
       tc_error !!tc "invalid arguments";
     let (_,mt) as mumt,f = TTC.tc1_process_phl_ld_formula tc phi in
     let inv = close_mu_binding mumt f in
     begin match vrnt, bds with
     | None, None ->
       t_muhoare_while inv tc
-        
+
     | Some v, Some(m, q) ->
       let m = TTC.tc1_process_form tc tint m in
       let q = TTC.tc1_process_form tc treal q in
@@ -589,8 +589,8 @@ let process_while side winfos tc =
         let ue = TTC.unienv_of_hyps hyps in
         let mmt = mhr, mt in
         let env = EcEnv.Memory.push_active mmt env in
-        let f = 
-          try 
+        let f =
+          try
             let ff = EcTyping.trans_form env ue pf tint in
             EcFol.Fsubst.uni (EcUnify.UniEnv.close ue) ff
           with EcUnify.UninstanciateUni ->
@@ -603,7 +603,7 @@ let process_while side winfos tc =
         t_muhoare_while_decr    inv v m   tc
       else
         t_muhoare_while_bounded inv v m q tc
-        
+
     | _ -> tc_error !!tc "invalid arguments"
     end
 

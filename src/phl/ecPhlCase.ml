@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -34,11 +34,11 @@ let t_equiv_case_r f tc =
   FApi.xmutate1 tc (`HlCase f) [concl1; concl2]
 
 (* --------------------------------------------------------------------- *)
-let t_muhoare_case_r f tc = 
+let t_muhoare_case_r f tc =
   let muh = tc1_as_muhoareS tc in
   let env = FApi.tc1_env tc in
   let concl1 = f_muhoareS_r { muh with muh_pr = p_and env muh.muh_pr f } in
-  let concl2 = 
+  let concl2 =
     f_muhoareS_r { muh with muh_pr = p_and env muh.muh_pr (p_not env f) } in
   FApi.xmutate1 tc (`HlCase f) [concl1; concl2]
 
@@ -53,7 +53,7 @@ let t_hl_case_r f tc =
     ~th:(t_hoare_case f)
     ~tbh:(t_bdhoare_case f)
     ~te:(t_equiv_case f)
-    ~tmuh:(t_muhoare_case f) 
+    ~tmuh:(t_muhoare_case f)
 
     tc
 

@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -84,11 +84,11 @@ and muhoareF = {
 }
 
 and muhoareS = {
-  muh_pr : form; 
+  muh_pr : form;
   muh_s  : stmt;
   muh_po : form;
 }
-   
+
 and eagerF = {
   eg_pr : form;
   eg_sl : stmt;  (* No local program variables *)
@@ -185,7 +185,7 @@ let gtmem (mt : memtype) =
 let gtdistr (mt : memtype) =
   GTty (tdistr (tmem mt))
 
-let gtmemordistr mt k = 
+let gtmemordistr mt k =
   match k with
   | `Distr -> gtdistr mt
   | `Mem   -> gtmem mt
@@ -277,12 +277,12 @@ let pr_equal pr1 pr2 =
   && f_equal          pr1.pr_args pr2.pr_args
 
 
-let muhf_equal ph1 ph2 = 
+let muhf_equal ph1 ph2 =
      f_equal        ph1.muhf_pr ph2.muhf_pr
   && f_equal        ph1.muhf_po ph2.muhf_po
   && EcPath.x_equal ph1.muhf_f ph2.muhf_f
 
-let muh_equal ph1 ph2 = 
+let muh_equal ph1 ph2 =
      f_equal           ph1.muh_pr ph2.muh_pr
   && f_equal           ph1.muh_po ph2.muh_po
   && EcModules.s_equal ph1.muh_s ph2.muh_s
@@ -329,12 +329,12 @@ let pr_hash pr =
     (f_hash          pr.pr_args)
     (f_hash          pr.pr_event)
 
-let muhf_hash hf = 
-  Why3.Hashcons.combine2 
+let muhf_hash hf =
+  Why3.Hashcons.combine2
     (f_hash hf.muhf_pr) (f_hash hf.muhf_po) (EcPath.x_hash hf.muhf_f)
 
-let muh_hash hf = 
-  Why3.Hashcons.combine2 
+let muh_hash hf =
+  Why3.Hashcons.combine2
     (f_hash hf.muh_pr) (f_hash hf.muh_po) (EcModules.s_hash hf.muh_s)
 
 (* -------------------------------------------------------------------- *)
@@ -514,13 +514,13 @@ module Hsform = Why3.Hashcons.Make (struct
         let fv  = EcPath.x_fv fve pr.pr_fun in
         fv_union (f_fv pr.pr_args) (fv_add pr.pr_mem fv)
 
-    | FmuhoareF ph -> 
-        EcPath.x_fv (fv_union (f_fv ph.muhf_pr) (f_fv ph.muhf_po)) ph.muhf_f 
+    | FmuhoareF ph ->
+        EcPath.x_fv (fv_union (f_fv ph.muhf_pr) (f_fv ph.muhf_po)) ph.muhf_f
 
-    | FmuhoareS ph -> 
-        fv_union (fv_union (f_fv ph.muh_pr) (f_fv ph.muh_po)) 
+    | FmuhoareS ph ->
+        fv_union (fv_union (f_fv ph.muh_pr) (f_fv ph.muh_po))
           (EcModules.s_fv ph.muh_s)
- 
+
 
   let tag n f =
     let fv = fv_union (fv_node f.f_node) f.f_ty.ty_fv in
@@ -734,7 +734,7 @@ let f_int_opp f     = f_app fop_int_opp [f]      tint
 let f_int_add f1 f2 = f_app fop_int_add [f1; f2] tint
 let f_int_mul f1 f2 = f_app fop_int_mul [f1; f2] tint
 let f_int_pow f1 f2 = f_app fop_int_pow [f1; f2] tint
-  
+
 let f_int_sub f1 f2 =
   f_int_add f1 (f_int_opp f2)
 
@@ -839,7 +839,7 @@ module FSmart = struct
 
 
   let f_muhoareF (fp, bhf) bhf' =
-    if muhf_equal bhf bhf' then fp else f_muhoareF_r bhf' 
+    if muhf_equal bhf bhf' then fp else f_muhoareF_r bhf'
 
   let f_muhoareS (fp, bhs) bhs' =
     if muh_equal bhs bhs' then fp else f_muhoareS_r bhs'
@@ -952,15 +952,15 @@ let f_map gt g fp =
   | Fpr pr ->
       let args' = g pr.pr_args in
       let ev'   = g pr.pr_event in
-        FSmart.f_pr (fp, pr) 
+        FSmart.f_pr (fp, pr)
           { pr with pr_args = args'; pr_event = ev'; }
 
   | FmuhoareS ph ->
-    FSmart.f_muhoareS (fp, ph) 
+    FSmart.f_muhoareS (fp, ph)
       { ph with muh_pr = g ph.muh_pr; muh_po = g ph.muh_po; }
 
   | FmuhoareF ph ->
-    FSmart.f_muhoareF (fp, ph) 
+    FSmart.f_muhoareF (fp, ph)
       { ph with muhf_pr = g ph.muhf_pr; muhf_po = g ph.muhf_po; }
 
 (* -------------------------------------------------------------------- *)
@@ -969,7 +969,7 @@ let f_iter g f =
   | Fint     _
   | Flocal   _
   | Fpvar    _
-  | Fglob    _ 
+  | Fglob    _
   | Fop      _ -> ()
 
   | Fquant   (_ , _ , f1) -> g f1
@@ -988,7 +988,7 @@ let f_iter g f =
   | FequivS   es  -> g es.es_pr; g es.es_po
   | FeagerF   eg  -> g eg.eg_pr; g eg.eg_po
   | Fpr       pr  -> g pr.pr_args; g pr.pr_event
-    
+
   | FmuhoareS  ph  -> g ph.muh_pr; g ph.muh_po
   | FmuhoareF  ph  -> g ph.muhf_pr; g ph.muhf_po
 
@@ -998,7 +998,7 @@ let form_exists g f =
   | Fint     _
   | Flocal   _
   | Fpvar    _
-  | Fglob    _ 
+  | Fglob    _
   | Fop      _ -> false
 
   | Fquant   (_ , _ , f1) -> g f1
@@ -1026,7 +1026,7 @@ let form_forall g f =
   | Fint     _
   | Flocal   _
   | Fpvar    _
-  | Fglob    _ 
+  | Fglob    _
   | Fop      _ -> true
 
   | Fquant   (_ , _ , f1) -> g f1
@@ -1046,13 +1046,13 @@ let form_forall g f =
   | FeagerF   eg  -> g eg.eg_pr   && g eg.eg_po
   | Fpr       pr  -> g pr.pr_args && g pr.pr_event
   | FmuhoareF ph  -> g ph.muhf_pr && g ph.muhf_po
-  | FmuhoareS ph  -> g ph.muh_pr  && g ph.muh_po 
+  | FmuhoareS ph  -> g ph.muh_pr  && g ph.muh_po
 
 
 (* -------------------------------------------------------------------- *)
 let f_ops f =
   let aout = ref EcPath.Sp.empty in
-  let rec doit f = 
+  let rec doit f =
     match f.f_node with
     | Fop (p, _) -> aout := Sp.add p !aout
     | _ -> f_iter doit f
@@ -1094,7 +1094,7 @@ let destr_exists f =
   | Fquant(Lexists,bd,p) -> bd, p
   | _ -> destr_error "exists"
 
-let destr_let f = 
+let destr_let f =
   match f.f_node with
   | Flet(lp, e1,e2) -> lp,e1,e2
   | _ -> destr_error "let"
@@ -1198,7 +1198,7 @@ let destr_op = function
 let destr_app = function
   { f_node = Fapp (f, fs) } -> (f, fs) | f -> (f, [])
 
-let destr_op_app f = 
+let destr_op_app f =
   let (fo, args) = destr_app f in destr_op fo, args
 
 let destr_tuple = function
@@ -1230,7 +1230,7 @@ let destr_imp = destr_app2 ~name:"imp" is_op_imp
 let destr_iff = destr_app2 ~name:"iff" is_op_iff
 let destr_eq  = destr_app2 ~name:"eq"  is_op_eq
 
-let destr_eq_or_iff = 
+let destr_eq_or_iff =
   destr_app2 ~name:"eq-or-iff" (fun p -> is_op_eq p || is_op_iff p)
 
 let destr_or_r form =
@@ -1246,7 +1246,7 @@ let destr_and_r form =
   | _ -> destr_error "and"
 
 let destr_nots form =
-  let rec aux b form = 
+  let rec aux b form =
     match try Some (destr_not form) with DestrError _ -> None with
     | None      -> (b, form)
     | Some form -> aux (not b) form
@@ -1302,34 +1302,34 @@ let form_of_expr mem_mt =
     match e.e_node with
     | Eint n ->
        f_int n
-  
+
     | Elocal id ->
        f_local id e.e_ty
-  
+
     | Evar pv ->
        f_pvar pv e.e_ty (Lazy.force mem)
-  
+
     | Eop (op, tys) ->
        f_op op tys e.e_ty
-  
+
     | Eapp (ef, es) ->
        f_app (form_of_expr ef) (List.map form_of_expr es) e.e_ty
-  
+
     | Elet (lpt, e1, e2) ->
        f_let lpt (form_of_expr e1) (form_of_expr e2)
-  
+
     | Etuple es ->
        f_tuple (List.map form_of_expr es)
-  
+
     | Eproj (e1, i) ->
        f_proj (form_of_expr e1) i e.e_ty
-  
+
     | Eif (e1, e2, e3) ->
        let e1 = form_of_expr e1 in
        let e2 = form_of_expr e2 in
        let e3 = form_of_expr e3 in
        f_if e1 e2 e3
-  
+
     | Ematch (b, fs, ty) ->
        let b'  = form_of_expr b in
        let fs' = List.map form_of_expr fs in
@@ -1546,7 +1546,7 @@ module Fsubst = struct
         FSmart.f_pvar (fp, (pv, fp.f_ty, m)) (pv', ty', m')
 
     | Fglob (mp, m) ->
-        let m'  = f_subst ~tx s m in 
+        let m'  = f_subst ~tx s m in
         let mp' = s.fs_sty.ts_mp mp in
         FSmart.f_glob (fp, (mp, m)) (mp', m')
 
@@ -1635,7 +1635,7 @@ module Fsubst = struct
 
     | Fpr pr ->
       assert (not (Mid.mem mhr s.fs_loc));
-      let pr_mem   = 
+      let pr_mem   =
         try destr_local (Mid.find pr.pr_mem s.fs_loc)
         with Not_found -> pr.pr_mem
       in
@@ -1650,15 +1650,15 @@ module Fsubst = struct
       let muhf_po = f_subst ~tx s mh.muhf_po in
       let muhf_f  = EcPath.x_substm s.fs_sty.ts_p s.fs_mp mh.muhf_f in
       FSmart.f_muhoareF  (fp,mh) { muhf_pr; muhf_po; muhf_f }
- 
+
     | FmuhoareS mh ->
       let muh_pr = f_subst ~tx s mh.muh_pr in
       let muh_po = f_subst ~tx s mh.muh_po in
-      let es = 
+      let es =
         e_subst_init s.fs_freshen s.fs_sty.ts_p s.fs_ty s.fs_opdef s.fs_mp in
       let muh_s  = EcModules.s_subst es mh.muh_s in
       FSmart.f_muhoareS (fp,mh) { muh_pr; muh_po; muh_s }
-      
+
     | _ -> f_map s.fs_ty (f_subst ~tx s) fp)
 
   and f_subst_op ~tx freshen fty tys args (tyids, e) =
@@ -1728,7 +1728,7 @@ module Fsubst = struct
 
   (* ------------------------------------------------------------------ *)
   let fty_subst sty =
-    { f_subst_id with fs_sty = sty; fs_ty = ty_subst sty }    
+    { f_subst_id with fs_sty = sty; fs_ty = ty_subst sty }
 
   let uni_subst uidmap =
     fty_subst { ty_subst_id with ts_u = uidmap }

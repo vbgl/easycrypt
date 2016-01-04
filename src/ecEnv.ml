@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -108,7 +108,7 @@ type mc = {
   mc_axioms     : (ipath * EcDecl.axiom) MMsym.t;
   mc_theories   : (ipath * (ctheory * thmode)) MMsym.t;
   mc_typeclasses: (ipath * typeclass) MMsym.t;
-  mc_rwbase     : (ipath * path) MMsym.t; 
+  mc_rwbase     : (ipath * path) MMsym.t;
   mc_components : ipath MMsym.t;
 }
 
@@ -214,7 +214,7 @@ let empty_mc params = {
 }
 
 (* -------------------------------------------------------------------- *)
-let empty_norm_cache = 
+let empty_norm_cache =
   { norm_mp   = Mm.empty;
     norm_xpv  = Mx.empty;
     norm_xfun = Mx.empty;
@@ -670,7 +670,7 @@ module MC = struct
     let ax =
       match (snd obj).op_kind with
       | OB_pred (Some (PR_Ind pri)) ->
-         let pri = 
+         let pri =
            { ELI.ip_path    = ippath_as_path (fst obj);
              ELI.ip_tparams = (snd obj).op_tparams;
              ELI.ip_prind   = pri; } in
@@ -881,9 +881,9 @@ module MC = struct
   let _up_rwbase candup mc x obj=
     if not candup && MMsym.last x mc.mc_rwbase <> None then
       raise (DuplicatedBinding x);
-    { mc with mc_rwbase = MMsym.add x obj mc.mc_rwbase } 
+    { mc with mc_rwbase = MMsym.add x obj mc.mc_rwbase }
 
-  let import_rwbase p env = 
+  let import_rwbase p env =
     import (_up_rwbase true) (IPPath p) p env
 
   (* -------------------------------------------------------------------- *)
@@ -1032,7 +1032,7 @@ module MC = struct
 
       | CTh_baserw x ->
           (add2mc _up_rwbase x (expath x) mc, None)
-  
+
       | CTh_export _ | CTh_addrw _ | CTh_instance _ | CTh_auto _ ->
           (mc, None)
     in
@@ -1242,11 +1242,11 @@ end
 
 (* -------------------------------------------------------------------- *)
 module BaseRw = struct
-  let by_path_opt (p : EcPath.path) (env : env) = 
+  let by_path_opt (p : EcPath.path) (env : env) =
     let ip = IPPath p in
     Mip.find_opt ip env.env_rwbase
 
-  let by_path (p : EcPath.path) env = 
+  let by_path (p : EcPath.path) env =
     match by_path_opt p env with
     | None -> lookup_error (`Path p)
     | Some obj -> obj
@@ -1256,32 +1256,32 @@ module BaseRw = struct
     p, by_path p env
 
   let lookup_opt name env =
-    try_lf (fun () -> lookup name env)   
+    try_lf (fun () -> lookup name env)
 
   let lookup_path name env =
     fst (lookup name env)
 
-  let is_base name env = 
+  let is_base name env =
     match lookup_opt name env with
     | None -> false
     | Some _ -> true
 
-  let add name env = 
+  let add name env =
     let p   = EcPath.pqname (root env) name in
     let env = MC.bind_rwbase name p env in
     let ip  = IPPath p in
-    { env with 
+    { env with
         env_rwbase = Mip.add ip Sp.empty env.env_rwbase;
         env_item   = CTh_baserw name :: env.env_item; }
 
   let addto p l env =
     { env with
-        env_rwbase = 
-          Mip.change 
-            (omap (fun s -> List.fold_left (fun s r -> Sp.add r s) s l)) 
+        env_rwbase =
+          Mip.change
+            (omap (fun s -> List.fold_left (fun s r -> Sp.add r s) s l))
             (IPPath p) env.env_rwbase;
         env_item = CTh_addrw (p, l) :: env.env_item; }
-    
+
 end
 
 (* -------------------------------------------------------------------- *)
@@ -1290,7 +1290,7 @@ module Auto = struct
     { env with
         env_atbase = Sp.union env.env_atbase ps;
         env_item   = CTh_auto (local, ps) :: env.env_item; }
-    
+
   let add1 ~local (p : path) (env : env) =
     add ~local (Sp.singleton p) env
 
@@ -1402,11 +1402,11 @@ module Local = struct
     let s = EcIdent.name name in
     { env with
       env_locals = MMsym.add s (name, ty) env.env_locals }
-      
-  let bind_locals bindings env = 
+
+  let bind_locals bindings env =
     List.fold_left
     (fun env (name, ty) -> bind_local name ty env)
-    env bindings    
+    env bindings
 end
 
 (* -------------------------------------------------------------------- *)
@@ -1420,15 +1420,15 @@ module Memory = struct
     MMsym.fold (fun _ l all ->
       List.fold_left (fun all (id,ty) ->
         let ty = Ty.hnorm ty env in
-        if is_tmem ty then (id, destr_tmem ty)::all 
-        else all) all l)  
+        if is_tmem ty then (id, destr_tmem ty)::all
+        else all) all l)
       env.env_locals []
 
   let byid (me : memory) (env : env) =
     let memories = MMsym.all (EcIdent.name me) env.env_locals in
     let memories =
       List.filter
-        (fun (id,ty) -> 
+        (fun (id,ty) ->
           EcIdent.id_equal me id && is_tmem (Ty.hnorm ty env))
         memories
     in
@@ -1458,8 +1458,8 @@ module Memory = struct
   let current (env : env) = get_active env
 
   let push ((id,mt): EcMemory.memenv) (env : env) =
-    Local.bind_local id (tmem mt) env 
-      
+    Local.bind_local id (tmem mt) env
+
   let push_all memenvs env =
     List.fold_left
       (fun env m -> push m env)
@@ -1483,14 +1483,14 @@ module MemDistr = struct
     match memories with
     | []     -> None
     | (m,ty) :: _ -> Some (m, destr_tdmem (Ty.hnorm ty env))
-      
+
   let lookup (me : symbol) (env : env) =
     let mems = MMsym.all me env.env_locals in
     let mems = List.filter (fun (_id,ty) -> is_tdmem (Ty.hnorm ty env)) mems in
-    try  
+    try
       let id,ty = List.hd mems in
       Some(id, destr_tdmem (Ty.hnorm ty env))
-    with Failure _ | Invalid_argument _ -> None  
+    with Failure _ | Invalid_argument _ -> None
 
   let set_active (me : memory) (env : env) =
     match byid me env with
@@ -1506,7 +1506,7 @@ module MemDistr = struct
     | Some me -> Some (oget (byid me env))
 
   let push ((id,mt) : EcMemory.memenv) (env : env) =
-    Local.bind_local id (tdistr (tmem mt)) env 
+    Local.bind_local id (tdistr (tmem mt)) env
 
   let push_all memenvs env =
     List.fold_left
@@ -1622,11 +1622,11 @@ module Fun = struct
         | Some l -> adds_in_memenv mem l in
       (fun_.f_sig,fd), adds_in_memenv mem fd.f_locals
 
-  let inv_memory side env = 
+  let inv_memory side env =
     let path  = mroot env in
     let xpath = EcPath.xpath_fun path "" in (* dummy value *)
     let id    = if side = `Left then EcCoreFol.mleft else EcCoreFol.mright in
-    EcMemory.empty_local id xpath 
+    EcMemory.empty_local id xpath
 
   let inv_memenv env =
     let path  = mroot env in
@@ -1816,7 +1816,7 @@ module Var = struct
   let bind_local name ty env = Local.bind_local name ty env
 
   let bind_locals bindings env = Local.bind_locals bindings env
-  
+
 end
 
 
@@ -2124,9 +2124,9 @@ module NormMp = struct
 
   let rec norm_xfun env p =
     try Mx.find p !(env.env_norm).norm_xfun with Not_found ->
-      let res = 
+      let res =
         match p.x_sub.p_node with
-        | Pqname(pf,x) -> 
+        | Pqname(pf,x) ->
           let pf = norm_xfun env (EcPath.xpath p.x_top pf) in
           EcPath.xpath pf.x_top (EcPath.pqname pf.x_sub x)
         | _ ->
@@ -2319,7 +2319,7 @@ module NormMp = struct
           let me = Msym.fold (fun id (p,ty) me ->
             EcMemory.bindp id p (aux ty) me)
             (EcMemory.lmt_bindings mt) me  in
-          tmem (snd me) 
+          tmem (snd me)
         | _ -> ty_map aux ty)
 
   let rec norm_form env =
@@ -2407,10 +2407,10 @@ module NormMp = struct
     | FBabs _ -> true
     | _ -> false
 
-  let x_equal env f1 f2 = 
+  let x_equal env f1 f2 =
     EcPath.x_equal (norm_xfun env f1) (norm_xfun env f2)
 
-  let pv_equal env pv1 pv2 = 
+  let pv_equal env pv1 pv2 =
     EcTypes.pv_equal (norm_pvar env pv1) (norm_pvar env pv2)
 end
 
@@ -2640,7 +2640,7 @@ module Ax = struct
 
   let lookup qname (env : env) =
     MC.lookup_axiom qname env
-    
+
   let lookup_opt name env =
     try_lf (fun () -> lookup name env)
 
@@ -2665,13 +2665,13 @@ module Ax = struct
     match name with
     | Some name ->
       let axs = MC.lookup_axioms name env in
-      List.iter (fun (p,ax) -> f p ax) axs 
+      List.iter (fun (p,ax) -> f p ax) axs
 
     | None ->
-        Mip.iter 
-          (fun _ mc -> MMsym.iter 
+        Mip.iter
+          (fun _ mc -> MMsym.iter
             (fun _ (ip, ax) ->
-              match ip with IPPath p -> f p ax | _ -> ()) 
+              match ip with IPPath p -> f p ax | _ -> ())
             mc.mc_axioms)
           env.env_comps
 
@@ -2979,14 +2979,14 @@ module Theory = struct
       | CTh_addrw (p, ps) ->
           let ps = List.filter ((not) |- inclear |- oget |- EcPath.prefix) ps in
           if List.is_empty ps then None else Some (CTh_addrw (p, ps))
-  
+
       | CTh_auto (lc, ps) ->
           let ps = Sp.filter ((not) |- inclear |- oget |- EcPath.prefix) ps in
           if Sp.is_empty ps then None else Some (CTh_auto (lc, ps))
 
       | (CTh_export p) as item ->
           if Sp.mem p cleared then None else Some item
-  
+
       | _ as item -> Some item
 
       in (cleared, item)

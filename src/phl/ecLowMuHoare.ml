@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -15,28 +15,28 @@ open EcLowPhlGoal
 
 
 (* FIXME move this *)
-let p_not env p1 = 
+let p_not env p1 =
   let x,ty,p1 = get_lambda1 env p1 in
   f_lambda [x,GTty ty] (f_not p1)
 
-let p_imp env p1 p2 = 
+let p_imp env p1 p2 =
   let x,ty,p1 = get_lambda1 env p1 in
   f_lambda [x,GTty ty] (f_imp p1 (f_app_simpl p2 [f_local x ty] tbool))
 
-let p_and env p1 p2 = 
+let p_and env p1 p2 =
   let x,ty,p1 = get_lambda1 env p1 in
   f_lambda [x,GTty ty] (f_and p1 (f_app_simpl p2 [f_local x ty] tbool))
 
-let p_forall_imp env p1 p2 = 
+let p_forall_imp env p1 p2 =
   f_pred2forall env (p_imp env p1 p2)
 
 (*
 (* -------------------------------------------------------------------- *)
 let lmd_app (id,mt) ((id',mt'), body as f) =
-  
+
    assert (EcMemory.mt_equal mt mt');
    if EcIdent.id_equal id id' then f
-   else 
+   else
      let body =  Fsubst.f_subst_mem id' mt id body in
      (id,mt), body
 *)
@@ -49,7 +49,7 @@ let oplus ty mu mu1 mu2 f =
     assert (not (EcIdent.id_equal id mu2)) in
   let check_binding b =
     if is_mu b then true else (check_mu1mu2 b; false) in
-  
+
   let check_pattern = function
     | LSymbol b -> check_binding b
     | LTuple bs -> List.exists check_binding bs
@@ -61,9 +61,9 @@ let oplus ty mu mu1 mu2 f =
   let mu1 = f_local mu1 ty in
   let mu2 = f_local mu2 ty in
 
-  let rec aux f = 
+  let rec aux f =
     match f.f_node with
-    | Fapp({f_node = Fop(op, _)} as muf, [ff; {f_node = Flocal mu'}]) 
+    | Fapp({f_node = Fop(op, _)} as muf, [ff; {f_node = Flocal mu'}])
         when EcIdent.id_equal mu mu' &&
           EcPath.p_equal op EcCoreLib.CI_Distr.p_muf ->
       let ff = aux ff in
@@ -94,8 +94,8 @@ let do_on_mu env onld ?mt' f =
   let mu, ty, f = get_lambda1 env f in
   let mt = EcUnify.destr_tdmem env ty in
   let tmt' = tmem (odfl mt mt') in
-  let loc_mu = f_local mu (tdistr tmt') in 
- 
+  let loc_mu = f_local mu (tdistr tmt') in
+
   let check_binding (id,_) = EcIdent.id_equal id mu in
 
   let check_pattern = function
@@ -105,16 +105,16 @@ let do_on_mu env onld ?mt' f =
       List.exists
         (fun (id,ty) -> if id = None then false else check_binding (oget id,ty))
         bs in
- 
+
   let rec aux f =
     if Mid.mem mu f.f_fv then
       match f.f_node with
-      | Fapp({f_node = Fop(op, _)}, [f1; {f_node = Flocal mu'}]) 
+      | Fapp({f_node = Fop(op, _)}, [f1; {f_node = Flocal mu'}])
           when EcIdent.id_equal mu mu' &&
           EcPath.p_equal op EcCoreLib.CI_Distr.p_muf ->
         let f1 = aux f1 in
         f_muf_ty tmt' (onld f1) loc_mu
- 
+
       | Flocal mu' -> assert (not (EcIdent.id_equal mu mu')); f
 
       | Fquant(q,b,f1) ->
@@ -134,13 +134,13 @@ let do_on_mu env onld ?mt' f =
   in
 
   f_lambda [ mu, GTty (tdistr tmt')] (aux f)
-  
-let get_lambda1_mem env f = 
+
+let get_lambda1_mem env f =
   let m, mty, f = get_lambda1 env f in
   let mt = EcUnify.destr_tmem env mty in
   m, mt, f
- 
-let mu_restr env pos b f = 
+
+let mu_restr env pos b f =
   let ldm_restr f =
     let m, mt, f = get_lambda1_mem env f in
     let b = form_of_expr (Some (m,mt)) b in
@@ -148,8 +148,8 @@ let mu_restr env pos b f =
     f_lambda [m,gtmem mt] (f_real_mul (f_real_of_bool b) f) in
   do_on_mu env ldm_restr f
 
-let curly env b f1 f2 = 
-    p_and env (mu_restr env true b f1) (mu_restr env false b f2) 
+let curly env b f1 f2 =
+    p_and env (mu_restr env true b f1) (mu_restr env false b f2)
 
 (* -------------------------------------------------------------------- *)
 exception NoWpMuhoare
@@ -181,14 +181,14 @@ and pt_muhoare env m s f =
 
 (* -------------------------------------------------------------------- *)
 let wp_muhoare env s po =
-  let onld f = 
+  let onld f =
     let m, mt, f = get_lambda1_mem env f in
     f_lambda [m, gtmem mt] (pt_muhoare env (m,mt) s f) in
   do_on_mu env onld po
 
 (* -------------------------------------------------------------------- *)
-let wp_ret env mt' pvres e po = 
-  let onld f = 
+let wp_ret env mt' pvres e po =
+  let onld f =
     let m, mt, f = get_lambda1_mem env f in
     let mmt = (m,mt) in
     let let1 = lv_subst mmt (LvVar (pvres, e.e_ty)) (form_of_expr (Some mmt) e) in
@@ -199,13 +199,13 @@ let wp_ret env mt' pvres e po =
   do_on_mu env onld ~mt' po
 
 (* -------------------------------------------------------------------- *)
-let wp_pre env mt' f fs pr = 
+let wp_pre env mt' f fs pr =
   let gmt' = gtmem mt' in
-  let onld = 
+  let onld =
     match fs.fs_anames with
-    | None -> 
+    | None ->
       fun f ->
-        let m,_,f = get_lambda1_mem env f in 
+        let m,_,f = get_lambda1_mem env f in
         f_lambda [m,gmt'] (Fsubst.f_subst_mem m mt' m f)
 
     | Some lv ->

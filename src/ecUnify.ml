@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -482,7 +482,7 @@ let select_op ?(filter = fun _ -> true) tvi env name ue psig =
     List.pmap select (EcEnv.Op.all ~check:filter name env)
 
 (* -------------------------------------------------------------------- *)
-let destr_tfun   env ty = 
+let destr_tfun   env ty =
   match (EcEnv.Ty.hnorm ty env).ty_node with
   | Tfun (t1, t2) -> t1, t2
   | _  -> destr_error "destr_tfun"
@@ -497,7 +497,7 @@ let rec destr_tdistr env ty =
   | Tconstr(p,[ty]) when EcPath.p_equal p EcCoreLib.CI_Distr.p_distr ->
       ty
 
-  | Tconstr(p,tys) when EcEnv.Ty.defined p env -> 
+  | Tconstr(p,tys) when EcEnv.Ty.defined p env ->
       destr_tdistr env (EcEnv.Ty.unfold p tys env)
 
   | _ -> destr_error "destr_tdistr"

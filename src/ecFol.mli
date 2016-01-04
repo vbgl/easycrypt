@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -66,7 +66,7 @@ val f_weight  : ty -> form -> form
 val f_real_of_bool : form -> form
 val f_muf_ty  : ty -> form -> form -> form
 val f_muf     : EcEnv.env  -> form -> form -> form
-val f_integr  : EcEnv.env  -> form -> EcIdent.t -> form 
+val f_integr  : EcEnv.env  -> form -> EcIdent.t -> form
 val f_muf_b2r : EcIdent.t * ty -> form -> EcIdent.t -> form
 val f_square  : EcIdent.t * ty -> form -> EcIdent.t -> form
 val f_mulossless : EcEnv.env  -> form -> form

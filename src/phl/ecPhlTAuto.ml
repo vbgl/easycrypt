@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -20,11 +20,11 @@ let t_hoare_true_r tc =
   | FhoareS hs when f_equal hs.hs_po f_true ->
       FApi.xmutate1 tc `HoareTrue []
 
-  | FmuhoareF hf when 
+  | FmuhoareF hf when
       f_equal (snd (open_mu_binding (FApi.tc1_env tc) hf.muhf_po)) f_true ->
       FApi.xmutate1 tc `HoareTrue []
 
-  | FmuhoareS hs when 
+  | FmuhoareS hs when
       f_equal (snd (open_mu_binding (FApi.tc1_env tc) hs.muh_po)) f_true ->
       FApi.xmutate1 tc `HoareTrue []
 

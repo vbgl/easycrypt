@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -108,7 +108,7 @@ module CI_Distr : sig
   val p_mu      : path
   val p_mu_x    : path
   val p_weight  : path
-  val p_muf     : path 
+  val p_muf     : path
 end
 
 (* -------------------------------------------------------------------- *)

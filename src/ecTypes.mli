@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -23,7 +23,7 @@ and ty_node =
   | Tmem    of memtype
   | Tglob   of EcPath.mpath (* The tuple of global variable of the module *)
   | Tunivar of EcUid.uid
-  | Tvar    of EcIdent.t 
+  | Tvar    of EcIdent.t
   | Ttuple  of ty list
   | Tconstr of EcPath.path * ty list
   | Tfun    of ty * ty
@@ -44,14 +44,14 @@ type dom = ty list
 val dump_ty : ty -> string
 
 val ty_equal : ty -> ty -> bool
-val ty_hash  : ty -> int 
+val ty_hash  : ty -> int
 
 val tuni    : EcUid.uid -> ty
 val tvar    : EcIdent.t -> ty
 val ttuple  : ty list -> ty
 val tconstr : EcPath.path -> ty list -> ty
 val tfun    : ty -> ty -> ty
-val tglob   : EcPath.mpath -> ty 
+val tglob   : EcPath.mpath -> ty
 val tmem    : memtype -> ty
 val tpred   : ty -> ty
 
@@ -88,7 +88,7 @@ val ty_check_uni : ty -> unit
 val mt_fv : memtype -> int Mid.t
 val lmt_equal : local_memtype -> local_memtype -> bool
 val mt_equal : memtype -> memtype -> bool
-val mt_subst :(EcPath.xpath -> EcPath.xpath) -> (ty -> ty) -> 
+val mt_subst :(EcPath.xpath -> EcPath.xpath) -> (ty -> ty) ->
                memtype -> memtype
 
 (* -------------------------------------------------------------------- *)
@@ -147,7 +147,7 @@ type lpattern =
   | LRecord of EcPath.path * (EcIdent.t option * ty) list
 
 val lp_equal : lpattern -> lpattern -> bool
-val lp_hash  : lpattern -> int 
+val lp_hash  : lpattern -> int
 val lp_bind  : lpattern -> (EcIdent.t * ty) list
 val lp_ids   : lpattern -> EcIdent.t list
 val lp_fv    : lpattern -> EcIdent.Sid.t
@@ -162,10 +162,10 @@ type prog_var = private {
   pv_kind : pvar_kind;
 }
 
-val pv_equal   : prog_var -> prog_var -> bool 
+val pv_equal   : prog_var -> prog_var -> bool
 val pv_compare : prog_var -> prog_var -> int
 (* work only if the prog_var has been normalized *)
-val pv_compare_p : prog_var -> prog_var -> int 
+val pv_compare_p : prog_var -> prog_var -> int
 val pv_hash    : prog_var -> int
 val pv_fv      : prog_var -> int EcIdent.Mid.t
 val is_loc     : prog_var -> bool
@@ -174,10 +174,10 @@ val is_glob    : prog_var -> bool
 val symbol_of_pv   : prog_var -> symbol
 val string_of_pvar : prog_var -> string
 
-val pv_subst : (EcPath.xpath -> EcPath.xpath) -> prog_var -> prog_var 
+val pv_subst : (EcPath.xpath -> EcPath.xpath) -> prog_var -> prog_var
 
 val pv_loc  : EcPath.xpath -> symbol -> prog_var
-val pv_glob : EcPath.xpath -> prog_var 
+val pv_glob : EcPath.xpath -> prog_var
 val xp_glob : EcPath.xpath -> EcPath.xpath
 val pv_res  : EcPath.xpath -> prog_var
 val pv_arg  : EcPath.xpath -> prog_var
@@ -242,7 +242,7 @@ val is_var       : expr -> bool
 val is_tuple_var : expr -> bool
 
 val destr_local     : expr -> EcIdent.t
-val destr_var       : expr -> prog_var 
+val destr_var       : expr -> prog_var
 val destr_tuple_var : expr -> prog_var list
 
 (* -------------------------------------------------------------------- *)
@@ -256,19 +256,19 @@ val e_fold :
   ('state -> expr -> 'state) -> 'state -> expr -> 'state
 
 (* -------------------------------------------------------------------- *)
-type e_subst = { 
+type e_subst = {
   es_freshen : bool; (* true means realloc local *)
   es_p       : EcPath.path -> EcPath.path;
   es_ty      : ty -> ty;
   es_opdef   : (EcIdent.t list * expr) EcPath.Mp.t;
-  es_mp      : EcPath.mpath -> EcPath.mpath; 
+  es_mp      : EcPath.mpath -> EcPath.mpath;
   es_xp      : EcPath.xpath -> EcPath.xpath;
   es_loc     : expr Mid.t;
 }
 
 val e_subst_id : e_subst
 
-val e_subst_init : 
+val e_subst_init :
       bool
   -> (EcPath.path -> EcPath.path)
   -> (ty -> ty)
@@ -282,5 +282,5 @@ val add_locals : e_subst -> (EcIdent.t * ty) list -> e_subst * (EcIdent.t * ty) 
 val e_subst_closure : e_subst -> closure -> closure
 val e_subst : e_subst -> expr -> expr
 
-val e_mapty : (ty -> ty) -> expr -> expr 
+val e_mapty : (ty -> ty) -> expr -> expr
 val e_uni   : (uid -> ty option) -> expr -> expr

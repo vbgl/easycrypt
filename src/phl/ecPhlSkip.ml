@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -18,7 +18,7 @@ open EcLowMuHoare
 (* -------------------------------------------------------------------- *)
 module LowInternal = struct
   (* ------------------------------------------------------------------ *)
-  let t_muhoare_skip_r tc = 
+  let t_muhoare_skip_r tc =
     let muh = tc1_as_muhoareS tc in
 
     if not (List.is_empty muh.muh_s.s_node) then
@@ -27,7 +27,7 @@ module LowInternal = struct
     FApi.xmutate1 tc `Skip [concl]
 
   let t_muhoare_skip = FApi.t_low0 "hoare-skip" t_muhoare_skip_r
-    
+
   (* ------------------------------------------------------------------ *)
   let t_hoare_skip_r tc =
     let hs = tc1_as_hoareS tc in

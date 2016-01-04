@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -148,7 +148,7 @@ let t_equivF_fun_def   = FApi.t_low0 "equiv-fun-def"   t_equivF_fun_def_r
 let t_fun_def_r tc =
   let th  = t_hoareF_fun_def
   and tbh = t_bdhoareF_fun_def
-  and te  = t_equivF_fun_def 
+  and te  = t_equivF_fun_def
   and tmuh = t_muhoareF_fun_def in
 
   t_hF_or_bhF_or_eF ~th ~tbh ~te ~tmuh tc
@@ -206,7 +206,7 @@ module FunAbsLow = struct
       let fo_l = EcEnv.Fun.by_xpath o_l env in
       let fo_r = EcEnv.Fun.by_xpath o_r env in
 
-      let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) = 
+      let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) =
         EcEnv.Fun.equivF_memenv o_l o_r env in
 
       let eq_params =
@@ -225,7 +225,7 @@ module FunAbsLow = struct
 
     let sg = List.map2 ospec oil.oi_calls oir.oi_calls in
 
-    let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) = 
+    let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) =
       EcEnv.Fun.equivF_memenv fl fr env in
 
     let eq_params =
@@ -444,7 +444,7 @@ let t_fun_to_code_eager_r tc =
   let s = PVM.add env (pv_res fl) (fst ml) (f_pvar rl tyl (f_mem ml)) s in
   let s = PVM.add env (pv_res fr) (fst mr) (f_pvar rr tyr (f_mem mr)) s in
   let post  = PVM.subst env s eg.eg_po in
-  let concl = 
+  let concl =
     f_equivS ml mr eg.eg_pr (s_seq eg.eg_sl sl) (s_seq sr eg.eg_sr) post in
   FApi.xmutate1 tc `FunToCode [concl]
 

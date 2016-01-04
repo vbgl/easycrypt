@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-B-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -133,7 +133,7 @@ rewrite -/(weight _) Dexcepted.lossless_restr //.
   + smt ml=0 w=uD_uf_fu.
   + cut: forall (P : D -> bool), (exists a, !P a) <=> mu uD P < mu uD predT by smt. (* extract into NewDistr. make a real proof. *)
     by move=> /(_ (mem (rng m))); smt ml=0 w=uD_uf_fu.
-qed.  
+qed.
 
 phoare Indirect_ll: [Indirect.sample: exists x, support uD x /\ !mem X x ==> true] = 1%r.
 proof.
@@ -307,7 +307,7 @@ section CollisionProbability.
     proc a(): unit = {
       var b:bool;
       b = IND.main();
-    }  
+    }
   }.
 
   local lemma A_ll (S <: ASampler {A}) &m: islossless S.s => islossless A(S).a.

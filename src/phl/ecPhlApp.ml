@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -20,7 +20,7 @@ open EcLowPhlGoal
 module TTC = EcProofTyping
 
 (* -------------------------------------------------------------------- *)
-let t_muhoare_app_r i p tc = 
+let t_muhoare_app_r i p tc =
   (* FIXME: check type of p  *)
   let muh = tc1_as_muhoareS tc in
   let s1, s2 = s_split i muh.muh_s in
@@ -28,7 +28,7 @@ let t_muhoare_app_r i p tc =
   let cond2 = f_muhoareS_r {muh with muh_s = stmt s2; muh_pr = p } in
   FApi.xmutate1 tc `HlApp [cond1;cond2]
 
-let t_muhoare_app = FApi.t_low2 "hoare-app" t_muhoare_app_r  
+let t_muhoare_app = FApi.t_low2 "hoare-app" t_muhoare_app_r
 
 (* -------------------------------------------------------------------- *)
 let t_hoare_app_r i phi tc =
@@ -112,15 +112,15 @@ let t_equiv_app (i, j) phi tc =
 
   FApi.xmutate1 tc `HlApp [a; b]
 
-let t_equiv_app_onesided side i pre post tc = 
+let t_equiv_app_onesided side i pre post tc =
   let env = FApi.tc1_env tc in
   let es = tc1_as_equivS tc in
-  let m, s, s' = 
+  let m, s, s' =
     match side with
     | `Left  -> es.es_ml, es.es_sl, es.es_sr
     | `Right -> es.es_mr, es.es_sr, es.es_sl
   in
-  let ij = 
+  let ij =
     match side with
     | `Left  -> (i, List.length s'. s_node)
     | `Right -> (List.length s'. s_node, i) in
@@ -138,7 +138,7 @@ let t_equiv_app_onesided side i pre post tc =
         (* s1 ~ [] : p' ==> q' *) EcPhlConseq.t_equivS_conseq_bd side pre post
        ]
     ] tc
-         
+
 (* -------------------------------------------------------------------- *)
 let process_phl_bd_info dir bd_info tc =
   match bd_info with
@@ -197,15 +197,15 @@ let process_phl_bd_info dir bd_info tc =
 let process_app (side, dir, k, phi, bd_info) tc =
   let concl = FApi.tc1_goal tc in
 
-  let get_single phi = 
+  let get_single phi =
     match phi with
     | Single phi -> phi
     | Double _   -> tc_error !!tc "seq: a single formula is expected" in
 
-  let check_side side = 
-    if EcUtils.is_some side then 
+  let check_side side =
+    if EcUtils.is_some side then
       tc_error !!tc "seq: no side information expected" in
-    
+
   match k, bd_info with
   | Single i, PAppNone when is_hoareS concl ->
     check_side side;
@@ -219,13 +219,13 @@ let process_app (side, dir, k, phi, bd_info) tc =
 
 
   | Single i, PAppNone when is_equivS concl ->
-    let pre, post = 
+    let pre, post =
       match phi with
-      | Single _ -> tc_error !!tc "seq onsided: a pre and a post is expected" 
-      | Double (pre, post) -> 
-        TTC.tc1_process_phl_formula ?side tc pre, 
+      | Single _ -> tc_error !!tc "seq onsided: a pre and a post is expected"
+      | Double (pre, post) ->
+        TTC.tc1_process_phl_formula ?side tc pre,
         TTC.tc1_process_phl_formula ?side tc post in
-    let side = 
+    let side =
       match side with
       | None -> tc_error !!tc "seq onsided: side information expected"
       | Some side -> side in

@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -76,7 +76,7 @@ and f_node =
 
   | FmuhoareF of muhoareF
   | FmuhoareS of muhoareS
- 
+
 and muhoareF = {
   muhf_pr : form; (* : (pre mem f) distr -> bool *)
   muhf_f  : EcPath.xpath;
@@ -84,7 +84,7 @@ and muhoareF = {
 }
 
 and muhoareS = {
-  muh_pr : form; 
+  muh_pr : form;
   muh_s  : stmt;
   muh_po : form;
 }

@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -72,7 +72,7 @@ module EqTest = struct
 
     | Tmem (Some mt1), Tmem (Some mt2) ->
       (for_xp_norm env mt1.mt_path mt2.mt_path &&
-       EcSymbols.Msym.equal (fun (p1,ty1) (p2,ty2) -> p1 = p2 && for_type env ty1 ty2) 
+       EcSymbols.Msym.equal (fun (p1,ty1) (p2,ty2) -> p1 = p2 && for_type env ty1 ty2)
        mt1.mt_vars mt2.mt_vars)
 
     | _, _ -> false
@@ -534,7 +534,7 @@ let check_alpha_equal ri hyps f1 f2 =
       Mod.bind_local x1 p1 r1 env,
       if id_equal x1 x2 then subst
       else Fsubst.f_bind_mod subst x2 (EcPath.mident x1)
-   
+
     | _, _ -> error () in
   let check_bindings env subst bd1 bd2 =
     List.fold_left2 check_binding (env,subst) bd1 bd2 in
@@ -612,7 +612,7 @@ let check_alpha_equal ri hyps f1 f2 =
       (* FIXME should check the memenv *)
       aux env subst hs1.hs_pr hs1.hs_pr;
       aux env subst hs1.hs_po hs2.hs_po
-    
+
     | FmuhoareF hf1, FmuhoareF hf2 ->
       check_xp env subst hf1.muhf_f hf2.muhf_f;
       aux env subst hf1.muhf_pr hf2.muhf_pr;
@@ -623,7 +623,7 @@ let check_alpha_equal ri hyps f1 f2 =
       aux env subst hs1.muh_pr hs2.muh_pr;
       aux env subst hs1.muh_po hs2.muh_po
 
-      
+
     | FbdHoareF hf1, FbdHoareF hf2 ->
       ensure (hf1.bhf_cmp = hf2.bhf_cmp);
       check_xp env subst hf1.bhf_f hf2.bhf_f;
@@ -677,10 +677,10 @@ let check_alpha_equal ri hyps f1 f2 =
         match h_red_opt ri env hyps f2 with
         | Some f2 -> aux env subst f1 f2
         | None ->
-          let ty,codom = 
+          let ty,codom =
             match f1.f_node, f2.f_node with
             | Fquant(Llambda,(_,GTty ty)::bd, f1'), _ ->
-              ty, toarrow (List.map (fun (_,gty)-> gty_as_ty gty) bd) f1'.f_ty 
+              ty, toarrow (List.map (fun (_,gty)-> gty_as_ty gty) bd) f1'.f_ty
             | _,  Fquant(Llambda,(_,GTty ty)::bd,f2') ->
               ty, toarrow (List.map (fun (_,gty)-> gty_as_ty gty) bd) f2'.f_ty
             | _, _ -> raise e in
@@ -716,14 +716,14 @@ let rec simplify ri hyps f =
 and simplify_rec ri hyps f =
   match f.f_node with
 
-  | Fapp ({ f_node = Fop _ } as fo, args) -> 
+  | Fapp ({ f_node = Fop _ } as fo, args) ->
       let args' = List.map (simplify ri hyps) args in
       let app1  = (fo, args , f.f_ty) in
       let app2  = (fo, args', f.f_ty) in
       let f'    =  EcFol.FSmart.f_app (f, app1) app2 in
       (try h_red ri hyps f' with NotReducible -> f')
 
-  | FhoareF hf when ri.modpath -> 
+  | FhoareF hf when ri.modpath ->
       let hf_f = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) hf.hf_f in
       f_map (fun ty -> ty) (simplify ri hyps) (f_hoareF_r { hf with hf_f })
 
@@ -731,7 +731,7 @@ and simplify_rec ri hyps f =
       let bhf_f = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) hf.bhf_f in
       f_map (fun ty -> ty) (simplify ri hyps) (f_bdHoareF_r { hf with bhf_f })
 
-  | FequivF ef when ri.modpath -> 
+  | FequivF ef when ri.modpath ->
       let ef_fl = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) ef.ef_fl in
       let ef_fr = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) ef.ef_fr in
       f_map (fun ty -> ty) (simplify ri hyps) (f_equivF_r { ef with ef_fl; ef_fr; })
@@ -741,7 +741,7 @@ and simplify_rec ri hyps f =
       let eg_fr = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) eg.eg_fr in
       f_map (fun ty -> ty) (simplify ri hyps) (f_eagerF_r { eg with eg_fl ; eg_fr; })
 
-  | Fpr pr  when ri.modpath -> 
+  | Fpr pr  when ri.modpath ->
       let pr_fun = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) pr.pr_fun in
       f_map (fun ty -> ty) (simplify ri hyps) (f_pr_r { pr with pr_fun })
 

@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -46,23 +46,23 @@ end
 (* -------------------------------------------------------------------- *)
 (* mix of the if rule + conseq rule + seq rule *)
 
-let t_muhoare_cond pr1 po1 pr2 po2 tc = 
+let t_muhoare_cond pr1 po1 pr2 po2 tc =
   let env = FApi.tc1_env tc in
-  let muh = tc1_as_muhoareS tc in 
+  let muh = tc1_as_muhoareS tc in
   let (e,s1,s2), s = tc1_last_if tc muh.muh_s in
   (* FIXME: ensure that pr1 po1 pr2 po2 have the expected type *)
   let concl1 = f_muhoareS_r {muh_pr = pr1; muh_s = s1; muh_po = po1;} in
   let concl2 = f_muhoareS_r {muh_pr = pr2; muh_s = s2; muh_po = po2;} in
-  let concl3 = 
+  let concl3 =
     let mu,ty,po = get_lambda1 env muh.muh_po in
     let mu1 = EcIdent.create "mu1" in
     let mu2 = EcIdent.create "mu2" in
-     
+
     f_forall [(mu1,GTty ty); (mu2,GTty ty)]
       (f_imp (f_app_simpl po1 [f_local mu1 ty] tbool)
          (f_imp (f_app_simpl po2 [f_local mu2 ty] tbool)
             (EcLowMuHoare.oplus ty mu mu1 mu2 po))) in
-  
+
   let po = EcLowMuHoare.curly env e pr1 pr2 in
   let concl4 = f_muhoareS_r { muh with muh_s = s; muh_po = po } in
 
@@ -114,7 +114,7 @@ let rec t_equiv_cond side tc =
 
       let t_aux =
         let rwpt = { pt_head = PTLocal hiff;
-                     pt_args = [pamemory (m1,snd es.es_ml); pamemory (m2, snd es.es_mr); 
+                     pt_args = [pamemory (m1,snd es.es_ml); pamemory (m2, snd es.es_mr);
                                 PASub None]; } in
 
 
@@ -143,9 +143,9 @@ let process_muhoare_cond ((pr1, po1),(pr2,po2)) tc =
   let po1 = EcProofTyping.tc1_process_phl_ld_formula tc po1 in
   let pr2 = EcProofTyping.tc1_process_phl_ld_formula tc pr2 in
   let po2 = EcProofTyping.tc1_process_phl_ld_formula tc po2 in
-  t_muhoare_cond (doit pr1) (doit po1) (doit pr2) (doit po2) tc  
- 
-let t_muhoare_cond_det tc = 
+  t_muhoare_cond (doit pr1) (doit po1) (doit pr2) (doit po2) tc
+
+let t_muhoare_cond_det tc =
   let hs = tc1_as_muhoareS tc in
   let env = FApi.tc1_env tc in
   let (e,_,_) = fst (tc1_first_if tc hs.muh_s) in
@@ -160,10 +160,10 @@ let t_muhoare_cond_det tc =
 
   let se = close_mu_binding (mu,mt) se in
 
-  let t_branch b = 
+  let t_branch b =
     let pr = if b then prt else prf in
-    let lconseq = 
-      if b then EcCoreLib.CI_Logic.p_muhoare_if_conseq_t 
+    let lconseq =
+      if b then EcCoreLib.CI_Logic.p_muhoare_if_conseq_t
       else EcCoreLib.CI_Logic.p_muhoare_if_conseq_f in
     let l_and = EcCoreLib.CI_Logic.p_and_proj_r in
 
@@ -171,35 +171,35 @@ let t_muhoare_cond_det tc =
       t_intros_s (`Symbol ["_"]) @!  EcHiGoal.t_apply_prept (`UG lconseq) ;
       t_logic_trivial;
       EcPhlRCond.t_rcond None b 1 @+ [
-        EcPhlSkip.t_skip @! t_intros_s (`Symbol ["_"]) @! 
-          EcHiGoal.t_apply_prept (`UG l_and); 
+        EcPhlSkip.t_skip @! t_intros_s (`Symbol ["_"]) @!
+          EcHiGoal.t_apply_prept (`UG l_and);
         t_id
       ]
     ] in
   let mu = EcIdent.create "mu" in
   let lpre = EcCoreLib.CI_Logic.p_muhoare_if_conseq_pre in
-   
+
   (EcPhlConseq.t_muhoareS_conseq pr1 hs.muh_po @+ [
-    t_intro_i mu @! 
+    t_intro_i mu @!
       EcHiGoal.t_apply_prept (`UG lpre) @!
       t_generalize_hyp ~clear:`Yes mu;
     t_logic_trivial;
     EcPhlCase.t_hl_case se @+ [
       t_branch true;
-      t_branch false 
+      t_branch false
     ]
   ]) tc
-  
+
 (* -------------------------------------------------------------------- *)
 let process_cond info tc =
   let default_if i s = ofdfl (fun _ -> tc1_pos_last_if tc s) i in
-  
-  match info with
-  | `MuHoare info -> process_muhoare_cond info tc 
-  | `Head side ->
-    t_hS_or_bhS_or_eS ~th:t_hoare_cond ~tbh:t_bdhoare_cond ~te:(t_equiv_cond side) ~tmuh:t_muhoare_cond_det tc 
 
-  | `Seq (side, i1, i2, f) -> 
+  match info with
+  | `MuHoare info -> process_muhoare_cond info tc
+  | `Head side ->
+    t_hS_or_bhS_or_eS ~th:t_hoare_cond ~tbh:t_bdhoare_cond ~te:(t_equiv_cond side) ~tmuh:t_muhoare_cond_det tc
+
+  | `Seq (side, i1, i2, f) ->
     let es = tc1_as_equivS tc in
     let f  = EcProofTyping.tc1_process_prhl_formula tc f in
     let n1 = default_if i1 es.es_sl in
@@ -207,7 +207,7 @@ let process_cond info tc =
     FApi.t_seqsub (EcPhlApp.t_equiv_app (n1,n2) f)
       [ t_id; t_equiv_cond side ] tc
 
-  | `SeqOne (s, i, f1, f2) -> 
+  | `SeqOne (s, i, f1, f2) ->
     let es = tc1_as_equivS tc in
     let n = default_if i (match s with `Left -> es.es_sl | `Right -> es.es_sr) in
     let f1 = EcProofTyping.tc1_process_phl_formula ~side:s tc f1 in

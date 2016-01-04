@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -78,7 +78,7 @@ let fop_real_add   = f_op CI.CI_Real.p_real_add  [] (toarrow [treal; treal] trea
 let fop_real_opp   = f_op CI.CI_Real.p_real_opp  [] (toarrow [treal] treal)
 let fop_real_mul   = f_op CI.CI_Real.p_real_mul  [] (toarrow [treal; treal] treal)
 let fop_real_div   = f_op CI.CI_Real.p_real_div  [] (toarrow [treal; treal] treal)
-let fop_real_abs   = f_op CI.CI_Real.p_real_abs  [] (toarrow [treal]        treal) 
+let fop_real_abs   = f_op CI.CI_Real.p_real_abs  [] (toarrow [treal]        treal)
 
 
 let f_int_le f1 f2 = f_app fop_int_le [f1; f2] tbool
@@ -113,22 +113,22 @@ let fop_weight ty = (* CORELIB *)
 let f_weight ty d =
   f_app (fop_weight ty) [d] treal
 
-let fop_b2r = 
+let fop_b2r =
   f_op EcCoreLib.CI_Real.p_b2r [] (toarrow [tbool] treal) (* CORELIB *)
 
 let f_real_of_bool f = f_app fop_b2r [f] treal
 
-let fop_muf ty = 
+let fop_muf ty =
  f_op EcCoreLib.CI_Distr.p_muf [ty] (toarrow [toarrow [ty] treal; tdistr ty] treal) (* CORELIB *)
 
 let f_muf_ty ty f1 f2 = f_app (fop_muf ty) [f1;f2] treal
 let f_muf   env f1 f2 = f_muf_ty (EcUnify.tfun_dom env f1.f_ty) f1 f2
 
-let f_integr env f mu = 
+let f_integr env f mu =
   let ty = EcUnify.tfun_dom env f.f_ty in
   f_muf_ty ty f (f_local mu (tdistr ty))
- 
-let f_muf_b2r (m,ty) f mu = 
+
+let f_muf_b2r (m,ty) f mu =
   (f_muf_ty ty
      (f_lambda [m,GTty ty] (f_real_of_bool f))
      (f_local mu (tdistr ty)))
@@ -137,10 +137,10 @@ let f_square (m, ty) f mu =
   f_eq (f_muf_b2r (m,ty) (f_not f) mu) f_r0
 
 
-let f_mulossless env mu = 
+let f_mulossless env mu =
   let ty = EcUnify.destr_tdistr env mu.f_ty in
-  let x  = EcIdent.create "x" in 
-  f_eq (f_muf_ty ty (f_lambda [x,GTty ty] f_r1) mu) f_r1 
+  let x  = EcIdent.create "x" in
+  f_eq (f_muf_ty ty (f_lambda [x,GTty ty] f_r1) mu) f_r1
 
 (* -------------------------------------------------------------------- *)
 let f_losslessF f = f_bdHoareF f_true f f_true FHeq f_r1
@@ -690,7 +690,7 @@ let destr_exists_prenex f =
     | bds, f -> (bds, f)
 
 (* -------------------------------------------------------------------- *)
-let get_lambda1 env f = 
+let get_lambda1 env f =
   match decompose_lambda f with
   |         [], _ ->
     let x = EcIdent.create "x" in
@@ -698,7 +698,7 @@ let get_lambda1 env f =
     x, t, f_app f [f_local x t] ty
   | (x,t):: bd, b -> x, gty_as_ty t, f_lambda bd b
 
-let open_mu_binding env f = 
+let open_mu_binding env f =
   let mu,ty,f = get_lambda1 env f in
   let mt = EcUnify.destr_tdmem env ty in
   (mu,mt),f
@@ -706,20 +706,20 @@ let open_mu_binding env f =
 let close_mu_binding (mu,mt) f =
   f_lambda [mu, GTty (tdistr (tmem mt))] f
 
-let f_pred2forall env f = 
+let f_pred2forall env f =
   let x,t,f = get_lambda1 env f in
   f_forall [x,GTty t] f
 
-let destr_muf_b2r_not env f = 
-  let destr_op_app op f = 
+let destr_muf_b2r_not env f =
+  let destr_op_app op f =
     let (op', _), args = destr_op_app f in
     if not (EcPath.p_equal op op') then EcUtils.destr_error "op_app";
     args in
-  let destr_op_app2 op f = 
+  let destr_op_app2 op f =
     let args = destr_op_app op f in
     if List.length args <> 2 then EcUtils.destr_error "op_app";
     EcUtils.as_seq2 args in
-  let destr_op_app1 op f = 
+  let destr_op_app1 op f =
     let args = destr_op_app op f in
     if List.length args <> 1 then EcUtils.destr_error "op_app";
     EcUtils.as_seq1 args in
@@ -754,7 +754,7 @@ module DestrInt : DestrRing = struct
   let sub f =
     try  snd_map opp (add f)
     with DestrError _ -> raise (DestrError "int_sub")
-    
+
 end
 
 (* -------------------------------------------------------------------- *)

@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -11,10 +11,10 @@ open EcCoreGoal
 open EcLowPhlGoal
 
 (* -------------------------------------------------------------------- *)
-let destr_square env p = 
+let destr_square env p =
   let (mu, mt), p = open_mu_binding env p in
 
-  let check_mu f = 
+  let check_mu f =
     match f.f_node with
     | Flocal mu' when EcIdent.id_equal mu mu' -> ()
     | _  -> EcUtils.destr_error "check_mu" in
@@ -23,7 +23,7 @@ let destr_square env p =
     let f, f0 = destr_eq p in
 
     if not (f_equal f0 f_r0) then EcUtils.destr_error "f_r0" else
-  
+
     let f =
       let f, fmu =
         destr_app2_eq ~name:"muf" EcCoreLib.CI_Distr.p_muf f
@@ -31,7 +31,7 @@ let destr_square env p =
 
     let fbody = f_app_simpl f [f_local mhr (EcTypes.tmem mt)] EcTypes.treal in
     let p = destr_not (destr_app1_eq ~name:"b2r" EcCoreLib.CI_Real.p_b2r fbody) in
-  
+
     (mt, p)
 
   with EcUtils.DestrError _ ->
@@ -69,11 +69,11 @@ let t_bdhoare_of_hoareF_r tc =
 let t_hoare_of_muhoareS_r tc =
   let muh = tc1_as_muhoareS tc in
   let env = FApi.tc1_env tc in
-  let mt, pr = 
-    try  destr_square env muh.muh_pr 
+  let mt, pr =
+    try  destr_square env muh.muh_pr
     with EcUtils.DestrError _ -> tc_error !!tc "pre must be a square" in
-  let _, po = 
-    try  destr_square env muh.muh_po 
+  let _, po =
+    try  destr_square env muh.muh_po
     with EcUtils.DestrError _ -> tc_error !!tc "post must be a square" in
   let concl = f_hoareS (mhr, mt) pr muh.muh_s po in
   FApi.xmutate1 tc `ViewmuHoare [concl]
@@ -82,11 +82,11 @@ let t_hoare_of_muhoareS_r tc =
 let t_hoare_of_muhoareF_r tc =
   let muh = tc1_as_muhoareF tc in
   let env = FApi.tc1_env tc in
-  let _, pr = 
-    try  destr_square env muh.muhf_pr 
+  let _, pr =
+    try  destr_square env muh.muhf_pr
     with EcUtils.DestrError _ -> tc_error !!tc "pre must be a square" in
-  let _ , po = 
-    try destr_square env muh.muhf_po 
+  let _ , po =
+    try destr_square env muh.muhf_po
     with EcUtils.DestrError _ -> tc_error !!tc "post must be a square" in
   let concl = f_hoareF pr muh.muhf_f po in
   FApi.xmutate1 tc `ViewmuHoare [concl]

@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -17,7 +17,7 @@ let build_sym (ml,mtl) (mr, mtr) =
   let s = Fsubst.f_bind_mem s ml mtl mr in
   let s = Fsubst.f_bind_mem s mr mtr ml in
   let s = Fsubst.f_subst s in
-  s 
+  s
 
 (*-------------------------------------------------------------------- *)
 let t_equivF_sym tc =

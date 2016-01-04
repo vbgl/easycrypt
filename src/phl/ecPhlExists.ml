@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -18,8 +18,8 @@ module TTC = EcProofTyping
 
 (* -------------------------------------------------------------------- *)
 let get_to_gens fs =
-  let do_id f = 
-    let id = 
+  let do_id f =
+    let id =
       match f.f_node with
       | Fpvar (pv, m) -> id_of_pv pv (fst (destr_mem m))
       | Fglob (mp, m) -> id_of_mp mp (fst (destr_mem m))
@@ -32,8 +32,8 @@ let get_to_gens fs =
 let t_hr_exists_elim_r tc =
   let pre = tc1_get_pre tc in
   let goal = FApi.tc1_goal tc in
-  let lbd, pre =  
-    if is_muhoareS goal || is_muhoareF goal then 
+  let lbd, pre =
+    if is_muhoareS goal || is_muhoareF goal then
       let mmt, pre = open_mu_binding (FApi.tc1_env tc) pre in
       [mmt], pre
     else
@@ -48,11 +48,11 @@ let t_hr_exists_elim_r tc =
 let t_hr_forall_intro_r tc =
   let po= tc1_get_post tc in
   let goal = FApi.tc1_goal tc in
-  let mmt, po =  
-    if is_muhoareS goal || is_muhoareF goal then 
+  let mmt, po =
+    if is_muhoareS goal || is_muhoareF goal then
       open_mu_binding (FApi.tc1_env tc) po
     else raise InvalidGoalShape in
-  let bd, po = 
+  let bd, po =
     try destr_forall po with DestrError _ -> raise InvalidGoalShape in
   let post = close_mu_binding mmt po in
   let concl = f_forall bd (set_post ~post goal) in
@@ -81,7 +81,7 @@ let t_hr_exists_intro_r fs tc =
         ([ml; mr], s)
 
     | false ->
-        let m = LDecl.fresh_id hyps "&m" in 
+        let m = LDecl.fresh_id hyps "&m" in
         let s = Fsubst.f_subst_id in
         let s = Fsubst.f_bind_mem s mhr None m in
         ([m], s)

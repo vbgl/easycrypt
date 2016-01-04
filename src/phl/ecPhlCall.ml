@@ -1,7 +1,7 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2016 - Inria
- * 
+ *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
 
@@ -209,8 +209,8 @@ let mk_inv_spec (_pf : proofenv) env inv fl fr =
   | true ->
     let (topl, _, oil, sigl),
       (topr, _, _  , sigr) = EcLowPhlGoal.abstract_info2 env fl fr in
-    let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) = 
-      EcEnv.Fun.equivF_memenv fl fr env in    
+    let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) =
+      EcEnv.Fun.equivF_memenv fl fr env in
     let eqglob = f_eqglob topl (f_mem (mleft,None)) topr (f_mem (mright,None)) in
     let lpre = if oil.oi_in then [eqglob;inv] else [inv] in
     let eq_params =
@@ -223,7 +223,7 @@ let mk_inv_spec (_pf : proofenv) env inv fl fr =
       f_equivF pre fl fr post
 
   | false ->
-    let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) = 
+    let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) =
       EcEnv.Fun.equivF_memenv fl fr env in
     let defl = EcEnv.Fun.by_xpath fl env in
     let defr = EcEnv.Fun.by_xpath fr env in
@@ -232,7 +232,7 @@ let mk_inv_spec (_pf : proofenv) env inv fl fr =
       EcReduction.EqTest.for_type env sigl.fs_arg sigr.fs_arg
       && EcReduction.EqTest.for_type env sigl.fs_ret sigr.fs_ret
     in
-    
+
     if not testty then raise EqObsInError;
     let eq_params =
       f_eqparams
@@ -315,8 +315,8 @@ let process_call side info tc =
         let bad2 = Fsubst.f_subst_mem mhr None mright bad in
         let eqglob = f_eqglob topl (f_mem (mleft,None)) topr (f_mem (mright,None)) in
         let lpre = if oil.oi_in then [eqglob;invP] else [invP] in
-        let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) = 
-          EcEnv.Fun.equivF_memenv fl fr env in    
+        let ((_,mtl1),(_,mtr1)),((_,mtl2),(_,mtr2)) =
+          EcEnv.Fun.equivF_memenv fl fr env in
         let eq_params =
           f_eqparams
             fl sigl.fs_arg sigl.fs_anames (f_mem (mleft,mtl1))
