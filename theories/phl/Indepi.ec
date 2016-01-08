@@ -99,7 +99,7 @@ abstract theory INDEPi.
           $[fun m => $[fun v => b2r (Ps k (T m).[i m<- v].[fromint (T m) k]) | d] | mu]) 0 (I + 1).
   proof.
     move=> Hinj Hd Hs Hind Ps.
-    case (0 <= I) => Hi1;[right | by left;smt ml=0].
+    case (0 <= I) => Hi1;[right | by left=>/#].
     rewrite BBM.big_int_recr // big_int_recr //=.
     cut ->:
       $[fun m =>  $[fun v =>
@@ -126,13 +126,13 @@ abstract theory INDEPi.
      $[fun v => b2r (Ps I v) | d] * $[fun (m : 'm) => 1%r| mu].
     + rewrite -muf_mulc_l;move:Hs;apply square_eq => m Hm {Hm};progress.
       by apply muf_eq_compat => /= v Hv;rewrite H get_set_eq //;apply H0.
-    cut := Hind Ps;rewrite -ora_or => {Hind} [] Hind.
-    cut -> /= : I = 0 by smt ml=0.
-    + by rewrite Power_0 -One /Int.one /= BBM.big_geq //
+    cut /ora_or{Hind}[]Hind:= Hind Ps. 
+    + cut -> /= : I = 0 by smt ml=0.
+      by rewrite Power_0 -One /Int.one /= BBM.big_geq // 
       big_geq //= b2r_true RField.mulrC.
     cut -> : I - 0 - 1 = I - 1 by ringeq.
     cut -> : I + 1 - 1 = I - 1 + 1 by ringeq.
-    move=> <-;rewrite Power_s 1:[smt ml=0];ringeq.
+    move=> <-;rewrite Power_s 1:/#;ringeq.
   qed.
 
   lemma followsi_update (T:'m -> 'to map) (i:'m -> from) I (mu:'m distr) (d:'to distr):
@@ -167,7 +167,7 @@ clone INDEPi as ArrIndep with
    type 'a map <- 'a array,
    op "_.[_]" <- Array."_.[_]" <:'to>,
    op "_.[_<-_]" <- Array."_.[_<-_]" <:'to>,
-   pred wf_from <- fun (t:'a array) (i:int) => 0 <= i < Array.length t,
+   pred wf_from <- fun (t:'a array) (i:int) => 0 <= i < Array.size t,
    op fromint <- fun (t:'a array) (i:int) => i
    proof * by smt.
 
