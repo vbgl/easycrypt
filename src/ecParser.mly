@@ -311,7 +311,6 @@
 %token <EcSymbols.symbol> UIDENT
 %token <EcSymbols.symbol> TIDENT
 %token <EcSymbols.symbol> MIDENT
-%token <EcSymbols.symbol> MDIDENT
 %token <EcSymbols.symbol> PUNIOP
 %token <EcSymbols.symbol> PBINOP
 
@@ -598,7 +597,7 @@ _lident:
 | x=MIDENT { x }
 
 %inline _mdident:
-| x=MDIDENT { x }
+| SHARP x=LIDENT { "#" ^ x }
 
 %inline lident : x=loc(_lident ) { x }
 %inline uident : x=loc(_uident ) { x }

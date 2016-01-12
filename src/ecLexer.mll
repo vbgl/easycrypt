@@ -329,12 +329,12 @@ let letter  = upper | lower
 let digit   = ['0'-'9']
 let uint    = digit+
 
-let ichar  = (letter | digit | '_' | '\'')
-let lident = (lower ichar*) | ('_' ichar+)
-let uident = upper ichar*
-let tident = '\'' lident
-let mident = '&'  (lident | uint)
-let mdident = '#'  lident
+let ichar   = (letter | digit | '_' | '\'')
+let lident  = (lower ichar*) | ('_' ichar+)
+let uident  = upper ichar*
+let tident  = '\'' lident
+let mident  = '&' (lident | uint)
+let mdident = '#' lident
 
 let opchar = ['=' '<' '>' '+' '-' '*' '/' '\\' '%' '&' '^' '|' ':' '#']
 
@@ -352,7 +352,6 @@ rule main = parse
   | uident as id { try [Hashtbl.find keywords id] with Not_found -> [UIDENT id] }
   | tident       { [TIDENT (Lexing.lexeme lexbuf)] }
   | mident       { [MIDENT (Lexing.lexeme lexbuf)] }
-  | mdident      { [MDIDENT (Lexing.lexeme lexbuf)] }
   | uint         { [UINT (BI.of_string (Lexing.lexeme lexbuf))] }
 
   | "(*" binop "*)" { main lexbuf }

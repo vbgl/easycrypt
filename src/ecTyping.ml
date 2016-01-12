@@ -797,21 +797,23 @@ let rec transty (tp : typolicy) (env : EcEnv.env) ue ty =
     let m,_ = trans_msymbol env gp in
     tglob m
 
-  | PTmemof x ->
-    let s = x.pl_desc in
-    let s = String.sub s 1 (String.length s - 1) in
+  | PTmemof ({ pl_desc = s } as x) ->
+    let s =
+      if s <> "" && s.[0] = '#' then
+        String.sub s 1 (String.length s - 1)
+      else s in
+
     match EcEnv.Var.lookup_local_opt s env with
-    | None -> tyerror x.pl_loc env (UnknownVarOrOp(([],s), []))
-    | Some(_, ty) ->
+    | None ->
+       tyerror x.pl_loc env (UnknownVarOrOp(([], s), []))
+    | Some (_, ty) ->
       let mt =
-        try EcUnify.destr_tmem env ty
+        try  EcUnify.destr_tmem env ty
         with DestrError _ ->
           try EcUnify.destr_tdmem env ty with DestrError _ ->
-            tyerror x.pl_loc env (TmemTyNotFound(s, ty)) in
-      tmem mt
+            tyerror x.pl_loc env (TmemTyNotFound (s, ty))
 
-
-
+      in tmem mt
 
 and transtys tp (env : EcEnv.env) ue tys =
   List.map (transty tp env ue) tys

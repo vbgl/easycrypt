@@ -169,9 +169,13 @@ let is_mem_ident x =
   | _ -> false
 
 let is_mdistr_ident x =
-  match lex_single_token x with
-  | Some (EcParser.MDIDENT _) -> true
-  | _ -> false
+  try
+    let x = Pcre.get_substring (Pcre.exec ~pat:"^#\\s*(.*)$" x) 1 in
+    match lex_single_token x with
+    | Some (EcParser.LIDENT _) -> true
+    | _ -> false
+
+  with Not_found -> false
 
 let is_mod_ident x =
   match lex_single_token x with
