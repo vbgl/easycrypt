@@ -155,6 +155,18 @@ proof. by move=> lt_in; rewrite offunifE lt_in. qed.
 lemma size_offun (f : int -> 'a) n: size (offun f n) = max 0 n.
 proof. by rewrite size_mkarray size_mkseq. qed.
 
+
+(* -------------------------------------------------------------------- *)
+op make (n:int) (a:'a) : 'a array = offun (fun _ => a) n.
+
+lemma size_make (x:'a) l:
+  0 <= l => size (make l x) = l.
+proof. by rewrite /make size_offun /#. qed.
+
+lemma get_make l (x:'a) i:
+  0 <= i < l => (make l x).[i] = x.
+proof. by apply offunE. qed.
+
 (* -------------------------------------------------------------------- *)
 op map (f : 'a -> 'b) (arr : 'a array) : 'b array =
   mkarray (map f (ofarray arr)).
