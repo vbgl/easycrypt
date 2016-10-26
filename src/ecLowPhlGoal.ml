@@ -28,6 +28,7 @@ type hlkind = [
   | `Hoare  of hlform
   | `PHoare of hlform
   | `Equiv  of hlform
+  | `Esp    of hlform
   | `Eager
 ]
 
@@ -39,7 +40,7 @@ let hlkinds_Xhl_r (form : hlform) : hlkinds =
 let hlkinds_Xhl = hlkinds_Xhl_r `Any
 
 let hlkinds_all : hlkinds =
-  [`Hoare `Any; `PHoare `Any; `Equiv `Any; `Eager]
+  [`Hoare `Any; `PHoare `Any; `Equiv `Any; `Equiv `Any; `Eager]
 
 (* -------------------------------------------------------------------- *)
 let tc_error_noXhl ?(kinds : hlkinds option) pf =
@@ -52,6 +53,7 @@ let tc_error_noXhl ?(kinds : hlkinds option) pf =
       | `Hoare  fm -> ("hoare" , fm)
       | `PHoare fm -> ("phoare", fm)
       | `Equiv  fm -> ("equiv" , fm)
+      | `Esp    fm -> ("esp"   , fm)
       | `Eager     -> ("eager" , `Any)
     in
       Printf.sprintf "%s%s" kind (fm |> string_of_form)
@@ -153,6 +155,8 @@ let pf_as_bdhoareF pe c = as_phl (`PHoare `Pred) (fun () -> destr_bdHoareF c) pe
 let pf_as_bdhoareS pe c = as_phl (`PHoare `Stmt) (fun () -> destr_bdHoareS c) pe
 let pf_as_equivF   pe c = as_phl (`Equiv  `Pred) (fun () -> destr_equivF   c) pe
 let pf_as_equivS   pe c = as_phl (`Equiv  `Stmt) (fun () -> destr_equivS   c) pe
+let pf_as_espF     pe c = as_phl (`Esp    `Pred) (fun () -> destr_espF     c) pe
+let pf_as_espS     pe c = as_phl (`Esp    `Stmt) (fun () -> destr_espS     c) pe
 let pf_as_eagerF   pe c = as_phl `Eager          (fun () -> destr_eagerF   c) pe
 
 (* -------------------------------------------------------------------- *)
@@ -162,6 +166,8 @@ let tc1_as_bdhoareF tc = pf_as_bdhoareF !!tc (FApi.tc1_goal tc)
 let tc1_as_bdhoareS tc = pf_as_bdhoareS !!tc (FApi.tc1_goal tc)
 let tc1_as_equivF   tc = pf_as_equivF   !!tc (FApi.tc1_goal tc)
 let tc1_as_equivS   tc = pf_as_equivS   !!tc (FApi.tc1_goal tc)
+let tc1_as_espF     tc = pf_as_espF     !!tc (FApi.tc1_goal tc)
+let tc1_as_espS     tc = pf_as_espS     !!tc (FApi.tc1_goal tc)
 let tc1_as_eagerF   tc = pf_as_eagerF   !!tc (FApi.tc1_goal tc)
 
 (* -------------------------------------------------------------------- *)
@@ -173,6 +179,8 @@ let get_pre f =
   | FbdHoareS hs -> Some (hs.bhs_pr)
   | FequivF ef   -> Some (ef.ef_pr )
   | FequivS es   -> Some (es.es_pr )
+  | FespF   esp  -> Some (fst (esp.espf_pr))
+  | FespS   esp  -> Some (fst (esp.esps_pr))
   | _            -> None
 
 let tc1_get_pre tc =
@@ -189,6 +197,8 @@ let get_post f =
   | FbdHoareS hs -> Some (hs.bhs_po)
   | FequivF ef   -> Some (ef.ef_po )
   | FequivS es   -> Some (es.es_po )
+  | FespF   esp  -> Some (fst (esp.espf_po))
+  | FespS   esp  -> Some (fst (esp.esps_po))
   | _            -> None
 
 let tc1_get_post tc =
@@ -205,6 +215,10 @@ let set_pre ~pre f =
  | FbdHoareS hs -> f_bdHoareS_r { hs with bhs_pr = pre }
  | FequivF ef   -> f_equivF pre ef.ef_fl ef.ef_fr ef.ef_po
  | FequivS es   -> f_equivS_r { es with es_pr = pre }
+ | FespF esp    ->
+     let pre = (pre, snd esp.espf_pr) in
+     f_espF pre esp.espf_fl esp.espf_fr esp.espf_po esp.espf_f
+ | FespS esp    -> f_espS_r { esp with esps_pr = (pre, snd esp.esps_pr) }
  | _            -> assert false
 
 (* -------------------------------------------------------------------- *)
@@ -570,19 +584,39 @@ let t_code_transform (side : oside) ?(bdhoare = false) cpos tr tx tc =
         | false -> tc_error_noXhl ~kinds:[`Hoare `Stmt] pf
   end
 
-  | Some side ->
-      let hyps      = FApi.tc1_hyps tc in
-      let es        = tc1_as_equivS tc in
-      let pre, post = es.es_pr, es.es_po in
-      let me, stmt     =
-        match side with
-        | `Left  -> (es.es_ml, es.es_sl)
-        | `Right -> (es.es_mr, es.es_sr) in
-      let me, stmt, cs = tx (pf, hyps) cpos (pre, post) (me, stmt) in
-      let concl =
-        match side with
-        | `Left  -> f_equivS_r { es with es_ml = me; es_sl = stmt; }
-        | `Right -> f_equivS_r { es with es_mr = me; es_sr = stmt; }
-      in
+  | Some side -> begin
+      let (hyps, concl) = FApi.tc1_flat tc in
 
-      FApi.xmutate1 tc (tr (Some side)) (cs @ [concl])
+      match concl.f_node with
+      | FequivS es ->
+          let pre, post = es.es_pr, es.es_po in
+          let me, stmt  =
+            match side with
+            | `Left  -> (es.es_ml, es.es_sl)
+            | `Right -> (es.es_mr, es.es_sr) in
+          let me, stmt, cs = tx (pf, hyps) cpos (pre, post) (me, stmt) in
+          let concl =
+            match side with
+            | `Left  -> f_equivS_r { es with es_ml = me; es_sl = stmt; }
+            | `Right -> f_equivS_r { es with es_mr = me; es_sr = stmt; }
+          in
+
+          FApi.xmutate1 tc (tr (Some side)) (cs @ [concl])
+
+      | FespS esp ->
+          let pre, post = esp.esps_pr, esp.esps_po in
+          let me, stmt  =
+            match side with
+            | `Left  -> (esp.esps_ml, esp.esps_sl)
+            | `Right -> (esp.esps_mr, esp.esps_sr) in
+          let me, stmt, cs = tx (pf, hyps) cpos (fst pre, fst post) (me, stmt) in
+          let concl =
+            match side with
+            | `Left  -> f_espS_r { esp with esps_ml = me; esps_sl = stmt; }
+            | `Right -> f_espS_r { esp with esps_mr = me; esps_sr = stmt; }
+          in
+
+          FApi.xmutate1 tc (tr (Some side)) (cs @ [concl])
+
+      | _ -> tc_error_noXhl ~kinds:[`Equiv `Stmt; `Esp `Stmt] pf
+    end

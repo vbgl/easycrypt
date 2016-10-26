@@ -119,7 +119,18 @@ module Fun : sig
   val equivF : xpath -> xpath -> env -> env * env
 
   val equivS : xpath -> xpath -> env ->
-    memenv * (funsig * function_def) * memenv * (funsig * function_def) * env
+                 memenv * (funsig * function_def) *
+                 memenv * (funsig * function_def) *
+                 env
+
+  val espF_memenv : xpath -> xpath -> env ->
+    (memenv * memenv) * (memenv * memenv)
+
+  val espF : xpath -> xpath -> env -> env * env
+  val espS : xpath -> xpath -> env ->
+               memenv * (funsig * function_def) *
+               memenv * (funsig * function_def) *
+               env
 end
 
 (* -------------------------------------------------------------------- *)
@@ -447,6 +458,7 @@ module LDecl : sig
 
   val hoareF : xpath -> hyps -> hyps * hyps
   val equivF : xpath -> xpath -> hyps -> hyps * hyps
+  val espF   : xpath -> xpath -> hyps -> hyps * hyps
 
   val inv_memenv  : hyps -> hyps
   val inv_memenv1 : hyps -> hyps

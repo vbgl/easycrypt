@@ -71,6 +71,9 @@ and f_node =
   | FequivF of equivF (* $left,$right / $left,$right *)
   | FequivS of equivS
 
+  | FespF of espF
+  | FespS of espS
+
   | FeagerF of eagerF
 
   | Fpr of pr (* hr *)
@@ -117,6 +120,7 @@ and bdHoareF = {
   bhf_cmp : hoarecmp;
   bhf_bd  : form;
 }
+
 and bdHoareS = {
   bhs_m   : EcMemory.memenv;
   bhs_pr  : form;
@@ -124,6 +128,24 @@ and bdHoareS = {
   bhs_po  : form;
   bhs_cmp : hoarecmp;
   bhs_bd  : form;
+}
+
+and espF = {
+  espf_pr : form * form;
+  espf_fl : EcPath.xpath;
+  espf_fr : EcPath.xpath;
+  espf_po : form * form;
+  espf_f  : form;
+}
+
+and espS = {
+  esps_ml : EcMemory.memenv;
+  esps_mr : EcMemory.memenv;
+  esps_pr : form * form;
+  esps_sl : stmt;
+  esps_sr : stmt;
+  esps_po : form * form;
+  esps_f  : form;
 }
 
 and pr = {
@@ -245,6 +267,26 @@ let eqs_equal es1 es2 =
   && EcMemory.me_equal es1.es_ml es2.es_ml
   && EcMemory.me_equal es1.es_mr es2.es_mr
 
+let espf_equal esp1 esp2 =
+     f_equal (fst esp1.espf_pr) (fst esp2.espf_pr)
+  && f_equal (fst esp1.espf_po) (fst esp2.espf_po)
+  && f_equal (snd esp1.espf_pr) (snd esp2.espf_pr)
+  && f_equal (snd esp1.espf_po) (snd esp2.espf_po)
+  && f_equal esp1.espf_f esp2.espf_f
+  && EcPath.x_equal esp1.espf_fl esp2.espf_fl
+  && EcPath.x_equal esp1.espf_fr esp2.espf_fr
+
+let esps_equal esp1 esp2 =
+     f_equal (fst esp1.esps_pr) (fst esp2.esps_pr)
+  && f_equal (fst esp1.esps_po) (fst esp2.esps_po)
+  && f_equal (snd esp1.esps_pr) (snd esp2.esps_pr)
+  && f_equal (snd esp1.esps_po) (snd esp2.esps_po)
+  && s_equal esp1.esps_sl esp2.esps_sl
+  && s_equal esp1.esps_sr esp2.esps_sr
+  && f_equal esp1.esps_f esp2.esps_f
+  && EcMemory.me_equal esp1.esps_ml esp2.esps_ml
+  && EcMemory.me_equal esp1.esps_mr esp2.esps_mr
+
 let egf_equal eg1 eg2 =
      f_equal eg1.eg_pr eg2.eg_pr
   && f_equal eg1.eg_po eg2.eg_po
@@ -288,6 +330,22 @@ let es_hash es =
     (f_hash es.es_pr) (f_hash es.es_po)
     (EcModules.s_hash es.es_sl) (EcModules.s_hash es.es_sr)
 
+let espf_hash esp =
+  Why3.Hashcons.combine
+    (Why3.Hashcons.combine3
+       (Why3.Hashcons.combine (f_hash (fst esp.espf_pr)) (f_hash (snd esp.espf_pr)))
+       (Why3.Hashcons.combine (f_hash (fst esp.espf_po)) (f_hash (snd esp.espf_po)))
+       (EcPath.x_hash esp.espf_fl) (EcPath.x_hash esp.espf_fr))
+    (f_hash esp.espf_f)
+
+let esps_hash esp =
+  Why3.Hashcons.combine
+   (Why3.Hashcons.combine3
+      (Why3.Hashcons.combine (f_hash (fst esp.esps_pr)) (f_hash (snd esp.esps_pr)))
+      (Why3.Hashcons.combine (f_hash (fst esp.esps_po)) (f_hash (snd esp.esps_po)))
+      (EcModules.s_hash esp.esps_sl) (EcModules.s_hash esp.esps_sr))
+   (f_hash esp.esps_f)
+
 let eg_hash eg =
   Why3.Hashcons.combine3
     (f_hash eg.eg_pr) (f_hash eg.eg_po)
@@ -300,7 +358,6 @@ let pr_hash pr =
     (EcPath.x_hash   pr.pr_fun)
     (f_hash          pr.pr_args)
     (f_hash          pr.pr_event)
-
 
 (* -------------------------------------------------------------------- *)
 module Hsform = Why3.Hashcons.Make (struct
@@ -351,6 +408,8 @@ module Hsform = Why3.Hashcons.Make (struct
     | FbdHoareS bhs1, FbdHoareS bhs2 -> bhs_equal bhs1 bhs2
     | FequivF   eqf1, FequivF   eqf2 -> eqf_equal eqf1 eqf2
     | FequivS   eqs1, FequivS   eqs2 -> eqs_equal eqs1 eqs2
+    | FespF     esp1, FespF     esp2 -> espf_equal esp1 esp2
+    | FespS     esp1, FespS     esp2 -> esps_equal esp1 esp2
     | FeagerF   eg1 , FeagerF   eg2  -> egf_equal eg1 eg2
     | Fpr       pr1 , Fpr       pr2  -> pr_equal pr1 pr2
 
@@ -403,6 +462,8 @@ module Hsform = Why3.Hashcons.Make (struct
     | FbdHoareS bhs -> bhs_hash bhs
     | FequivF   ef  -> ef_hash ef
     | FequivS   es  -> es_hash es
+    | FespF     esp -> espf_hash esp
+    | FespS     esp -> esps_hash esp
     | FeagerF   eg  -> eg_hash eg
     | Fpr       pr  -> pr_hash pr
 
@@ -464,6 +525,23 @@ module Hsform = Why3.Hashcons.Make (struct
         let fv = fv_diff fv (Sid.add ml (Sid.singleton mr)) in
         fv_union fv
           (fv_union (EcModules.s_fv es.es_sl) (EcModules.s_fv es.es_sr))
+
+    | FespF esp ->
+      let fv1 = fv_union (f_fv (fst esp.espf_pr)) (f_fv (fst esp.espf_po)) in
+      let fv2 = fv_union (f_fv (snd esp.espf_pr)) (f_fv (snd esp.espf_po)) in
+      let fv  = fv_diff (fv_union fv1 fv2) fv_mlr in
+      let fv  = fv_union (f_fv esp.espf_f) fv in
+      EcPath.x_fv (EcPath.x_fv fv esp.espf_fl) esp.espf_fr
+
+    | FespS esp ->
+        let fv1 = fv_union (f_fv (fst esp.esps_pr)) (f_fv (fst esp.esps_po)) in
+        let fv2 = fv_union (f_fv (snd esp.esps_pr)) (f_fv (snd esp.esps_po)) in
+        let fv  = fv_union fv1 fv2 in
+        let ml, mr = fst esp.esps_ml, fst esp.esps_mr in
+        let fv = fv_diff fv (Sid.add ml (Sid.singleton mr)) in
+        let fv  = fv_union (f_fv esp.esps_f) fv in
+        fv_union fv
+          (fv_union (EcModules.s_fv esp.esps_sl) (EcModules.s_fv esp.esps_sr))
 
     | FeagerF eg ->
         let fv = fv_union (f_fv eg.eg_pr) (f_fv eg.eg_po) in
@@ -659,6 +737,16 @@ let f_equivF ef_pr ef_fl ef_fr ef_po =
   f_equivF_r{ ef_pr; ef_fl; ef_fr; ef_po; }
 
 (* -------------------------------------------------------------------- *)
+let f_espS_r es = mk_form (FespS es) tbool
+let f_espF_r ef = mk_form (FespF ef) tbool
+
+let f_espS esps_ml esps_mr esps_pr esps_sl esps_sr esps_po esps_f =
+   f_espS_r { esps_ml; esps_mr; esps_pr; esps_sl; esps_sr; esps_po; esps_f; }
+
+let f_espF espf_pr espf_fl espf_fr espf_po espf_f =
+  f_espF_r{ espf_pr; espf_fl; espf_fr; espf_po; espf_f; }
+
+(* -------------------------------------------------------------------- *)
 let f_eagerF_r eg = mk_form (FeagerF eg) tbool
 
 let f_eagerF eg_pr eg_sl eg_fl eg_fr eg_sr eg_po =
@@ -764,6 +852,12 @@ module FSmart = struct
 
   let f_equivS (fp, es) es' =
     if eqs_equal es es' then fp else f_equivS_r es'
+
+  let f_espF (fp, ef) ef' =
+    if espf_equal ef ef' then fp else mk_form (FespF ef') fp.f_ty
+
+  let f_espS (fp, es) es' =
+    if esps_equal es es' then fp else f_espS_r es'
 
   let f_eagerF (fp, eg) eg' =
     if egf_equal eg eg' then fp else mk_form (FeagerF eg') fp.f_ty
@@ -881,6 +975,20 @@ let f_map gt g fp =
         FSmart.f_equivS (fp, es)
           { es with es_pr = pr'; es_po = po'; }
 
+  | FespF esp ->
+      let pr' = pair_map g esp.espf_pr in
+      let po' = pair_map g esp.espf_po in
+      let f'  = g esp.espf_f in
+        FSmart.f_espF (fp, esp)
+          { esp with espf_pr = pr'; espf_po = po'; espf_f = f'; }
+
+  | FespS esp ->
+      let pr' = pair_map g esp.esps_pr in
+      let po' = pair_map g esp.esps_po in
+      let f'  = g esp.esps_f in
+        FSmart.f_espS (fp, esp)
+          { esp with esps_pr = pr'; esps_po = po'; esps_f = f'; }
+
   | FeagerF eg ->
       let pr' = g eg.eg_pr in
       let po' = g eg.eg_po in
@@ -916,6 +1024,12 @@ let f_iter g f =
   | FbdHoareS bhs -> g bhs.bhs_pr; g bhs.bhs_po
   | FequivF   ef  -> g ef.ef_pr; g ef.ef_po
   | FequivS   es  -> g es.es_pr; g es.es_po
+  | FespF     esp -> pair_iter g esp.espf_pr;
+                     pair_iter g esp.espf_po;
+                     g esp.espf_f
+  | FespS     esp -> pair_iter g esp.esps_pr;
+                     pair_iter g esp.esps_po;
+                     g esp.esps_f
   | FeagerF   eg  -> g eg.eg_pr; g eg.eg_po
   | Fpr       pr  -> g pr.pr_args; g pr.pr_event
 
@@ -942,6 +1056,12 @@ let form_exists g f =
   | FbdHoareS bhs -> g bhs.bhs_pr || g bhs.bhs_po
   | FequivF   ef  -> g ef.ef_pr   || g ef.ef_po
   | FequivS   es  -> g es.es_pr   || g es.es_po
+  | FespF     esp -> g (fst esp.espf_pr) || g (snd esp.espf_pr) ||
+                     g (fst esp.espf_po) || g (snd esp.espf_po) ||
+                     g esp.espf_f
+  | FespS     esp -> g (fst esp.esps_pr) || g (snd esp.esps_pr) ||
+                     g (fst esp.esps_po) || g (snd esp.esps_po) ||
+                     g esp.esps_f
   | FeagerF   eg  -> g eg.eg_pr   || g eg.eg_po
   | Fpr       pr  -> g pr.pr_args || g pr.pr_event
 
@@ -969,6 +1089,12 @@ let form_forall g f =
   | FequivF   ef  -> g ef.ef_pr   && g ef.ef_po
   | FequivS   es  -> g es.es_pr   && g es.es_po
   | FeagerF   eg  -> g eg.eg_pr   && g eg.eg_po
+  | FespF     esp -> g (fst esp.espf_pr) && g (snd esp.espf_pr) &&
+                     g (fst esp.espf_po) && g (snd esp.espf_po) &&
+                     g esp.espf_f
+  | FespS     esp -> g (fst esp.esps_pr) && g (snd esp.esps_pr) &&
+                     g (fst esp.esps_po) && g (snd esp.esps_po) &&
+                     g esp.esps_f
   | Fpr       pr  -> g pr.pr_args && g pr.pr_event
 
 (* -------------------------------------------------------------------- *)
@@ -1041,6 +1167,16 @@ let destr_equivF f =
   | FequivF es -> es
   | _ -> destr_error "equivF"
 
+let destr_espS f =
+  match f.f_node with
+  | FespS esp -> esp
+  | _ -> destr_error "espS"
+
+let destr_espF f =
+  match f.f_node with
+  | FespF es -> es
+  | _ -> destr_error "espF"
+
 let destr_eagerF f =
   match f.f_node with
   | FeagerF eg -> eg
@@ -1079,6 +1215,11 @@ let destr_programS side f =
       match b with
       | `Left  -> (es.es_ml, es.es_sl)
       | `Right -> (es.es_mr, es.es_sr)
+  end
+  | Some b, FespS esp -> begin
+      match b with
+      | `Left  -> (esp.esps_ml, esp.esps_sl)
+      | `Right -> (esp.esps_mr, esp.esps_sr)
   end
   | _, _ -> destr_error "programS"
 
@@ -1547,6 +1688,41 @@ module Fsubst = struct
         { es_ml = ml'; es_mr = mr';
           es_pr = pr'; es_po = po';
           es_sl = sl'; es_sr = sr'; }
+
+    | FespF esp ->
+      assert (not (Mid.mem mleft s.fs_mem) && not (Mid.mem mright s.fs_mem));
+      let m_subst = EcPath.x_substm s.fs_sty.ts_p s.fs_mp in
+      let pr' = pair_map (f_subst ~tx s) esp.espf_pr in
+      let po' = pair_map (f_subst ~tx s) esp.espf_po in
+      let fl' = m_subst esp.espf_fl in
+      let fr' = m_subst esp.espf_fr in
+      let f'  = f_subst ~tx s esp.espf_f  in
+      FSmart.f_espF (fp, esp)
+        { espf_pr = pr'; espf_po = po';
+          espf_fl = fl'; espf_fr = fr';
+          espf_f  = f' ; }
+
+    | FespS esp ->
+      assert (not (Mid.mem (fst esp.esps_ml) s.fs_mem) &&
+              not (Mid.mem (fst esp.esps_mr) s.fs_mem));
+      let es = e_subst_init s.fs_freshen s.fs_sty.ts_p s.fs_ty
+                            s.fs_opdef s.fs_mp s.fs_esloc in
+      let s_subst = EcModules.s_subst es in
+      let pr' = pair_map (f_subst ~tx s) esp.esps_pr in
+      let po' = pair_map (f_subst ~tx s) esp.esps_po in
+      let sl' = s_subst esp.esps_sl in
+      let sr' = s_subst esp.esps_sr in
+      let f'  = f_subst ~tx s esp.esps_f in
+      let ml' = EcMemory.me_substm
+                  s.fs_sty.ts_p s.fs_mp s.fs_mem s.fs_ty esp.esps_ml in
+      let mr' = EcMemory.me_substm
+                  s.fs_sty.ts_p s.fs_mp s.fs_mem s.fs_ty esp.esps_mr in
+
+      FSmart.f_espS (fp, esp)
+        { esps_ml = ml'; esps_mr = mr';
+          esps_pr = pr'; esps_po = po';
+          esps_sl = sl'; esps_sr = sr';
+          esps_f  = f' ; }
 
     | FeagerF eg ->
       assert (not (Mid.mem mleft s.fs_mem) && not (Mid.mem mright s.fs_mem));

@@ -158,10 +158,26 @@ let fst_map (f : 'a -> 'c) ((x, y) : 'a * 'b) =
 let snd_map (f : 'b -> 'c) ((x, y) : 'a * 'b) =
   (x, f y)
 
+let pair_map (f : 'a -> 'b) ((x, y) : 'a * 'a) =
+  let x = f x in let y = f y in (x, y)
+
+let pair_fold (f : 'a -> 'b -> 'b) (v : 'b) ((x, y) : 'a * 'a) =
+  f y (f x v)
+
+let pair_iter (f : 'a -> unit) ((x, y) : 'a * 'a) =
+  f x; f y
+
 let pair_equal tx ty (x1, y1) (x2, y2) =
   (tx x1 x2) && (ty y1 y2)
 
 let swap (x, y) = (y, x)
+
+(* -------------------------------------------------------------------- *)
+module SmartPair = struct
+  let map (f : 'a -> 'a) ((x, y) as p : 'a * 'a) =
+    let x' = f x in let y' = f y in
+    if x == x' && y == y' then p else (x', y')
+end
 
 (* -------------------------------------------------------------------- *)
 module Option = BatOption

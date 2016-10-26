@@ -189,6 +189,8 @@ let rec on_mpath_form cb (f : EcFol.form) =
     | EcFol.FhoareS   hs           -> on_mpath_hs  cb hs
     | EcFol.FequivF   ef           -> on_mpath_ef  cb ef
     | EcFol.FequivS   es           -> on_mpath_es  cb es
+    | EcFol.FespF     esp          -> on_mpath_espf cb esp
+    | EcFol.FespS     esp          -> on_mpath_esps cb esp
     | EcFol.FeagerF   eg           -> on_mpath_eg  cb eg
     | EcFol.FbdHoareS bhs          -> on_mpath_bhs cb bhs
     | EcFol.FbdHoareF bhf          -> on_mpath_bhf cb bhf
@@ -218,6 +220,26 @@ let rec on_mpath_form cb (f : EcFol.form) =
     on_mpath_stmt cb es.EcFol.es_sr;
     on_mpath_memenv cb es.EcFol.es_ml;
     on_mpath_memenv cb es.EcFol.es_mr
+
+  and on_mpath_espf cb ef =
+    on_mpath_form cb (fst ef.EcFol.espf_pr);
+    on_mpath_form cb (snd ef.EcFol.espf_pr);
+    on_mpath_form cb (fst ef.EcFol.espf_po);
+    on_mpath_form cb (snd ef.EcFol.espf_po);
+    on_mpath_form cb ef.EcFol.espf_f;
+    cb ef.EcFol.espf_fl.x_top;
+    cb ef.EcFol.espf_fr.x_top
+
+  and on_mpath_esps cb es =
+    on_mpath_form cb (fst es.EcFol.esps_pr);
+    on_mpath_form cb (snd es.EcFol.esps_pr);
+    on_mpath_form cb (fst es.EcFol.esps_po);
+    on_mpath_form cb (snd es.EcFol.esps_po);
+    on_mpath_form cb es.EcFol.esps_f;
+    on_mpath_stmt cb es.EcFol.esps_sl;
+    on_mpath_stmt cb es.EcFol.esps_sr;
+    on_mpath_memenv cb es.EcFol.esps_ml;
+    on_mpath_memenv cb es.EcFol.esps_mr
 
   and on_mpath_eg cb eg =
     on_mpath_form cb eg.EcFol.eg_pr;

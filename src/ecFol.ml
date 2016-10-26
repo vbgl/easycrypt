@@ -628,6 +628,8 @@ type sform =
   | SFbdHoareS of bdHoareS
   | SFequivF   of equivF
   | SFequivS   of equivS
+  | SFespF     of espF
+  | SFespS     of espS
   | SFpr       of pr
 
   | SFother of form
@@ -668,6 +670,8 @@ let rec sform_of_form fp =
   | FbdHoareS hs -> SFbdHoareS hs
   | FequivF   ef -> SFequivF   ef
   | FequivS   es -> SFequivS   es
+  | FespF     ef -> SFespF     ef
+  | FespS     es -> SFespS     es
   | Fpr       pr -> SFpr       pr
 
   | Fop (op, ty) ->

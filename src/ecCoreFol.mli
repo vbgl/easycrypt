@@ -71,6 +71,9 @@ and f_node =
   | FequivF of equivF (* $left,$right / $left,$right *)
   | FequivS of equivS (* $left,$right / $left,$right *)
 
+  | FespF of espF
+  | FespS of espS
+
   | FeagerF of eagerF
 
   | Fpr of pr (* hr *)
@@ -128,6 +131,24 @@ and bdHoareS = {
   bhs_po  : form;
   bhs_cmp : hoarecmp;
   bhs_bd  : form;
+}
+
+and espF = {
+  espf_pr : form * form;
+  espf_fl : EcPath.xpath;
+  espf_fr : EcPath.xpath;
+  espf_po : form * form;
+  espf_f  : form;
+}
+
+and espS = {
+  esps_ml : EcMemory.memenv;
+  esps_mr : EcMemory.memenv;
+  esps_pr : form * form;
+  esps_sl : stmt;
+  esps_sr : stmt;
+  esps_po : form * form;
+  esps_f  : form;
 }
 
 and pr = {
@@ -210,6 +231,14 @@ val f_equivF : form -> xpath -> xpath -> form -> form
 
 val f_equivS_r : equivS -> form
 val f_equivF_r : equivF -> form
+
+(* soft-constructors - esp *)
+val f_espS : memenv -> memenv -> form * form ->
+             stmt   -> stmt   -> form * form -> form -> form
+val f_espF : form * form -> xpath -> xpath -> form * form -> form -> form
+
+val f_espS_r : espS -> form
+val f_espF_r : espF -> form
 
 (* soft-constructors - eager *)
 val f_eagerF_r : eagerF -> form
@@ -300,8 +329,10 @@ module FSmart : sig
   val f_bdHoareS : (form * bdHoareS ) -> bdHoareS  -> form
   val f_equivF   : (form * equivF   ) -> equivF    -> form
   val f_equivS   : (form * equivS   ) -> equivS    -> form
+  val f_espF     : (form * espF     ) -> espF      -> form
+  val f_espS     : (form * espS     ) -> espS      -> form
   val f_eagerF   : (form * eagerF   ) -> eagerF    -> form
-  val f_pr       : (form * pr       ) -> pr       -> form
+  val f_pr       : (form * pr       ) -> pr        -> form
 end
 
 (* -------------------------------------------------------------------- *)
@@ -344,6 +375,8 @@ val destr_exists1   : form -> EcIdent.t * gty * form
 val destr_exists    : form -> bindings * form
 val destr_equivF    : form -> equivF
 val destr_equivS    : form -> equivS
+val destr_espF      : form -> espF
+val destr_espS      : form -> espS
 val destr_eagerF    : form -> eagerF
 val destr_hoareF    : form -> hoareF
 val destr_hoareS    : form -> hoareS

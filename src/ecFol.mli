@@ -180,6 +180,8 @@ type sform =
   | SFbdHoareS of bdHoareS
   | SFequivF   of equivF
   | SFequivS   of equivS
+  | SFespF     of espF
+  | SFespS     of espS
   | SFpr       of pr
 
   | SFother of form

@@ -1619,6 +1619,11 @@ module Fun = struct
     let fd1, mem1 = actmem_body EcCoreFol.mleft path1 fun1 in
     let fd2, mem2 = actmem_body EcCoreFol.mright path2 fun2 in
     mem1, fd1, mem2, fd2, Memory.push_all [mem1; mem2] env
+
+  let espF_memenv = equivF_memenv
+
+  let espF = equivF
+  let espS = equivS
 end
 
 (* -------------------------------------------------------------------- *)
@@ -2286,17 +2291,36 @@ module NormMp = struct
         | Fglob(p,m) -> norm_glob env m p
 
         | FhoareF hf ->
-          let pre' = aux hf.hf_pr and p' = norm_xfun env hf.hf_f
+          let pre'  = aux hf.hf_pr
+          and p'    = norm_xfun env hf.hf_f
           and post' = aux hf.hf_po in
-          if hf.hf_pr == pre' && hf.hf_f == p' && hf.hf_po == post' then f else
-          f_hoareF pre' p' post'
+
+          if   hf.hf_pr == pre' && hf.hf_f == p' && hf.hf_po == post'
+          then f else f_hoareF pre' p' post'
 
         | FequivF ef ->
-          let pre' = aux ef.ef_pr and l' = norm_xfun env ef.ef_fl
-          and r' = norm_xfun env ef.ef_fr and post' = aux ef.ef_po in
-          if ef.ef_pr == pre' && ef.ef_fl == l' &&
-            ef.ef_fr == r' && ef.ef_po == post' then f else
-          f_equivF pre' l' r' post'
+          let pre'  = aux ef.ef_pr
+          and l'    = norm_xfun env ef.ef_fl
+          and r'    = norm_xfun env ef.ef_fr
+          and post' = aux ef.ef_po in
+
+          if ef.ef_pr == pre' && ef.ef_fl == l'    &&
+             ef.ef_fr == r'   && ef.ef_po == post' then
+
+            f else f_equivF pre' l' r' post'
+
+        | FespF esp ->
+          let pre'  = SmartPair.map aux esp.espf_pr
+          and l'    = norm_xfun env esp.espf_fl
+          and r'    = norm_xfun env esp.espf_fr
+          and post' = SmartPair.map aux esp.espf_po
+          and f'    = aux esp.espf_f in
+
+          if esp.espf_pr == pre' && esp.espf_fl == l'    &&
+             esp.espf_fr == r'   && esp.espf_po == post' &&
+             esp.espf_f  == f'
+
+          then f else f_espF pre' l' r' post' f'
 
         | Fpr pr ->
           let pr' = {
@@ -3301,6 +3325,8 @@ module LDecl = struct
   let equivF xp1 xp2 lenv =
     let env1, env2 = Fun.equivF xp1 xp2 lenv.le_env in
     { lenv with le_env = env1}, {lenv with le_env = env2 }
+
+  let espF = equivF
 
   let inv_memenv lenv =
     { lenv with le_env = Fun.inv_memenv lenv.le_env }

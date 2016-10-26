@@ -866,9 +866,19 @@ module FPosition = struct
               let (ef_pr, ef_po) = as_seq2 (doit p [ef.ef_pr; ef.ef_po]) in
               f_equivF_r { ef with ef_pr; ef_po; }
 
+          | FespF esp ->
+              let forms = [fst esp.espf_pr; snd esp.espf_pr;
+                           fst esp.espf_po; snd esp.espf_po;
+                           esp.espf_f] in
+              let (pr1, pr2, po1, po2, f) = as_seq5 (doit p forms) in
+              let espf_pr = (pr1, pr2) in
+              let espf_po = (po1, po2) in
+              f_espF_r { esp with espf_pr; espf_po; espf_f = f; }
+
           | FhoareS   _ -> raise InvalidPosition
           | FbdHoareS _ -> raise InvalidPosition
           | FequivS   _ -> raise InvalidPosition
+          | FespS     _ -> raise InvalidPosition
           | FeagerF   _ -> raise InvalidPosition
       end
 

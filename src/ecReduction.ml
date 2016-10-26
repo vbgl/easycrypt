@@ -655,6 +655,25 @@ and check_alpha_equal ri hyps f1 f2 =
       aux env subst es1.es_pr es2.es_pr;
       aux env subst es1.es_po es2.es_po
 
+    | FespF ef1, FespF ef2 ->
+      check_xp env subst ef1.espf_fl ef2.espf_fl;
+      check_xp env subst ef1.espf_fr ef2.espf_fr;
+      aux env subst (fst ef1.espf_pr) (fst ef2.espf_pr);
+      aux env subst (snd ef1.espf_pr) (snd ef2.espf_pr);
+      aux env subst (fst ef1.espf_po) (fst ef2.espf_po);
+      aux env subst (snd ef1.espf_po) (snd ef2.espf_po);
+      aux env subst ef1.espf_f ef2.espf_f
+
+    | FespS es1, FespS es2 ->
+      check_s env subst es1.esps_sl es2.esps_sl;
+      check_s env subst es1.esps_sr es2.esps_sr;
+      (* FIXME should check the memenv *)
+      aux env subst (fst es1.esps_pr) (fst es2.esps_pr);
+      aux env subst (snd es1.esps_pr) (snd es2.esps_pr);
+      aux env subst (fst es1.esps_po) (fst es2.esps_po);
+      aux env subst (snd es1.esps_po) (snd es2.esps_po);
+      aux env subst es1.esps_f es2.esps_f
+
     | FeagerF eg1, FeagerF eg2 ->
       check_xp env subst eg1.eg_fl eg2.eg_fl;
       check_xp env subst eg1.eg_fr eg2.eg_fr;
@@ -739,6 +758,12 @@ and simplify_rec ri hyps f =
       let ef_fr = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) ef.ef_fr in
       f_map (fun ty -> ty) (simplify ri hyps) (f_equivF_r { ef with ef_fl; ef_fr; })
 
+  | FespF esp when ri.modpath ->
+      let espf_fl = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) esp.espf_fl in
+      let espf_fr = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) esp.espf_fr in
+      f_map (fun ty -> ty) (simplify ri hyps)
+            (f_espF_r { esp with espf_fl; espf_fr; })
+
   | FeagerF eg when ri.modpath ->
       let eg_fl = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) eg.eg_fl in
       let eg_fr = EcEnv.NormMp.norm_xfun (LDecl.toenv hyps) eg.eg_fr in
@@ -758,4 +783,3 @@ let xconv (mode : xconv) hyps =
   | `Eq      -> f_equal
   | `AlphaEq -> is_alpha_eq hyps
   | `Conv    -> is_conv hyps
-

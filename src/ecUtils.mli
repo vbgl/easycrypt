@@ -96,7 +96,16 @@ val proj4_4 : 'a * 'b * 'c * 'd -> 'd
 val fst_map : ('a -> 'c) -> 'a * 'b -> 'c * 'b
 val snd_map : ('b -> 'c) -> 'a * 'b -> 'a * 'c
 
+val pair_map  : ('a -> 'b) -> 'a * 'a -> 'b * 'b
+val pair_fold : ('a -> 'b -> 'b) -> 'b -> 'a * 'a -> 'b
+val pair_iter : ('a -> unit) -> 'a * 'a -> unit
+
 val swap: 'a * 'b -> 'b * 'a
+
+(* -------------------------------------------------------------------- *)
+module SmartPair : sig
+  val map : ('a -> 'a) -> 'a * 'a -> 'a * 'a
+end
 
 (* -------------------------------------------------------------------- *)
 type 'a eq  = 'a -> 'a -> bool

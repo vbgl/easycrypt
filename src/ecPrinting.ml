@@ -1540,6 +1540,25 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         (pp_form ppe) es.es_pr
         (pp_form ppe) es.es_po
 
+  | FespF esp ->
+      let ppe =
+        PPEnv.create_and_push_mems
+          ppe [(EcFol.mleft , esp.espf_fl); (EcFol.mright, esp.espf_fr)]
+      in
+      Format.fprintf fmt "esp[@[<hov 2>@ %a ~@ %a :@ @[%a ==>@ %a@]@]]"
+        (pp_funname ppe) esp.espf_fl
+        (pp_funname ppe) esp.espf_fr
+        (pp_form ppe) (fst esp.espf_pr)
+        (pp_form ppe) (fst esp.espf_po)
+
+  | FespS esp ->
+      let ppe = PPEnv.push_mems ppe [esp.esps_ml; esp.esps_mr] in
+      Format.fprintf fmt "esp[@[<hov 2>@ %a ~@ %a :@ @[%a ==>@ %a@]@]]"
+        (pp_stmt_for_form ppe) esp.esps_sl
+        (pp_stmt_for_form ppe) esp.esps_sr
+        (pp_form ppe) (fst esp.esps_pr)
+        (pp_form ppe) (fst esp.esps_po)
+
   | FeagerF eg ->
       let ppe =
         PPEnv.create_and_push_mems
@@ -2263,6 +2282,37 @@ let pp_equivS (ppe : PPEnv.t) fmt es =
     Format.fprintf fmt "%a%!" (pp_post ppe) es.es_po
 
 (* -------------------------------------------------------------------- *)
+let pp_espF (ppe : PPEnv.t) fmt esp =
+  let ppe =
+    PPEnv.create_and_push_mems
+      ppe [(EcFol.mleft , esp.espf_fl); (EcFol.mright, esp.espf_fr)]
+  in
+
+  Format.fprintf fmt "%a@\n%!" (pp_pre ppe) (fst esp.espf_pr);
+  Format.fprintf fmt "    %a ~ %a@\n%!"
+    (pp_funname ppe) esp.espf_fl
+    (pp_funname ppe) esp.espf_fr;
+  Format.fprintf fmt "@\n%a%!" (pp_post ppe) (fst esp.espf_po)
+
+(* -------------------------------------------------------------------- *)
+let pp_espS (ppe : PPEnv.t) fmt esp =
+  let ppe = PPEnv.push_mems ppe [esp.esps_ml; esp.esps_mr] in
+  let ppnode = collect2_s esp.esps_sl.s_node esp.esps_sr.s_node in
+  let ppnode = c_ppnode ~width:40 ~mem:(fst esp.esps_ml, fst esp.esps_mr)
+                        ppe ppnode in
+
+    Format.fprintf fmt "&1 (left ) : %a@\n%!"
+                   (pp_funname ppe) (EcMemory.xpath esp.esps_ml);
+    Format.fprintf fmt "&2 (right) : %a@\n%!"
+                   (pp_funname ppe) (EcMemory.xpath esp.esps_mr);
+    Format.fprintf fmt "@\n%!";
+    Format.fprintf fmt "%a%!" (pp_pre ppe) (fst esp.esps_pr);
+    Format.fprintf fmt "@\n%!";
+    Format.fprintf fmt "%a" (pp_node `Both) ppnode;
+    Format.fprintf fmt "@\n%!";
+    Format.fprintf fmt "%a%!" (pp_post ppe) (fst esp.esps_po)
+
+(* -------------------------------------------------------------------- *)
 type ppgoal = (EcBaseLogic.hyps * EcFol.form) * [
   | `One of int
   | `All of (EcBaseLogic.hyps * EcFol.form) list
@@ -2348,6 +2398,8 @@ module PPGoal = struct
     | FhoareS hs   -> pp_hoareS   ppe fmt hs
     | FequivF ef   -> pp_equivF   ppe fmt ef
     | FequivS es   -> pp_equivS   ppe fmt es
+    | FespF   esp  -> pp_espF     ppe fmt esp
+    | FespS   esp  -> pp_espS     ppe fmt esp
     | _ -> Format.fprintf fmt "%a@\n%!" (pp_form ppe) concl
 end
 

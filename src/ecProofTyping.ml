@@ -136,6 +136,8 @@ let tc1_process_Xhl_form ?side tc ty pf =
     | FbdHoareS hs, None        -> hs.bhs_m
     | FequivS   es, Some `Left  -> (mhr, snd es.es_ml)
     | FequivS   es, Some `Right -> (mhr, snd es.es_mr)
+    | FespS     es, Some `Left  -> (mhr, snd es.esps_ml)
+    | FespS     es, Some `Right -> (mhr, snd es.esps_mr)
 
     | _, _ -> raise (DestrError "destr_programS")
   in
