@@ -252,6 +252,17 @@ and pformula_r =
   | PFeagerF   of pformula * (pstmt * pgamepath * pgamepath * pstmt) * pformula
   | PFprob     of pgamepath * (pformula list) * pmemory * pformula
   | PFBDhoareF of pformula * pgamepath * pformula * phoarecmp * pformula
+  | PFespF     of pesp
+
+and pesp = {
+  pe_pr : pformula;
+  pe_po : pformula;
+  pe_dr : pformula;
+  pe_do : pformula;
+  pe_f  : pformula;
+  pe_fl : pgamepath;
+  pe_fr : pgamepath;
+}
 
 and pgtybinding  = osymbol list * pgty
 and pgtybindings = pgtybinding list

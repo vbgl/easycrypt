@@ -379,6 +379,7 @@
 %token EOF
 %token EQ
 %token EQUIV
+%token ESP
 %token ETA
 %token EXACT
 %token EXFALSO
@@ -1025,6 +1026,8 @@ sform_u(P):
 
 | EQUIV LBRACKET eb=equiv_body(P) RBRACKET { eb }
 
+| ESP LBRACKET esp=esp_body(P) RBRACKET { esp }
+
 | EAGER LBRACKET eb=eager_body(P) RBRACKET { eb }
 
 | PR LBRACKET
@@ -1144,6 +1147,14 @@ eager_body(P):
 | s1=stmt COMMA  mp1=loc(fident) TILD mp2=loc(fident) COMMA s2=stmt
     COLON pre=form_r(P) LONGARROW post=form_r(P)
     { PFeagerF (pre, (s1, mp1, mp2,s2), post) }
+
+esp_body(P):
+| pe_fl=loc(fident) TILD pe_fr=loc(fident) COLON
+  LBRACKET pe_f=form_r(P) RBRACKET
+    pe_pr=form_r(P) PIPE pe_dr=form_r(P)
+  LONGARROW
+    pe_po=form_r(P) PIPE pe_do=form_r(P)
+    { PFespF { pe_pr; pe_po; pe_dr; pe_do; pe_f; pe_fl; pe_fr; } }
 
 pgtybinding1:
 | x=ptybinding1
@@ -1729,6 +1740,7 @@ axiom:
     { mk_axiom ~local:l ~nosmt:o d ao }
 
 | l=local  EQUIV x=ident pd=pgtybindings? COLON p=loc( equiv_body(none)) ao=axiom_tc
+| l=local  ESP   x=ident pd=pgtybindings? COLON p=loc(   esp_body(none)) ao=axiom_tc
 | l=local  HOARE x=ident pd=pgtybindings? COLON p=loc( hoare_body(none)) ao=axiom_tc
 | l=local PHOARE x=ident pd=pgtybindings? COLON p=loc(phoare_body(none)) ao=axiom_tc
     { mk_axiom ~local:l (x, None, pd, p) ao }

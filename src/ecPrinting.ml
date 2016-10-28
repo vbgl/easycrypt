@@ -1545,19 +1545,27 @@ and pp_form_core_r (ppe : PPEnv.t) outer fmt f =
         PPEnv.create_and_push_mems
           ppe [(EcFol.mleft , esp.espf_fl); (EcFol.mright, esp.espf_fr)]
       in
-      Format.fprintf fmt "esp[@[<hov 2>@ %a ~@ %a :@ @[%a ==>@ %a@]@]]"
+      Format.fprintf fmt
+        "momemtum[@[<hov 2>@ [%a] %a ~@ %a :@ @[%a | %a ==>@ %a | %a@]@]]"
+        (pp_form ppe) esp.espf_f
         (pp_funname ppe) esp.espf_fl
         (pp_funname ppe) esp.espf_fr
         (pp_form ppe) (fst esp.espf_pr)
+        (pp_form ppe) (snd esp.espf_pr)
         (pp_form ppe) (fst esp.espf_po)
+        (pp_form ppe) (snd esp.espf_po)
 
   | FespS esp ->
       let ppe = PPEnv.push_mems ppe [esp.esps_ml; esp.esps_mr] in
-      Format.fprintf fmt "esp[@[<hov 2>@ %a ~@ %a :@ @[%a ==>@ %a@]@]]"
+      Format.fprintf fmt
+        "momemtum[@[<hov 2>@ [%a] %a ~@ %a :@ @[%a | %a ==>@ %a | %a@]@]]"
+        (pp_form ppe) esp.esps_f
         (pp_stmt_for_form ppe) esp.esps_sl
         (pp_stmt_for_form ppe) esp.esps_sr
         (pp_form ppe) (fst esp.esps_pr)
+        (pp_form ppe) (snd esp.esps_pr)
         (pp_form ppe) (fst esp.esps_po)
+        (pp_form ppe) (snd esp.esps_po)
 
   | FeagerF eg ->
       let ppe =
@@ -2288,6 +2296,10 @@ let pp_espF (ppe : PPEnv.t) fmt esp =
       ppe [(EcFol.mleft , esp.espf_fl); (EcFol.mright, esp.espf_fr)]
   in
 
+  Format.fprintf fmt "(d-left ) : %a@\n%!" (pp_form ppe) (snd esp.espf_pr);
+  Format.fprintf fmt "(d-right) : %a@\n%!" (pp_form ppe) (snd esp.espf_po);
+  Format.fprintf fmt "(d-tx   ) : %a@\n%!" (pp_form ppe) esp.espf_f;
+  Format.fprintf fmt "@\n%!";
   Format.fprintf fmt "%a@\n%!" (pp_pre ppe) (fst esp.espf_pr);
   Format.fprintf fmt "    %a ~ %a@\n%!"
     (pp_funname ppe) esp.espf_fl
@@ -2305,6 +2317,10 @@ let pp_espS (ppe : PPEnv.t) fmt esp =
                    (pp_funname ppe) (EcMemory.xpath esp.esps_ml);
     Format.fprintf fmt "&2 (right) : %a@\n%!"
                    (pp_funname ppe) (EcMemory.xpath esp.esps_mr);
+    Format.fprintf fmt "@\n%!";
+    Format.fprintf fmt "(d-left ) : %a@\n%!" (pp_form ppe) (snd esp.esps_pr);
+    Format.fprintf fmt "(d-right) : %a@\n%!" (pp_form ppe) (snd esp.esps_po);
+    Format.fprintf fmt "(d-tx   ) : %a@\n%!" (pp_form ppe) esp.esps_f;
     Format.fprintf fmt "@\n%!";
     Format.fprintf fmt "%a%!" (pp_pre ppe) (fst esp.esps_pr);
     Format.fprintf fmt "@\n%!";
