@@ -125,18 +125,43 @@ let t_equivF_fun_def_r tc =
   let concl' = f_equivS menvl menvr pre fdefl.f_body fdefr.f_body post in
   FApi.xmutate1 tc `FunDef [concl']
 
+(* ------------------------------------------------------------------ *)
+let t_espF_fun_def_r tc =
+  let env = FApi.tc1_env tc in
+  let esp = tc1_as_espF tc in
+  let fl = NormMp.norm_xfun env esp.espf_fl in
+  let fr = NormMp.norm_xfun env esp.espf_fr in
+  check_concrete !!tc env fl; check_concrete !!tc env fr;
+  let (menvl, eqsl, menvr, eqsr, env) = Fun.espS fl fr env in
+  let (fsigl, fdefl) = eqsl in
+  let (fsigr, fdefr) = eqsr in
+  let ml = EcMemory.memory menvl in
+  let mr = EcMemory.memory menvr in
+  let fresl = odfl f_tt (omap (form_of_expr ml) fdefl.f_ret) in
+  let fresr = odfl f_tt (omap (form_of_expr mr) fdefr.f_ret) in
+  let s = PVM.add env (pv_res fl) ml fresl PVM.empty in
+  let s = PVM.add env (pv_res fr) mr fresr s in
+  let post = pair_map (PVM.subst env s) esp.espf_po in
+  let s = subst_pre env fl fsigl ml PVM.empty in
+  let s = subst_pre env fr fsigr mr s in
+  let pre = pair_map (PVM.subst env s) esp.espf_pr in
+  let concl' = f_espS menvl menvr pre fdefl.f_body fdefr.f_body post esp.espf_f in
+  FApi.xmutate1 tc `FunDef [concl']
+
 (* -------------------------------------------------------------------- *)
 let t_hoareF_fun_def   = FApi.t_low0 "hoare-fun-def"   t_hoareF_fun_def_r
 let t_bdhoareF_fun_def = FApi.t_low0 "bdhoare-fun-def" t_bdhoareF_fun_def_r
 let t_equivF_fun_def   = FApi.t_low0 "equiv-fun-def"   t_equivF_fun_def_r
+let t_espF_fun_def     = FApi.t_low0 "esp-fun-def"     t_espF_fun_def_r
 
 (* -------------------------------------------------------------------- *)
 let t_fun_def_r tc =
-  let th  = t_hoareF_fun_def
-  and tbh = t_bdhoareF_fun_def
-  and te  = t_equivF_fun_def in
+  let th   = t_hoareF_fun_def
+  and tbh  = t_bdhoareF_fun_def
+  and te   = t_equivF_fun_def
+  and tesp = t_espF_fun_def in
 
-  t_hF_or_bhF_or_eF ~th ~tbh ~te tc
+  t_hF_or_bhF_or_eF ~th ~tbh ~te ~tesp tc
 
 let t_fun_def = FApi.t_low0 "fun-def" t_fun_def_r
 
@@ -405,6 +430,24 @@ let t_fun_to_code_equiv_r tc =
 
   FApi.xmutate1 tc `FunToCode [concl]
 
+(* -------------------------------------------------------------------- *)
+let t_fun_to_code_esp_r tc =
+  let env = FApi.tc1_env tc in
+  let esp = tc1_as_espF tc in
+  let (fl, fr) = esp.espf_fl, esp.espf_fr in
+  let (ml, mr) = fst (Fun.espF_memenv fl fr env) in
+  let ml, sl, rl, tyl = ToCodeLow.to_code env fl ml in
+  let mr, sr, rr, tyr = ToCodeLow.to_code env fr mr in
+  let s = PVM.empty in
+  let s = PVM.add env (pv_res fl) (fst ml) (f_pvar rl tyl (fst ml)) s in
+  let s = PVM.add env (pv_res fr) (fst mr) (f_pvar rr tyr (fst mr)) s in
+  let pr = esp.espf_pr in
+  let po = pair_map (PVM.subst env s) esp.espf_po in
+  let concl = f_espS ml mr pr sl sr po esp.espf_f in
+
+  FApi.xmutate1 tc `FunToCode [concl]
+
+(* -------------------------------------------------------------------- *)
 let t_fun_to_code_eager_r tc =
   let env = FApi.tc1_env tc in
   let eg = tc1_as_eagerF tc in
@@ -425,15 +468,16 @@ let t_fun_to_code_hoare   = FApi.t_low0 "hoare-fun-to-code"   t_fun_to_code_hoar
 let t_fun_to_code_bdhoare = FApi.t_low0 "bdhoare-fun-to-code" t_fun_to_code_bdhoare_r
 let t_fun_to_code_equiv   = FApi.t_low0 "equiv-fun-to-code"   t_fun_to_code_equiv_r
 let t_fun_to_code_eager   = FApi.t_low0 "eager-fun-to-code"   t_fun_to_code_eager_r
-
+let t_fun_to_code_esp     = FApi.t_low0 "esp-fun-to-code"     t_fun_to_code_esp_r
 
 (* -------------------------------------------------------------------- *)
 let t_fun_to_code_r tc =
-  let th  = t_fun_to_code_hoare in
-  let tbh = t_fun_to_code_bdhoare in
-  let te  = t_fun_to_code_equiv in
-  let teg = t_fun_to_code_eager in
-  t_hF_or_bhF_or_eF ~th ~tbh ~te ~teg tc
+  let th   = t_fun_to_code_hoare in
+  let tbh  = t_fun_to_code_bdhoare in
+  let te   = t_fun_to_code_equiv in
+  let teg  = t_fun_to_code_eager in
+  let tesp = t_fun_to_code_esp in
+  t_hF_or_bhF_or_eF ~th ~tbh ~te ~teg ~tesp tc
 
 let t_fun_to_code = FApi.t_low0 "fun-to-code" t_fun_to_code_r
 
