@@ -509,7 +509,12 @@ type fel_info = {
 
 (* -------------------------------------------------------------------- *)
 type deno_ppterm   = (pformula option pair) gppterm
-type conseq_ppterm = ((pformula option pair) * (phoarecmp option * pformula) option) gppterm
+
+type conseq_ppterm =
+ ((pformula option pair) *
+  (phoarecmp option * pformula) option) gppterm
+
+type conseq_esp_ppterm = (pformula option pair pair) * pformula option
 
 (* -------------------------------------------------------------------- *)
 type sim_info = {
@@ -546,6 +551,7 @@ type phltactic =
   | Palias         of (oside * codepos * osymbol_r)
   | Pset           of (oside * codepos * bool * psymbol * pexpr)
   | Pconseq        of (pcqoptions * (conseq_ppterm option tuple3))
+  | Pconseq_esp    of conseq_esp_ppterm
   | Phrex_elim
   | Phrex_intro    of pformula list
   | Pexfalso

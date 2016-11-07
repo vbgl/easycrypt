@@ -146,6 +146,43 @@ let t_equivS_conseq pre post tc =
   let concl3 = f_equivS_r { es with es_pr = pre; es_po = post } in
   FApi.xmutate1 tc `HlConseq [concl1; concl2; concl3]
 
+
+(* -------------------------------------------------------------------- *)
+(*let t_espF_conseq f (pr,d) (po,d') tc =
+
+  let ef  = tc1_as_equivF tc in
+  let (mprl,mprr), (mpol,mpor) =
+    EcEnv.Fun.equivF_memenv ef.ef_fl ef.ef_fr env in
+  let cond1, cond2 = conseq_cond ef.ef_pr ef.ef_po pre post in
+  let concl1 = f_forall_mems [mprl;mprr] cond1 in
+  let concl2 = f_forall_mems [mpol;mpor] cond2 in
+  let concl3 = f_equivF pre ef.ef_fl ef.ef_fr post in
+  FApi.xmutate1 tc `HlConseq [concl1; concl2; concl3] *)
+
+(* -------------------------------------------------------------------- *)
+let t_espS_conseq f (pr,d) (po, d') tc =
+  let es = tc1_as_espS tc in
+  let pr0,d0  = es.esps_pr in
+  let po0,d0' = es.esps_po in
+  let f0      = es.esps_f in
+  let cond1, cond2 = conseq_cond pr0 po0 pr po in
+  let mems   = [es.esps_ml;es.esps_mr] in
+  let concl1 = f_forall_mems mems cond1 in
+  let concl2 = f_forall_mems mems cond2 in
+  let concl3 = f_forall_mems mems (f_imp pr0 (f_real_le d0 d)) in
+  let concl4 = f_forall_mems mems (f_imp po (f_real_le d' d0')) in
+  let x = EcIdent.create "x" in
+  let app_f f = f_app f [f_local x treal] treal in
+  let concl5 =
+    f_forall [x,gtty treal] (f_real_le (app_f f) (app_f f0)) in
+  let concl6 = f_espS_r
+    { es with
+      esps_pr = pr, d;
+      esps_po = po, d';
+      esps_f  = f } in
+  FApi.xmutate1 tc `HlConseq [concl1; concl2; concl3; concl4; concl5; concl6]
+
+
 (* -------------------------------------------------------------------- *)
 let t_conseq pre post tc =
   match (FApi.tc1_goal tc).f_node with
@@ -995,3 +1032,21 @@ end
 let process_conseq_opt cqopt infos tc =
   let cqopt = CQOptions.merge CQOptions.default cqopt in
   process_conseq cqopt.cqo_frame infos tc
+
+(* -------------------------------------------------------------------- *)
+let process_conseq_esp (((pr,d),(po,d')),f) tc =
+  let es = tc1_as_espS tc in
+  let hyps = FApi.tc1_hyps tc in
+  let env = LDecl.push_all [es.esps_ml; es.esps_mr] hyps in
+  let pr0,d0  = es.esps_pr in
+  let po0,d0' = es.esps_po in
+  let f0      = es.esps_f in
+  let mk p p0 = p |> omap (TTC.pf_process_formula !!tc env) |> odfl p0 in
+  let mkd d d0 = d |> omap (TTC.pf_process_form !!tc env treal) |> odfl d0 in
+  let pr      = mk pr pr0 in
+  let po      = mk po po0 in
+  let d       = mkd d d0 in
+  let d'      = mkd d' d0' in
+  let treal2  = toarrow [treal] treal in
+  let f       = f|> omap (TTC.pf_process_form !!tc hyps treal2) |> odfl f0 in
+  t_espS_conseq f (pr,d) (po,d') tc

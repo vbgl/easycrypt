@@ -43,7 +43,7 @@ val t_conseq : form -> form -> FApi.backward
 val process_conseq   : bool -> conseq_ppterm option tuple3 -> FApi.backward
 val process_bd_equiv : side -> pformula pair -> FApi.backward
 
+val process_conseq_esp : conseq_esp_ppterm -> FApi.backward
 (* -------------------------------------------------------------------- *)
 val process_conseq_opt :
   pcqoptions -> conseq_ppterm option tuple3 -> FApi.backward
-

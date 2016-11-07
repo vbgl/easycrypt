@@ -184,6 +184,7 @@ and process1_phl (_ : ttenv) (t : phltactic located) (tc : tcenv1) =
     | Pset info                 -> EcPhlCodeTx.process_set info
     | Prnd (side, info)         -> EcPhlRnd.process_rnd side info
     | Pconseq (opt, info)       -> EcPhlConseq.process_conseq_opt opt info
+    | Pconseq_esp info          -> EcPhlConseq.process_conseq_esp info
     | Phrex_elim                -> EcPhlExists.t_hr_exists_elim
     | Phrex_intro fs            -> EcPhlExists.process_exists_intro fs
     | Pexfalso                  -> EcPhlAuto.t_exfalso

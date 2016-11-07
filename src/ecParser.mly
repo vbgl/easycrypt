@@ -2117,6 +2117,8 @@ simplify:
 | SIMPLIFY l=qoident+ { `Delta l  :: simplify_red  }
 | SIMPLIFY DELTA      { `Delta [] :: simplify_red }
 
+
+
 conseq:
 | empty                           { None, None }
 | UNDERSCORE LONGARROW UNDERSCORE { None, None }
@@ -2127,11 +2129,27 @@ conseq:
 | UNDERSCORE LONGARROW f2=form    { None, Some f2 }
 | f1=form LONGARROW f2=form       { Some f1, Some f2 }
 
-
 conseq_bd:
 | c=conseq                                   { c, None }
 | c=conseq   COLON cmp=hoare_bd_cmp? bd=sform { c, Some (cmp, bd) }
 | UNDERSCORE COLON cmp=hoare_bd_cmp? bd=sform { (None, None), Some(cmp, bd) }
+
+conseq_form:
+| UNDERSCORE { None, None }
+| f=form     { Some f, None }
+| UNDERSCORE PIPE d=form { None, Some d }
+| f=form PIPE d=form { Some f, Some d }
+
+conseq_esp:
+| empty                                     { (None,None), (None,None) }
+| cf1=conseq_form LONGARROW cf2=conseq_form { cf1,cf2 }
+| cf1=conseq_form LONGARROW                 { cf1, (None,None) }
+| LONGARROW cf2=conseq_form                 { (None,None), cf2 }
+| cf2=conseq_form                           { (None,None), cf2 }
+
+conseq_esp1:
+| c=conseq_esp                              { c, None}
+| LBRACKET f=form RBRACKET c=conseq_esp     { c, Some f }
 
 call_info:
  | f1=form LONGARROW f2=form             { CI_spec (f1, f2) }
@@ -2533,7 +2551,7 @@ phltactic:
     { Psplitwhile (c, s, o) }
 
 | BYPHOARE info=gpterm(conseq)?
-    { Pbydeno (`PHoare, (mk_rel_pterm info, true, None)) }
+   { Pbydeno (`PHoare, (mk_rel_pterm info, true, None)) }
 
 | BYEQUIV eq=bracket(byequivopt)? info=gpterm(conseq)?
     { Pbydeno (`Equiv, (mk_rel_pterm info, odfl true eq, None)) }
@@ -2564,6 +2582,10 @@ phltactic:
 
 | CONSEQ cq=cqoptions? UNDERSCORE UNDERSCORE info3=gpterm(conseq_bd)
     { Pconseq (odfl [] cq, (None,None,Some info3)) }
+
+| ESP CONSEQ LPAREN c=conseq_esp1 RPAREN
+    { Pconseq_esp c }
+
 
 | ELIM STAR
     { Phrex_elim }

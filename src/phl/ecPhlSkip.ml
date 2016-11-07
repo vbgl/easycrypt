@@ -74,12 +74,35 @@ module LowInternal = struct
     FApi.xmutate1 tc `Skip [concl]
 
   let t_equiv_skip = FApi.t_low0 "equiv-skip" t_equiv_skip_r
+
+  (* ------------------------------------------------------------------ *)
+  let t_esp_skip_r tc =
+    let es = tc1_as_espS tc in
+    let pr,d = es.esps_pr in
+    let po,d' = es.esps_po in
+    let f = es.esps_f in
+    let hyps = FApi.tc1_hyps tc in
+    if not (List.is_empty es.esps_sl.s_node) then
+      tc_error !!tc ~who:"skip" "left instruction list is not empty";
+    if not (List.is_empty es.esps_sr.s_node) then
+      tc_error !!tc ~who:"skip" "right instruction list is not empty";
+    EcReduction.check_conv hyps pr po;
+    EcReduction.check_conv hyps d d';
+    EcReduction.check_conv hyps f (EcFol.f_identity EcTypes.treal);
+    FApi.xmutate1 tc `Skip []
+
+  let t_esp_skip = FApi.t_low0 "esp-skip" t_esp_skip_r
+
 end
 
 (* -------------------------------------------------------------------- *)
+
+let t_esp_skip = LowInternal.t_esp_skip
+
 let t_skip tc =
   t_hS_or_bhS_or_eS
     ~th: LowInternal.t_hoare_skip
     ~tbh:LowInternal.t_bdhoare_skip
     ~te: LowInternal.t_equiv_skip
+    ~tesp:t_esp_skip
     tc
