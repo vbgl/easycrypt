@@ -24,7 +24,8 @@ val t_bdHoareF_conseq    : form -> form -> FApi.backward
 val t_bdHoareS_conseq    : form -> form -> FApi.backward
 val t_bdHoareS_conseq_bd : hoarecmp -> form -> FApi.backward
 val t_bdHoareF_conseq_bd : hoarecmp -> form -> FApi.backward
-
+val t_espS_conseq        :
+  form -> (form * form) -> (form * form) -> FApi.backward
 (* -------------------------------------------------------------------- *)
 val t_equivF_conseq_nm   : form -> form -> FApi.backward
 val t_equivS_conseq_nm   : form -> form -> FApi.backward
