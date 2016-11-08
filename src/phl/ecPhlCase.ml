@@ -45,7 +45,7 @@ let t_esp_case_r f tc =
 let t_hoare_case   = FApi.t_low1 "hoare-case"   t_hoare_case_r
 let t_bdhoare_case = FApi.t_low1 "bdhoare-case" t_bdhoare_case_r
 let t_equiv_case   = FApi.t_low1 "equiv-case"   t_equiv_case_r
-let t_esp_case     = FApi.t_low1 "equiv-case"   t_esp_case_r
+let t_esp_case     = FApi.t_low1 "esp-case"     t_esp_case_r
 
 (* --------------------------------------------------------------------- *)
 let t_hl_case_r f tc =

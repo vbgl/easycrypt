@@ -88,6 +88,7 @@ let tc1_process_prhl_form_opt tc oty pf =
   let ml, mr =
     match concl.f_node with
     | FequivS es -> (es.es_ml, es.es_mr)
+    | FespS es   -> (es.esps_ml, es.esps_mr)
     | _ -> assert false
   in
 

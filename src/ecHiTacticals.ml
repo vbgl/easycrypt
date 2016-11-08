@@ -91,9 +91,10 @@ and process1_case (_ : ttenv) (doeq, opts, gp) (tc : tcenv1) =
         let fp = TTC.tc1_process_Xhl_formula tc (form_of_gp ()) in
         EcPhlCase.t_hl_case fp tc
 
-    | FequivS _ when not opts.cod_ambient ->
+    | FequivS _ | FespS _ when not opts.cod_ambient ->
         let fp = TTC.tc1_process_prhl_formula tc (form_of_gp ()) in
-        EcPhlCase.t_equiv_case fp tc
+        EcPhlCase.t_hl_case fp tc
+
 
     | _ -> EcHiGoal.process_case ~doeq gp tc
 
