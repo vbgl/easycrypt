@@ -84,7 +84,7 @@ module CI_Real : sig
   val p_RealExtra : path
   val p_RealOrder : path
 
-  val p_real0       : path 
+  val p_real0       : path
   val p_real1       : path
   val p_real_opp    : path
   val p_real_add    : path
@@ -111,6 +111,8 @@ module CI_Distr : sig
   val p_mu      : path
   val p_mu_x    : path
   val p_weight  : path
+
+  val p_expectation : path
 end
 
 (* -------------------------------------------------------------------- *)

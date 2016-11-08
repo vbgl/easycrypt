@@ -203,3 +203,7 @@ rewrite /weight.
 congr=> //.
 by apply fun_ext.
 qed.
+
+op E ['a] : 'a distr -> ('a -> real) -> real.
+
+

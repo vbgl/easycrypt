@@ -405,6 +405,7 @@ val is_pvar      : form -> bool
 val is_proj      : form -> bool
 val is_equivF    : form -> bool
 val is_equivS    : form -> bool
+val is_espS      : form -> bool
 val is_eagerF    : form -> bool
 val is_hoareF    : form -> bool
 val is_hoareS    : form -> bool

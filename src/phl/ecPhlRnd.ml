@@ -109,6 +109,73 @@ let wp_equiv_rnd_r bij tc =
   FApi.xmutate1 tc `Rnd [concl]
 
 (* -------------------------------------------------------------------- *)
+let wp_esp_rnd_r bij tc =
+  let env = FApi.tc1_env tc in
+  let es = tc1_as_espS tc in
+  let (lvL, muL), sl' = tc1_last_rnd tc es.esps_sl in
+  let (lvR, muR), sr' = tc1_last_rnd tc es.esps_sr in
+  let tyL = proj_distr_ty env (e_ty muL) in
+  let tyR = proj_distr_ty env (e_ty muR) in
+  let xL_id = EcIdent.create (symbol_of_lv lvL ^ "L")
+  and xR_id = EcIdent.create (symbol_of_lv lvR ^ "R") in
+  let xL = f_local xL_id tyL in
+  let xR = f_local xR_id tyR in
+  let muL = EcFol.form_of_expr (EcMemory.memory es.esps_ml) muL in
+  let muR = EcFol.form_of_expr (EcMemory.memory es.esps_mr) muR in
+
+  let tf, tfinv =
+    match bij with
+    | Some (f, finv) -> (f tyL tyR, finv tyR tyL)
+    | None ->
+        if not (EcReduction.EqTest.for_type env tyL tyR) then
+          tc_error !!tc "%s, %s"
+            "support are not compatible"
+            "an explicit bijection is required";
+        (EcFol.f_identity ~name:"z" tyL,
+         EcFol.f_identity ~name:"z" tyR)
+  in
+
+  (*     (∀ x₂, x₂ ∈ ℑ(D₂) ⇒ x₂ = f(f⁻¹(x₂))
+   *  && (∀ x₂, x₂ ∈ ℑ(D₂) ⇒ μ(x₂, D₂) = μ(f⁻¹(x₂), D₁))
+   *  && (∀ x₁, x₁ ∈ ℑ(D₁) ⇒ f(x₁) ∈ ℑ(D₂) && x₁ = f⁻¹(f(x₁)) && φ(x₁, f(x₁)))
+   *)
+
+  let f    t = f_app_simpl tf    [t] tyR in
+  let finv t = f_app_simpl tfinv [t] tyL in
+
+  let cond_fbij      = f_eq xL (finv (f xL)) in
+  let cond_fbij_inv  = f_eq xR (f (finv xR)) in
+
+  let post,d' = es.esps_po in
+  let post = subst_form_lv env (EcMemory.memory es.esps_ml) lvL xL     post in
+  let post = subst_form_lv env (EcMemory.memory es.esps_mr) lvR (f xL) post in
+
+  let cond1 = f_imp (f_in_supp xR muR) cond_fbij_inv in
+  let cond2 = f_imp (f_in_supp xR muR) (f_eq (f_mu_x muR xR) (f_mu_x muL (finv xR))) in
+  let cond3 = f_andas [f_in_supp (f xL) muR; cond_fbij; post] in
+  let cond3 = f_imp (f_in_supp xL muL) cond3 in
+
+  let concl = f_andas
+    [f_forall_simpl [(xR_id, GTty tyR)] cond1;
+     f_forall_simpl [(xR_id, GTty tyR)] cond2;
+     f_forall_simpl [(xL_id, GTty tyL)] cond3] in
+
+  let fd =
+    let d' = subst_form_lv env (EcMemory.memory es.esps_ml) lvL xL     d' in
+    let d' = subst_form_lv env (EcMemory.memory es.esps_mr) lvR (f xL) d' in
+    f_lambda [(xL_id, GTty tyL)] d' in
+
+  let expectation = f_op EcCoreLib.CI_Distr.p_expectation [tyL] treal in
+
+  let d' = f_app expectation [muL; fd] treal in
+
+  let concl = f_espS_r
+    { es with esps_sl=sl'; esps_sr=sr';
+      esps_po=concl, d'; } in
+
+  FApi.xmutate1 tc `Rnd [concl]
+
+(* -------------------------------------------------------------------- *)
 let t_hoare_rnd_r tc =
   let env = FApi.tc1_env tc in
   let hs = tc1_as_hoareS tc in
@@ -135,6 +202,19 @@ let t_equiv_rnd_r side bij_info tc =
         | None, None -> None
       in
         wp_equiv_rnd_r bij tc
+
+(* -------------------------------------------------------------------- *)
+let t_esp_rnd_r side bij_info tc =
+  if side <> None then tc_error !!tc "No one sided random rule for momentum";
+  let bij =
+    match bij_info with
+    | Some f, Some finv ->  Some (f, finv)
+    | Some bij, None | None, Some bij -> Some (bij, bij)
+    | None, None -> None
+  in
+  wp_esp_rnd_r bij tc
+
+
 
 (* -------------------------------------------------------------------- *)
 let t_bdhoare_rnd_r tac_info tc =
@@ -274,6 +354,7 @@ let wp_equiv_rnd      = FApi.t_low1 "wp-equiv-rnd"      wp_equiv_rnd_r
 let t_hoare_rnd   = FApi.t_low0 "hoare-rnd"   t_hoare_rnd_r
 let t_bdhoare_rnd = FApi.t_low1 "bdhoare-rnd" t_bdhoare_rnd_r
 let t_equiv_rnd   = FApi.t_low2 "equiv-rnd"   t_equiv_rnd_r
+let t_esp_rnd     = FApi.t_low2 "esp-rnd"     t_esp_rnd_r
 
 (* -------------------------------------------------------------------- *)
 let process_rnd side tac_info tc =
@@ -306,7 +387,7 @@ let process_rnd side tac_info tc =
     in
       t_bdhoare_rnd tac_info tc
 
-  | _, _ when is_equivS concl ->
+  | _, _ when (is_equivS concl || is_espS concl) ->
     let process_form f ty1 ty2 =
       TTC.tc1_process_prhl_form tc (tfun ty1 ty2) f in
 
@@ -318,6 +399,8 @@ let process_rnd side tac_info tc =
       | _ -> tc_error !!tc "invalid arguments"
 
     in
+    if is_equivS concl then
       t_equiv_rnd side bij_info tc
+    else t_esp_rnd side bij_info tc
 
   | _ -> tc_error !!tc "invalid arguments"

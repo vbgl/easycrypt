@@ -1330,6 +1330,7 @@ let is_exists    f = is_from_destr destr_exists1   f
 let is_let       f = is_from_destr destr_let1      f
 let is_equivF    f = is_from_destr destr_equivF    f
 let is_equivS    f = is_from_destr destr_equivS    f
+let is_espS      f = is_from_destr destr_espS      f
 let is_eagerF    f = is_from_destr destr_eagerF    f
 let is_hoareS    f = is_from_destr destr_hoareS    f
 let is_hoareF    f = is_from_destr destr_hoareF    f
