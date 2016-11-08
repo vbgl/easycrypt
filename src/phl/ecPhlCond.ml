@@ -57,29 +57,36 @@ let t_bdhoare_cond tc =
 (* -------------------------------------------------------------------- *)
 let rec t_equiv_cond side tc =
   let hyps = FApi.tc1_hyps tc in
-  let es   = tc1_as_equivS tc in
+
+  let t_rcond, ml, mr, sl, sr, pr =
+    try
+      let es   = tc1_as_espS tc in
+      EcPhlRCond.Low.t_esp_rcond,
+      es.esps_ml, es.esps_mr, es.esps_sl, es.esps_sr, fst es.esps_pr
+    with TcError _ ->
+      let es   = tc1_as_equivS tc in
+      EcPhlRCond.Low.t_equiv_rcond,
+      es.es_ml, es.es_mr, es.es_sl, es.es_sr, es.es_pr
+  in
 
   match side with
   | Some s ->
       let e =
         match s with
         | `Left ->
-          let (e,_,_) = fst (tc1_first_if tc es.es_sl) in
-          form_of_expr (EcMemory.memory es.es_ml) e
+          let (e,_,_) = fst (tc1_first_if tc sl) in
+          form_of_expr (EcMemory.memory ml) e
         | `Right ->
-          let (e,_,_) = fst (tc1_first_if tc es.es_sr) in
-          form_of_expr (EcMemory.memory es.es_mr) e
+          let (e,_,_) = fst (tc1_first_if tc sr) in
+          form_of_expr (EcMemory.memory mr) e
       in LowInternal.t_gen_cond side e tc
 
   | None ->
-      let el,_,_ = fst (tc1_first_if tc es.es_sl) in
-      let er,_,_ = fst (tc1_first_if tc es.es_sr) in
-      let el     = form_of_expr (EcMemory.memory es.es_ml) el in
-      let er     = form_of_expr (EcMemory.memory es.es_mr) er in
-      let fiff   =
-        f_forall_mems
-          [es.es_ml;es.es_mr]
-          (f_imp es.es_pr (f_iff el er)) in
+      let el,_,_ = fst (tc1_first_if tc sl) in
+      let er,_,_ = fst (tc1_first_if tc sr) in
+      let el     = form_of_expr (EcMemory.memory ml) el in
+      let er     = form_of_expr (EcMemory.memory mr) er in
+      let fiff   = f_forall_mems [ml;mr] (f_imp pr (f_iff el er)) in
 
       let fresh = ["hiff";"&m1";"&m2";"h";"h";"h"] in
       let fresh = LDecl.fresh_ids hyps fresh in
@@ -103,10 +110,10 @@ let rec t_equiv_cond side tc =
              (FApi.t_seqsub
                 (t_equiv_cond (Some `Left))
                 [FApi.t_seqsub
-                   (EcPhlRCond.Low.t_equiv_rcond `Right true  1)
+                   (t_rcond `Right true  1)
                    [t_aux; t_clear hiff];
                  FApi.t_seqsub
-                   (EcPhlRCond.Low.t_equiv_rcond `Right false 1)
+                   (t_rcond `Right false 1)
                    [t_aux; t_clear hiff]]))
           tc
 
@@ -116,7 +123,9 @@ let process_cond info tc =
 
   match info with
   | `Head side ->
-    t_hS_or_bhS_or_eS ~th:t_hoare_cond ~tbh:t_bdhoare_cond ~te:(t_equiv_cond side) tc
+    t_hS_or_bhS_or_eS
+     ~th:t_hoare_cond ~tbh:t_bdhoare_cond ~te:(t_equiv_cond side)
+     ~tesp:(t_equiv_cond side) tc
 
   | `Seq (side, i1, i2, f) ->
     let es = tc1_as_equivS tc in

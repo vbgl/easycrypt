@@ -14,6 +14,7 @@ module Low : sig
   val t_hoare_rcond   : bool -> int -> backward
   val t_bdhoare_rcond : bool -> int -> backward
   val t_equiv_rcond   : side -> bool -> int -> backward
+  val t_esp_rcond     : side -> bool -> int -> backward
 end
 
 (* -------------------------------------------------------------------- *)
