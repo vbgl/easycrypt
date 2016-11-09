@@ -206,4 +206,5 @@ qed.
 
 op E ['a] : 'a distr -> ('a -> real) -> real.
 
+pred affine : (real -> real).
 

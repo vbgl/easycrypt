@@ -113,6 +113,7 @@ module CI_Distr : sig
   val p_weight  : path
 
   val p_expectation : path
+  val p_affine      : path
   val p_bigo        : path
 end
 

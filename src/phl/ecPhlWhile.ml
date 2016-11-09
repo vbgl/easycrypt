@@ -357,24 +357,33 @@ let t_esp_while_r inv count n f tc =
   let er = form_of_expr mr er in
   let sync_cond = f_iff_simpl el er in
 
-  let mems   = [es.esps_ml;es.esps_mr] in
+  let mems  = [es.esps_ml;es.esps_mr] in
   let cond1 =
     f_forall_mems mems (f_imp inv sync_cond) in
   let cond2 =
     f_forall_mems mems (f_imps [inv; f_eq count f_i0] (f_not el)) in
 
-  let cond3 =
+  let cond0, cond3 =
     let k = EcIdent.create "k" in
     let fk = f_local k tint in
     let fk1 = f_int_add fk f_i1 in
     let b_pre  = f_ands_simpl [inv; el; er]    (f_eq count fk1) in
     let b_post = f_ands_simpl [inv; sync_cond] (f_eq count fk) in
+    let f_k =  f_app f [fk] (toarrow [treal] treal) in
     let b_concl =
-      f_espS es.esps_ml es.esps_mr
-        (b_pre,d) cl cr (b_post,d) (f_app f [fk] (toarrow [treal] treal)) in
-    f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n] b_concl) in
+      f_espS es.esps_ml es.esps_mr (b_pre,d) cl cr (b_post,d) f_k in
+    let b_concl =
+      f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n] b_concl)
+    in
+    let f_affine =
+      f_op EcCoreLib.CI_Distr.p_affine []
+        (toarrow [toarrow [tint;treal] treal] tbool) in
+    let cond0 =
+      f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n]
+                                (f_app f_affine [f_k] tbool)) in
+    cond0, b_concl in
 
-  FApi.xmutate1 tc `While [cond1; cond2; cond3]
+  FApi.xmutate1 tc `While [cond0; cond1; cond2; cond3]
 
 let process_esp_while info tc =
   let es = tc1_as_espS tc in
