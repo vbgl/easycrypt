@@ -221,11 +221,11 @@ let process_phl_bd_info dir bd_info tc =
   | PAppEsp ((f1, f2), d) ->
         let f1 = TTC.tc1_process_form tc (tfun treal treal) f1 in
         let f2 = TTC.tc1_process_form tc (tfun treal treal) f2 in
-        let d  = TTC.tc1_process_Xhl_form tc treal d in
+        let d  = TTC.tc1_process_prhl_form tc treal d in
 
       let f1, f2 =
          match dir with Backs -> (f2, f1) | Fwds  -> (f1, f2)
-      in `Exp ((f1, f2), d)
+      in `Esp ((f1, f2), d)
 
 (* -------------------------------------------------------------------- *)
 let process_app (side, dir, k, phi, bd_info) tc =
