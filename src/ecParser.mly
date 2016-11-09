@@ -2271,6 +2271,9 @@ app_bd_info:
 | f=prod_form g=prod_form s=sform?
     { PAppMult (s, fst f, snd f, fst g, snd g) }
 
+| LBRACKET f1=sform AMP f2=sform SEMICOLON d=sform RBRACKET
+    { PAppEsp ((f1, f2), d) }
+
 revert:
 | cl=ioption(brace(loc(ipcore_name)+)) gp=genpattern*
   { { pr_clear = odfl [] cl; pr_genp = gp; } }

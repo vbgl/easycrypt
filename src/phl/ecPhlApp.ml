@@ -129,6 +129,44 @@ let t_equiv_app_onesided side i pre post tc =
     ] tc
 
 (* -------------------------------------------------------------------- *)
+let t_esp_app (i, j) (f1, f2) phi tc =
+  let es = tc1_as_espS tc in
+  let sl1,sl2 = s_split i es.esps_sl in
+  let sr1,sr2 = s_split j es.esps_sr in
+
+  let a = f_espS_r { es with
+      esps_sl = stmt sl1; esps_sr = stmt sr1;
+      esps_po = phi     ; esps_f  = f1      ; } in
+
+  let b = f_espS_r { es with
+      esps_pr = phi     ; esps_sl = stmt sl2;
+      esps_sr = stmt sr2; esps_f  = f2      ; } in
+
+  let pf  x = f_app es.esps_f [x] treal in
+  let pf1 x = f_app f1 [x] treal in
+  let pf2 x = f_app f2 [x] treal in
+  let lr  x = f_local x treal in
+
+  let eqf =
+    let x = EcIdent.create "x" in
+    f_forall [(x, GTty treal)]
+       (f_eq (pf (lr x)) (pf2 (pf1 (lr x)))) in
+
+  let aff =
+    let x = EcIdent.create "x" in
+    let a = EcIdent.create "a" in
+    let b = EcIdent.create "b" in
+
+    f_exists [(a, GTty treal); (b, GTty treal)] (
+      f_forall [(x, GTty treal)] (f_ands [
+        f_eq (pf2 (lr x)) (f_real_add (f_real_mul (lr a) (lr x)) (lr b));
+        f_real_le f_r0 (lr a);
+        f_real_le f_r1 (lr b)]))
+  in
+
+  FApi.xmutate1 tc `HlApp [a; b; eqf; aff]
+
+(* -------------------------------------------------------------------- *)
 let process_phl_bd_info dir bd_info tc =
   match bd_info with
   | PAppNone ->
@@ -137,9 +175,7 @@ let process_phl_bd_info dir bd_info tc =
          match dir with
         | Backs -> hs.bhs_bd, f_r1
         | Fwds  -> f_r1, hs.bhs_bd
-      in
-        (* The last argument will not be used *)
-        (f_true, f1, f2, f_r0, f_r1)
+      in `Phl (f_true, f1, f2, f_r0, f_r1)
 
   | PAppSingle f ->
       let hs = tc1_as_bdhoareS tc in
@@ -149,7 +185,7 @@ let process_phl_bd_info dir bd_info tc =
         | Backs  -> (f_real_div hs.bhs_bd f, f)
         | Fwds   -> (f, f_real_div hs.bhs_bd f)
       in
-        (f_true, f1, f2, f_r0, f_r1)
+      `Phl (f_true, f1, f2, f_r0, f_r1)
 
   | PAppMult (phi, f1, f2, g1, g2) ->
       let phi =
@@ -180,7 +216,16 @@ let process_phl_bd_info dir bd_info tc =
       let f1, f2 = process_f (f1, f2) in
       let g1, g2 = process_f (g1, g2) in
 
-      (phi, f1, f2, g1, g2)
+      `Phl (phi, f1, f2, g1, g2)
+
+  | PAppEsp ((f1, f2), d) ->
+        let f1 = TTC.tc1_process_form tc (tfun treal treal) f1 in
+        let f2 = TTC.tc1_process_form tc (tfun treal treal) f2 in
+        let d  = TTC.tc1_process_Xhl_form tc treal d in
+
+      let f1, f2 =
+         match dir with Backs -> (f2, f1) | Fwds  -> (f1, f2)
+      in `Exp ((f1, f2), d)
 
 (* -------------------------------------------------------------------- *)
 let process_app (side, dir, k, phi, bd_info) tc =
@@ -216,12 +261,21 @@ let process_app (side, dir, k, phi, bd_info) tc =
 
   | Single i, _ when is_bdHoareS concl ->
       let pia = TTC.tc1_process_Xhl_formula tc (get_single phi) in
-      let (ra, f1, f2, f3, f4) = process_phl_bd_info dir bd_info tc in
-      t_bdhoare_app i (ra, pia, f1, f2, f3, f4) tc
+      let (ra, f1, f2, f3, f4) =
+        match process_phl_bd_info dir bd_info tc with
+        | `Phl info -> info | _ -> tc_error !!tc "invalid bound"
+      in t_bdhoare_app i (ra, pia, f1, f2, f3, f4) tc
 
   | Double (i, j), PAppNone when is_equivS concl ->
       let phi = TTC.tc1_process_prhl_formula tc (get_single phi) in
       t_equiv_app (i, j) phi tc
+
+  | Double (i, j), _ when is_espS concl ->
+      let phi = TTC.tc1_process_prhl_formula tc (get_single phi) in
+      let ((f1, f2), d) =
+        match process_phl_bd_info dir bd_info tc with
+        | `Esp info -> info | _ -> tc_error !!tc "invalid momentum spec"
+      in t_esp_app (i, j) (f1, f2) (phi, d) tc
 
   | Single _, PAppNone
   | Double _, PAppNone ->

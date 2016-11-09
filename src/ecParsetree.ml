@@ -426,6 +426,7 @@ type p_app_bd_info =
   | PAppNone
   | PAppSingle of pformula
   | PAppMult   of (pformula option) tuple5
+  | PAppEsp    of (pformula pair * pformula)
 
 type ('a, 'b, 'c) rnd_tac_info =
   | PNoRndParams
