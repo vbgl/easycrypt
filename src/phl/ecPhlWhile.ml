@@ -323,6 +323,71 @@ let t_equiv_while_r inv tc =
 
   FApi.xmutate1 tc `While [b_concl; concl]
 
+
+(* -------------------------------------------------------------------- *)
+
+let t_esp_while_r inv count n f tc =
+  let es = tc1_as_espS tc in
+  let hyps = FApi.tc1_hyps tc in
+  let pr, d  = es.esps_pr in
+  let po, d' = es.esps_po in
+  (* TODO: should we add the memories before checking convertibility *)
+  EcReduction.check_conv hyps d d';
+  let pre = f_ands [inv; f_eq count n; f_int_le f_i0 n] in
+  let post = f_and inv (f_eq count f_i0) in
+  EcReduction.check_conv hyps pr pre;
+  EcReduction.check_conv hyps po post;
+  let bigo =
+    f_op EcCoreLib.CI_Distr.p_bigo []
+      (toarrow [tint; toarrow [tint;treal] treal; treal] treal) in
+  EcReduction.check_conv hyps es.esps_f
+    (f_app bigo [n;f] (toarrow [treal] treal));
+
+  let (el, cl), sl = tc1_last_while tc es.esps_sl in
+  let (er, cr), sr = tc1_last_while tc es.esps_sr in
+  if sl.s_node <> [] then
+    tc_error !!tc "the left statement is not a single loop";
+  if sr.s_node <> [] then
+    tc_error !!tc "the right statement is not a single loop";
+
+
+  let ml = EcMemory.memory es.esps_ml in
+  let mr = EcMemory.memory es.esps_mr in
+  let el = form_of_expr ml el in
+  let er = form_of_expr mr er in
+  let sync_cond = f_iff_simpl el er in
+
+  let mems   = [es.esps_ml;es.esps_mr] in
+  let cond1 =
+    f_forall_mems mems (f_imp inv sync_cond) in
+  let cond2 =
+    f_forall_mems mems (f_imps [inv; f_eq count f_i0] (f_not el)) in
+
+  let cond3 =
+    let k = EcIdent.create "k" in
+    let fk = f_local k tint in
+    let fk1 = f_int_add fk f_i1 in
+    let b_pre  = f_ands_simpl [inv; el; er]    (f_eq count fk1) in
+    let b_post = f_ands_simpl [inv; sync_cond] (f_eq count fk) in
+    let b_concl =
+      f_espS es.esps_ml es.esps_mr
+        (b_pre,d) cl cr (b_post,d) (f_app f [fk] (toarrow [treal] treal)) in
+    f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n] b_concl) in
+
+  FApi.xmutate1 tc `While [cond1; cond2; cond3]
+
+let process_esp_while info tc =
+  let es = tc1_as_espS tc in
+  let (inv,count,n,f) = info in
+  let inv = TTC.tc1_process_prhl_formula tc inv in
+  let hyps = FApi.tc1_hyps tc in
+  let n = TTC.process_form hyps n tint in
+  let f = TTC.process_form hyps f (toarrow [tint;treal] treal) in
+  let count =
+    let hyps =  EcEnv.LDecl.push_active es.esps_ml hyps in
+    TTC.process_form hyps count tint in
+  t_esp_while_r inv count n f tc
+
 (* -------------------------------------------------------------------- *)
 let t_hoare_while           = FApi.t_low1 "hoare-while"   t_hoare_while_r
 let t_bdhoare_while         = FApi.t_low2 "bdhoare-while" t_bdhoare_while_r

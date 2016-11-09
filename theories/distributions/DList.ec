@@ -45,8 +45,10 @@ qed.
 
 lemma dlist_support0 (d : 'a distr) n xs:
   n <= 0 =>
-  support (dlist d n) xs <=> xs = []
-by [].
+  support (dlist d n) xs <=> xs = [].
+proof.
+  by move=> Hle;rewrite dlistE foldle0 // dunit_fu. 
+qed.
 
 lemma dlist_support_ge0 (d : 'a distr) n xs:
   0 <= n =>
@@ -169,7 +171,7 @@ abstract theory Program.
         smt.
     move=> len_xs; rewrite mux_dlist 1:smt (_: n{1} <> size xs) /= 1:smt.
     byphoare (_: n = n{1} ==> xs = res)=> //=; hoare.
-    by proc; auto; smt.
+    proc; auto; smt (dlist_support_ge0).
   qed.
 
   equiv Sample_Loop_eq: Sample.sample ~ Loop.sample: ={n} ==> ={res}.
@@ -237,3 +239,6 @@ abstract theory Program.
     by inline *; wp; while (={i, n0} /\ rev l{1} = l{2}); auto; smt.
   qed.
 end Program.
+ 
+op bigo n (f:int -> real -> real) x =
+  foldr f x (range 0 n).

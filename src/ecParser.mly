@@ -2589,6 +2589,8 @@ phltactic:
 | ESP CONSEQ LPAREN c=conseq_esp1 RPAREN
     { Pconseq_esp c }
 
+| ESP WHILE inv=form LBRACKET f=form RBRACKET count=sform n=sform
+    { Pwhile_esp (inv,count, n, f) }
 
 | ELIM STAR
     { Phrex_elim }

@@ -171,6 +171,7 @@ and process1_phl (_ : ttenv) (t : phltactic located) (tc : tcenv1) =
     | Prcond (side, b, i)       -> EcPhlRCond.t_rcond side b i
     | Pcond side                -> EcPhlCond.process_cond side
     | Pwhile (side, info)       -> EcPhlWhile.process_while side info
+    | Pwhile_esp info           -> EcPhlWhile.process_esp_while info
     | Pasyncwhile info          -> EcPhlWhile.process_async_while info
     | Pfission info             -> EcPhlLoopTx.process_fission info
     | Pfusion info              -> EcPhlLoopTx.process_fusion info

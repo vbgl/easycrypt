@@ -102,6 +102,7 @@ module CI_Distr = struct
   let p_weight  = _Distr "weight"
 
   let p_expectation = _Distr "E"
+  let p_bigo        =  List.fold_left EcPath.pqname p_top ["DList"; "bigo"]
 end
 
 (* -------------------------------------------------------------------- *)
