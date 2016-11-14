@@ -377,7 +377,7 @@ let t_esp_while_r inv count n f tc =
     in
     let f_affine =
       f_op EcCoreLib.CI_Distr.p_affine []
-        (toarrow [toarrow [tint;treal] treal] tbool) in
+        (toarrow [toarrow [treal] treal] tbool) in
     let cond0 =
       f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n]
                                 (f_app f_affine [f_k] tbool)) in

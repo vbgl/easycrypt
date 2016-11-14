@@ -153,16 +153,10 @@ let t_esp_app (i, j) (f1, f2) phi tc =
        (f_eq (pf (lr x)) (pf2 (pf1 (lr x)))) in
 
   let aff =
-    let x = EcIdent.create "x" in
-    let a = EcIdent.create "a" in
-    let b = EcIdent.create "b" in
-
-    f_exists [(a, GTty treal); (b, GTty treal)] (
-      f_forall [(x, GTty treal)] (f_ands [
-        f_eq (pf2 (lr x)) (f_real_add (f_real_mul (lr a) (lr x)) (lr b));
-        f_real_le f_r0 (lr a);
-        f_real_le f_r1 (lr b)]))
-  in
+    let f_affine =
+      f_op EcCoreLib.CI_Distr.p_affine []
+        (toarrow [toarrow [treal] treal] tbool) in
+    f_app f_affine [f2] tbool in
 
   FApi.xmutate1 tc `HlApp [a; b; eqf; aff]
 
@@ -224,7 +218,7 @@ let process_phl_bd_info dir bd_info tc =
         let d  = TTC.tc1_process_prhl_form tc treal d in
 
       let f1, f2 =
-         match dir with Backs -> (f2, f1) | Fwds  -> (f1, f2)
+         match dir with Backs -> (f1, f2) | Fwds  -> (f2, f1)
       in `Esp ((f1, f2), d)
 
 (* -------------------------------------------------------------------- *)
@@ -283,3 +277,76 @@ let process_app (side, dir, k, phi, bd_info) tc =
 
   | _, _ ->
       tc_error !!tc "optional bound parameter not supported"
+
+
+
+
+
+(* -------------------------------------------------------------------- *)
+
+
+let t_pcase (f0, f1, f2, d, p1, p2, e, phi, i, j) tc =
+
+  let es = tc1_as_espS tc in
+  let sl1,sl2 = s_split i es.esps_sl in
+  let sr1,sr2 = s_split j es.esps_sr in
+
+  let sl1 = stmt sl1 in
+  let a = f_espS_r { es with
+      esps_sl = sl1; esps_sr = stmt sr1;
+      esps_po = phi, d; esps_f  = f0      ; } in
+
+  let fe = Fsubst.f_subst_mem mhr (fst es.esps_ml) e in
+
+  let b = f_espS_r { es with
+      esps_pr = f_and phi fe, d ;
+      esps_sl = stmt sl2; esps_sr = stmt sr2;
+      esps_f  = f1; } in
+
+  let c = f_espS_r { es with
+      esps_pr = f_and phi (f_not fe), d ;
+      esps_sl = stmt sl2; esps_sr = stmt sr2;
+      esps_f  = f1; } in
+
+  let f =
+    let x = EcIdent.create "x" in
+    let fx = f_local x treal in
+    let f0x = f_app f0 [fx] treal in
+    let fm fi pi x = f_real_mul pi (f_app fi [x] treal) in
+    f_lambda [x, gtty treal]
+      (f_real_add (fm f1 p1 f0x) (fm f2 p2 f0x)) in
+
+  let hyps = FApi.tc1_hyps tc in
+  EcReduction.check_conv hyps f es.esps_f;
+
+  let pre = Fsubst.f_subst_mem (fst es.esps_ml) mhr (fst es.esps_pr) in
+  let side1 =
+    f_forall_mems [es.esps_mr]
+      (f_bdHoareS (mhr, snd es.esps_ml) pre sl1 e FHle p1) in
+  let side2 =
+    f_forall_mems [es.esps_mr]
+      (f_bdHoareS (mhr, snd es.esps_ml) pre sl1 (f_not e) FHle p2) in
+
+  let f_affine =
+    f_op EcCoreLib.CI_Distr.p_affine []
+      (toarrow [toarrow [treal] treal] tbool) in
+  let mk_affine f =
+    f_app f_affine [f] tbool in
+  FApi.xmutate1 tc `PCASE [mk_affine f1; mk_affine f2;side1; side2; a; b; c]
+
+
+let process_pcase (info, i, j) tc =
+  let [f0; f1; f2; d; p1; p2; e; phi] = info in
+  let es = tc1_as_espS tc in
+  let f0 = TTC.tc1_process_form tc (tfun treal treal) f0 in
+  let f1 = TTC.tc1_process_form tc (tfun treal treal) f1 in
+  let f2 = TTC.tc1_process_form tc (tfun treal treal) f2 in
+  let d  = TTC.tc1_process_prhl_form tc treal d in
+  let phi = TTC.tc1_process_prhl_form tc tbool phi in
+  let p1 = TTC.tc1_process_form tc treal p1 in
+  let p2 = TTC.tc1_process_form tc treal p2 in
+  let e  =
+    let hyps = FApi.tc1_hyps tc in
+    let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
+    TTC.pf_process_form !!tc hyps tbool e in
+  t_pcase (f0, f1, f2, d, p1, p2, e, phi, i, j) tc
