@@ -75,6 +75,7 @@ val as_seq4 : 'a list -> 'a tuple4
 val as_seq5 : 'a list -> 'a tuple5
 val as_seq6 : 'a list -> 'a tuple6
 val as_seq7 : 'a list -> 'a tuple7
+val as_seq8 : 'a list -> 'a tuple8
 
 (* -------------------------------------------------------------------- *)
 val t2_map : ('a -> 'b) -> 'a tuple2 -> 'b tuple2

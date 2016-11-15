@@ -279,12 +279,7 @@ let process_app (side, dir, k, phi, bd_info) tc =
       tc_error !!tc "optional bound parameter not supported"
 
 
-
-
-
 (* -------------------------------------------------------------------- *)
-
-
 let t_pcase (f0, f1, f2, d, p1, p2, e, phi, i, j) tc =
 
   let es = tc1_as_espS tc in
@@ -334,9 +329,9 @@ let t_pcase (f0, f1, f2, d, p1, p2, e, phi, i, j) tc =
     f_app f_affine [f] tbool in
   FApi.xmutate1 tc `PCASE [mk_affine f1; mk_affine f2;side1; side2; a; b; c]
 
-
+(* -------------------------------------------------------------------- *)
 let process_pcase (info, i, j) tc =
-  let [f0; f1; f2; d; p1; p2; e; phi] = info in
+  let (f0, f1, f2, d, p1, p2, e, phi) = as_seq8 info in
   let es = tc1_as_espS tc in
   let f0 = TTC.tc1_process_form tc (tfun treal treal) f0 in
   let f1 = TTC.tc1_process_form tc (tfun treal treal) f1 in

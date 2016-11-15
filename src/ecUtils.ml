@@ -139,6 +139,10 @@ let as_seq7 = function
   | [x1; x2; x3; x4; x5; x6; x7] -> (x1, x2, x3, x4, x5, x6, x7)
   | _ -> assert false
 
+let as_seq8 = function
+  | [x1; x2; x3; x4; x5; x6; x7; x8] -> (x1, x2, x3, x4, x5, x6, x7, x8)
+  | _ -> assert false
+
 (* -------------------------------------------------------------------- *)
 let int_of_bool (b : bool) = if b then 1 else 0
 
