@@ -1,0 +1,130 @@
+
+msem : code -> mem -> mem distr
+dsem : code -> mem distr -> mem distr
+
+munit : 'a -> 'a distr.
+axiom munit_def : $[f | munit a] = f a.
+
+mlet : 'a distr -> ('a -> 'b distr) -> 'b distr.
+
+axiom mlet_def : $[f | mlet d F] = $[fun a => $[f | F a] | d]
+
+dsem c mu = mlet mu (mem c)
+msem c m  = dsem (munit a)
+
+[ P ] c {phi}
+{$[1_P] = 1%r} c {phi}
+
+
+(* -------------------------------------------------------------- *)
+muf (fun x => b2r (! f)) d = 0 --> $@[x: f | mu]
+si x : memory alors active_mem x
+si mu : active_distr alors     --> $@[x: f]
+muf (fun x => f) d = 0         --> $[x: f | mu]
+si x : memory alors active_mem x
+si mu : active_distr alors     --> $[x: f]
+
+
+
+
+il faudrait avoir des variables de range comme ca on peut faire ce que l'on veut.
+Il y a les memoires globales
+memoire = memoire global + record 
+
+type upd {
+  var -> form
+  glob -> form
+}
+
+upd_mem : form -> upd -> form
+|- m : memory mt    ||- upd : mt
+---------------------------------
+|- upd_mem m upd : memory mt
+
+get_mem : form -> pvar -> form
+|- m : memory mt   mt |- x : t
+------------------------------
+|- get_mem m x : t
+
+
+Remarque on a besoin de faire deux type de substitution de variables:
+Remplacement d'une variable:
+  m[x := f]     pour le wp et random,
+
+Regles de simplification:
+ m[x := f][x]      --> f
+ m[x := f][y]      --> m[y]               if x <> y
+ m[x := f][glob A] --> m[glob A]          if disjoint glob A x.
+
+ m[x := f][y:=f']  --> m[y:= f'][x:= f]   if x <> y
+ m[x := f][x:=f']  --> m[x:=f']
+
+Remplacement d'un ensemble de variables par variables universellement 
+  quantifiees:
+m [x1,....,xn, glob A1, glob An ::= m']
+
+Regles de simplification:
+ m[vars ::= m'][x]      --> m'[x]             if x in vars
+ m[vars ::= m'][x]      --> m[x]              if x not in vars
+ m[vars ::= m'][glob A] --> m'[glob A]        if glob A included in vars
+ m[vars ::= m'][glob A] --> m[glob A]         if glob A disjoint vars
+ 
+ m[vars ::= m'][glob A] --> m[vars' := m'][glob A] 
+             where vars' { x(resp glob B) in vars | 
+                            not glob A disjoint x(resp glob) }
+ 
+Explanation on x in vars = x1, ..., xn, glob A1, ... glob An
+  - x in xi then x in vars
+  - x not in xi and x not in glob Ai then x not in vars
+  - glob A included in vars if A in Ai
+  - glob A disjoint vars if A can not read/write xi and glob Ai
+
+  
+ 
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+On peut exprimer qu'une formule est invariante par upd
+forall (g:glob A) (m: mt mem), P m => P (m[glob A <- g])
+Idem pour les relations:
+forall (g:glob A) (m1: mt1 mem) (m2:mt2 mem), R m1 m2 => 
+           R (m1[glob A <- g]) (m2[glob A <- g])
+ 
+Regle de reduction:
+x{m[x<-t; other]} -> t si other disjoint x
+
+x{m[upd]} -> x{m[remove x upd]}
+
+remove x upd = 
+  upd [glob A 
+
+
+
+
+clone 
+  with theory T1 <- T2
+  with module M1 <- M2
+  with lemma l1 <- l2
+  rename regexp by regexp 
+
+clone include T1 as T2
+pour faciliter les clones futurs.
+ 
+rename : 
+  renomage des lemmes, operateurs, types, modules, variables globales,
+  variables locales.
+
+c'est quoi : 
+  { 'a support | wf_support<:'a> }

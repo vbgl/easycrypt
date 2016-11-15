@@ -170,8 +170,8 @@ let t_espS_conseq f (pr,d) (po, d') tc =
   let concl1 = f_forall_mems mems cond1 in
   let concl2 = f_forall_mems mems cond2 in
   let concl3 =
-    f_forall_mems mems (f_imp pr0 (f_real_le (f_app f [d0] treal)
-                                             (f_app f0 [d]  treal))) in
+    f_forall_mems mems (f_imp pr0 (f_real_le (f_app f [d] treal)
+                                             (f_app f0 [d0]  treal))) in
   let concl4 = f_forall_mems mems (f_imp po (f_real_le d0' d')) in
   let x = EcIdent.create "x" in
   let app_f f = f_app f [f_local x treal] treal in
