@@ -209,6 +209,7 @@ and process1_phl (_ : ttenv) (t : phltactic located) (tc : tcenv1) =
     | Pbd_equiv (nm, f1, f2)    -> EcPhlConseq.process_bd_equiv nm (f1, f2)
     | Pauto                     -> EcPhlAuto.t_auto
     | Pcase_esp info            -> EcPhlApp.process_pcase info
+    | Pcase3_esp info           -> EcPhlApp.process_pcase3 info
 
   in
 

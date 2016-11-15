@@ -95,17 +95,20 @@ let compare3 (c1 : lzcmp) (c2 : lzcmp) (c3 : lzcmp) =
   | lazy n -> n
 
 (* -------------------------------------------------------------------- *)
-type 'a tuple0 = unit
-type 'a tuple1 = 'a
-type 'a tuple2 = 'a * 'a
-type 'a tuple3 = 'a * 'a * 'a
-type 'a tuple4 = 'a * 'a * 'a * 'a
-type 'a tuple5 = 'a * 'a * 'a * 'a * 'a
-type 'a tuple6 = 'a * 'a * 'a * 'a * 'a * 'a
-type 'a tuple7 = 'a * 'a * 'a * 'a * 'a * 'a * 'a
-type 'a tuple8 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
-type 'a tuple9 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
-type 'a pair   = 'a * 'a
+type 'a tuple0  = unit
+type 'a tuple1  = 'a
+type 'a tuple2  = 'a * 'a
+type 'a tuple3  = 'a * 'a * 'a
+type 'a tuple4  = 'a * 'a * 'a * 'a
+type 'a tuple5  = 'a * 'a * 'a * 'a * 'a
+type 'a tuple6  = 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple7  = 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple8  = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple9  = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple10 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple11 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple12 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a pair    = 'a * 'a
 
 (* -------------------------------------------------------------------- *)
 let t2_map (f : 'a -> 'b) (x, y) =
@@ -141,6 +144,26 @@ let as_seq7 = function
 
 let as_seq8 = function
   | [x1; x2; x3; x4; x5; x6; x7; x8] -> (x1, x2, x3, x4, x5, x6, x7, x8)
+  | _ -> assert false
+
+let as_seq9 = function
+  | [x1; x2; x3; x4; x5; x6; x7; x8; x9] ->
+      (x1, x2, x3, x4, x5, x6, x7, x8, x9)
+  | _ -> assert false
+
+let as_seq10 = function
+  | [x1; x2; x3; x4; x5; x6; x7; x8; x9; x10] ->
+      (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
+  | _ -> assert false
+
+let as_seq11 = function
+  | [x1; x2; x3; x4; x5; x6; x7; x8; x9; x10; x11] ->
+      (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11)
+  | _ -> assert false
+
+let as_seq12 = function
+  | [x1; x2; x3; x4; x5; x6; x7; x8; x9; x10; x11; x12] ->
+      (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12)
   | _ -> assert false
 
 (* -------------------------------------------------------------------- *)

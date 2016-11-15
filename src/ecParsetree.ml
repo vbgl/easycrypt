@@ -554,7 +554,8 @@ type phltactic =
   | Pset           of (oside * codepos * bool * psymbol * pexpr)
   | Pconseq        of (pcqoptions * (conseq_ppterm option tuple3))
   | Pconseq_esp    of conseq_esp_ppterm
-  | Pcase_esp      of (pformula list * int * int)
+  | Pcase_esp      of (pformula tuple8 * int * int)
+  | Pcase3_esp     of (pformula tuple11 * int * int)
   | Phrex_elim
   | Phrex_intro    of pformula list
   | Pexfalso

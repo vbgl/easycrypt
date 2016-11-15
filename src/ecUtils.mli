@@ -51,31 +51,38 @@ val reffold  : ('a -> 'b * 'a) -> 'a ref -> 'b
 val postincr : int ref -> int
 
 (* -------------------------------------------------------------------- *)
-type 'a tuple0 = unit
-type 'a tuple1 = 'a
-type 'a tuple2 = 'a * 'a
-type 'a tuple3 = 'a * 'a * 'a
-type 'a tuple4 = 'a * 'a * 'a * 'a
-type 'a tuple5 = 'a * 'a * 'a * 'a * 'a
-type 'a tuple6 = 'a * 'a * 'a * 'a * 'a * 'a
-type 'a tuple7 = 'a * 'a * 'a * 'a * 'a * 'a * 'a
-type 'a tuple8 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
-type 'a tuple9 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
-type 'a pair   = 'a tuple2
+type 'a tuple0  = unit
+type 'a tuple1  = 'a
+type 'a tuple2  = 'a * 'a
+type 'a tuple3  = 'a * 'a * 'a
+type 'a tuple4  = 'a * 'a * 'a * 'a
+type 'a tuple5  = 'a * 'a * 'a * 'a * 'a
+type 'a tuple6  = 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple7  = 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple8  = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple9  = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple10 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple11 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a tuple12 = 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a * 'a
+type 'a pair    = 'a tuple2
 
 (* -------------------------------------------------------------------- *)
 val in_seq1: ' a -> 'a list
 
 (* -------------------------------------------------------------------- *)
-val as_seq0 : 'a list -> 'a tuple0
-val as_seq1 : 'a list -> 'a tuple1
-val as_seq2 : 'a list -> 'a tuple2
-val as_seq3 : 'a list -> 'a tuple3
-val as_seq4 : 'a list -> 'a tuple4
-val as_seq5 : 'a list -> 'a tuple5
-val as_seq6 : 'a list -> 'a tuple6
-val as_seq7 : 'a list -> 'a tuple7
-val as_seq8 : 'a list -> 'a tuple8
+val as_seq0  : 'a list -> 'a tuple0
+val as_seq1  : 'a list -> 'a tuple1
+val as_seq2  : 'a list -> 'a tuple2
+val as_seq3  : 'a list -> 'a tuple3
+val as_seq4  : 'a list -> 'a tuple4
+val as_seq5  : 'a list -> 'a tuple5
+val as_seq6  : 'a list -> 'a tuple6
+val as_seq7  : 'a list -> 'a tuple7
+val as_seq8  : 'a list -> 'a tuple8
+val as_seq9  : 'a list -> 'a tuple9
+val as_seq10 : 'a list -> 'a tuple10
+val as_seq11 : 'a list -> 'a tuple11
+val as_seq12 : 'a list -> 'a tuple12
 
 (* -------------------------------------------------------------------- *)
 val t2_map : ('a -> 'b) -> 'a tuple2 -> 'b tuple2

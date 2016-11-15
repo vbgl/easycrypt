@@ -278,7 +278,6 @@ let process_app (side, dir, k, phi, bd_info) tc =
   | _, _ ->
       tc_error !!tc "optional bound parameter not supported"
 
-
 (* -------------------------------------------------------------------- *)
 let t_pcase (f0, f1, f2, d, p1, p2, e, phi, i, j) tc =
 
@@ -301,7 +300,7 @@ let t_pcase (f0, f1, f2, d, p1, p2, e, phi, i, j) tc =
   let c = f_espS_r { es with
       esps_pr = f_and phi (f_not fe), d ;
       esps_sl = stmt sl2; esps_sr = stmt sr2;
-      esps_f  = f1; } in
+      esps_f  = f2; } in
 
   let f =
     let x = EcIdent.create "x" in
@@ -331,7 +330,7 @@ let t_pcase (f0, f1, f2, d, p1, p2, e, phi, i, j) tc =
 
 (* -------------------------------------------------------------------- *)
 let process_pcase (info, i, j) tc =
-  let (f0, f1, f2, d, p1, p2, e, phi) = as_seq8 info in
+  let (f0, f1, f2, d, p1, p2, e, phi) = info in
   let es = tc1_as_espS tc in
   let f0 = TTC.tc1_process_form tc (tfun treal treal) f0 in
   let f1 = TTC.tc1_process_form tc (tfun treal treal) f1 in
@@ -345,3 +344,88 @@ let process_pcase (info, i, j) tc =
     let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
     TTC.pf_process_form !!tc hyps tbool e in
   t_pcase (f0, f1, f2, d, p1, p2, e, phi, i, j) tc
+
+(* -------------------------------------------------------------------- *)
+let t_pcase3 (f0, f1, f2, f3, d, p1, p2, p3, e1, e2, phi, i, j) tc =
+  let es = tc1_as_espS tc in
+  let sl1,sl2 = s_split i es.esps_sl in
+  let sr1,sr2 = s_split j es.esps_sr in
+
+  let sl1 = stmt sl1 in
+  let a = f_espS_r { es with
+      esps_sl = sl1; esps_sr = stmt sr1;
+      esps_po = phi, d; esps_f = f0; } in
+
+  let fe1 = Fsubst.f_subst_mem mhr (fst es.esps_ml) e1 in
+  let fe2 = Fsubst.f_subst_mem mhr (fst es.esps_ml) e2 in
+
+  let b = f_espS_r { es with
+      esps_pr = f_and phi fe1, d ;
+      esps_sl = stmt sl2; esps_sr = stmt sr2;
+      esps_f  = f1; } in
+
+  let c = f_espS_r { es with
+      esps_pr = f_and phi fe2, d ;
+      esps_sl = stmt sl2; esps_sr = stmt sr2;
+      esps_f  = f2; } in
+
+  let d = f_espS_r { es with
+      esps_pr = f_and phi (f_not (f_and fe1 fe2)), d ;
+      esps_sl = stmt sl2; esps_sr = stmt sr2;
+      esps_f  = f3; } in
+
+  let f =
+    let x = EcIdent.create "x" in
+    let fx = f_local x treal in
+    let f0x = f_app f0 [fx] treal in
+    let fm fi pi x = f_real_mul pi (f_app fi [x] treal) in
+    f_lambda [x, gtty treal]
+      (f_real_add
+         (f_real_add (fm f1 p1 f0x) (fm f2 p2 f0x))
+         (fm f3 p3 f0x)) in
+
+  let hyps = FApi.tc1_hyps tc in
+  EcReduction.check_conv hyps f es.esps_f;
+
+  let pre = Fsubst.f_subst_mem (fst es.esps_ml) mhr (fst es.esps_pr) in
+  let side1 =
+    f_forall_mems [es.esps_mr]
+      (f_bdHoareS (mhr, snd es.esps_ml) pre sl1 e1 FHle p1) in
+  let side2 =
+    f_forall_mems [es.esps_mr]
+      (f_bdHoareS (mhr, snd es.esps_ml) pre sl1 e2 FHle p2) in
+  let side3 =
+    f_forall_mems [es.esps_mr]
+      (f_bdHoareS (mhr, snd es.esps_ml) pre sl1 (f_not (f_and e1 e2)) FHle p3) in
+
+  let f_affine =
+    f_op EcCoreLib.CI_Distr.p_affine []
+      (toarrow [toarrow [treal] treal] tbool) in
+  let mk_affine f =
+    f_app f_affine [f] tbool in
+  FApi.xmutate1 tc `PCASE3
+    [mk_affine f1; mk_affine f2; mk_affine f3;
+     side1; side2; side3; a; b; c; d]
+
+(* -------------------------------------------------------------------- *)
+let process_pcase3 (info, i, j) tc =
+  let (f0, f1, f2, f3, d, p1, p2, p3, e1, e2, phi) = info in
+  let es = tc1_as_espS tc in
+  let f0 = TTC.tc1_process_form tc (tfun treal treal) f0 in
+  let f1 = TTC.tc1_process_form tc (tfun treal treal) f1 in
+  let f2 = TTC.tc1_process_form tc (tfun treal treal) f2 in
+  let f3 = TTC.tc1_process_form tc (tfun treal treal) f3 in
+  let d  = TTC.tc1_process_prhl_form tc treal d in
+  let phi = TTC.tc1_process_prhl_form tc tbool phi in
+  let p1 = TTC.tc1_process_form tc treal p1 in
+  let p2 = TTC.tc1_process_form tc treal p2 in
+  let p3 = TTC.tc1_process_form tc treal p3 in
+  let e1  =
+    let hyps = FApi.tc1_hyps tc in
+    let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
+    TTC.pf_process_form !!tc hyps tbool e1 in
+  let e2  =
+    let hyps = FApi.tc1_hyps tc in
+    let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
+    TTC.pf_process_form !!tc hyps tbool e2 in
+  t_pcase3 (f0, f1, f2, f3, d, p1, p2, p3, e1, e2, phi, i, j) tc

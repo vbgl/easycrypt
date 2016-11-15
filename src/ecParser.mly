@@ -2592,10 +2592,14 @@ phltactic:
 | ESP WHILE inv=sform LBRACKET f=form RBRACKET count=sform n=sform
     { Pwhile_esp (inv,count, n, f) }
 
-| ESP CASE f0=sform f1=sform f2=sform d=sform p1=sform p2=sform e=sform
-           phi=sform i=word j=word
-    { Pcase_esp ([f0; f1; f2; d; p1; p2; e; phi], i, j) }
+| ESP CASE f0=sform f1=sform f2=sform d=sform p1=sform p2=sform
+           e=sform phi=sform i=word j=word
+    { Pcase_esp ((f0, f1, f2, d, p1, p2, e, phi), i, j) }
 
+| ESP CASE f0=sform f1=sform f2=sform f3=sform d=sform
+           p1=sform p2=sform p3=sform e1=sform e2=sform
+           phi=sform i=word j=word
+    { Pcase3_esp ((f0, f1, f2, f3, d, p1, p2, p3, e1, e2, phi), i, j) }
 
 | ELIM STAR
     { Phrex_elim }
