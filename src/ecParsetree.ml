@@ -556,6 +556,7 @@ type phltactic =
   | Pconseq_esp    of conseq_esp_ppterm
   | Pcase_esp      of (pformula tuple8 * int * int)
   | Pcase3_esp     of (pformula tuple11 * int * int)
+  | Pcase_trans    of pformula
   | Phrex_elim
   | Phrex_intro    of pformula list
   | Pexfalso

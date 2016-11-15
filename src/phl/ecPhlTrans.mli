@@ -28,3 +28,6 @@ open EcCoreGoal.FApi
 (* -------------------------------------------------------------------- *)
 val process_equiv_trans :
   trans_kind * pformula * pformula * pformula * pformula -> backward
+
+(* -------------------------------------------------------------------- *)
+val process_esp_trans : pformula -> backward

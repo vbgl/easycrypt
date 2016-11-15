@@ -207,4 +207,7 @@ qed.
 op E ['a] : 'a distr -> ('a -> real) -> real.
 
 pred affine : (real -> real).
+pred linear : (real -> real).
 
+op dpath ['a] : ('a -> 'a -> bool) -> 'a -> 'a -> int.
+op dclosure ['a] : ('a -> 'a -> bool) -> 'a -> 'a -> bool.

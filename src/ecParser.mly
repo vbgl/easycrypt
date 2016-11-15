@@ -2601,6 +2601,9 @@ phltactic:
            phi=sform i=word j=word
     { Pcase3_esp ((f0, f1, f2, f3, d, p1, p2, p3, e1, e2, phi), i, j) }
 
+| ESP TRANSITIVITY phi2=sform
+    { Pcase_trans phi2 }
+
 | ELIM STAR
     { Phrex_elim }
 

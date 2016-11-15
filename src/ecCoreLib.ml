@@ -103,6 +103,9 @@ module CI_Distr = struct
 
   let p_expectation = _Distr "E"
   let p_affine      = _Distr "affine"
+  let p_linear      = _Distr "linear"
+  let p_dpath       = _Distr "dpath"
+  let p_dclosure    = _Distr "dclosure"
   let p_bigo        =  List.fold_left EcPath.pqname p_top ["DList"; "bigo"]
 end
 
