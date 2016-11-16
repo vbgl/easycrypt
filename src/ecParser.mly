@@ -2450,6 +2450,13 @@ byequivopt:
           (Some ("invalid option: " ^ (unloc x)))
   }
 
+%inline esp_case:
+| f=sform PIPE e=sform LE p=sform { (f, p, e) }
+
+%inline esp_case0:
+| f=sform LE p=sform { (f, p) }
+
+
 phltactic:
 | PROC
    { Pfun `Def }
@@ -2592,14 +2599,13 @@ phltactic:
 | ESP WHILE inv=sform LBRACKET f=form RBRACKET count=sform n=sform
     { Pwhile_esp (inv,count, n, f) }
 
-| ESP CASE f0=sform f1=sform f2=sform d=sform p1=sform p2=sform
-           e=sform phi=sform i=word j=word
-    { Pcase_esp ((f0, f1, f2, d, p1, p2, e, phi), i, j) }
+| ESP CASE f0=sform LBRACKET
+    fps=iplist1(esp_case, SEMICOLON) SEMICOLON fp=esp_case0
+  RBRACKET d=sform phi=sform i=word j=word
 
-| ESP CASE f0=sform f1=sform f2=sform f3=sform d=sform
-           p1=sform p2=sform p3=sform e1=sform e2=sform
-           phi=sform i=word j=word
-    { Pcase3_esp ((f0, f1, f2, f3, d, p1, p2, p3, e1, e2, phi), i, j) }
+    { Pcase_esp {
+        ep_f0  = f0; ep_fps = fps; ep_fp = fp;
+        ep_d   = d ; ep_phi = phi; ep_bd = (i, j); } }
 
 | ESP TRANSITIVITY phi2=sform
     { Pcase_trans phi2 }

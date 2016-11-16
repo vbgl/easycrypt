@@ -21,5 +21,4 @@ val t_equiv_app_onesided : side -> int -> form -> form -> backward
 val process_app : app_info -> backward
 
 (* -------------------------------------------------------------------- *)
-val process_pcase  : pformula tuple8  * int * int -> backward
-val process_pcase3 : pformula tuple11 * int * int -> backward
+val process_pcase : espcase -> backward

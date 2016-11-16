@@ -529,6 +529,16 @@ type pcqoption  = [ `Frame ]
 type pcqoptions = (bool * pcqoption) list
 
 (* -------------------------------------------------------------------- *)
+type espcase = {
+  ep_f0  : pformula;
+  ep_fps : pformula tuple3 list;
+  ep_fp  : pformula pair;
+  ep_d   : pformula;
+  ep_phi : pformula;
+  ep_bd  : int * int;
+}
+
+(* -------------------------------------------------------------------- *)
 type phltactic =
   | Pskip
   | Pfun           of fun_info
@@ -554,8 +564,7 @@ type phltactic =
   | Pset           of (oside * codepos * bool * psymbol * pexpr)
   | Pconseq        of (pcqoptions * (conseq_ppterm option tuple3))
   | Pconseq_esp    of conseq_esp_ppterm
-  | Pcase_esp      of (pformula tuple8 * int * int)
-  | Pcase3_esp     of (pformula tuple11 * int * int)
+  | Pcase_esp      of espcase
   | Pcase_trans    of pformula
   | Phrex_elim
   | Phrex_intro    of pformula list

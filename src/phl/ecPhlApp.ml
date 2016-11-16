@@ -346,43 +346,21 @@ let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
     (gaff @ gsides @ [gsidec] @ [g0] @ gs @ [gc])
 
 (* -------------------------------------------------------------------- *)
-let process_pcase (info, i, j) tc =
-  let (f0, f1, f2, d, p1, p2, e, phi) = info in
-  let es = tc1_as_espS tc in
-  let f0 = TTC.tc1_process_form tc (tfun treal treal) f0 in
-  let f1 = TTC.tc1_process_form tc (tfun treal treal) f1 in
-  let f2 = TTC.tc1_process_form tc (tfun treal treal) f2 in
-  let d  = TTC.tc1_process_prhl_form tc treal d in
-  let phi = TTC.tc1_process_prhl_form tc tbool phi in
-  let p1 = TTC.tc1_process_form tc treal p1 in
-  let p2 = TTC.tc1_process_form tc treal p2 in
-  let e  =
-    let hyps = FApi.tc1_hyps tc in
-    let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
-    TTC.pf_process_form !!tc hyps tbool e in
+let process_pcase info tc =
+  let es  = tc1_as_espS tc in
+  let d   = TTC.tc1_process_prhl_form tc treal info.ep_d in
+  let phi = TTC.tc1_process_prhl_form tc tbool info.ep_phi in
+  let f0  = TTC.tc1_process_form tc (tfun treal treal) info.ep_f0 in
+  let fps = List.map (fun (f, p, e) ->
+    let f = TTC.tc1_process_form tc (tfun treal treal) f in
+    let p = TTC.tc1_process_form tc treal p in
+    let e =
+      let hyps = FApi.tc1_hyps tc in
+      let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
+      TTC.pf_process_form !!tc hyps tbool e in
 
-  t_pcase (f0, [(f1, p1, e)], (f2, p2), d, phi) (i, j) tc
+    (f, p, e)) info.ep_fps in
+  let f = TTC.tc1_process_form tc (tfun treal treal) (fst info.ep_fp) in
+  let p = TTC.tc1_process_form tc treal (snd info.ep_fp) in
 
-(* -------------------------------------------------------------------- *)
-let process_pcase3 (info, i, j) tc =
-  let (f0, f1, f2, f3, d, p1, p2, p3, e1, e2, phi) = info in
-  let es = tc1_as_espS tc in
-  let f0 = TTC.tc1_process_form tc (tfun treal treal) f0 in
-  let f1 = TTC.tc1_process_form tc (tfun treal treal) f1 in
-  let f2 = TTC.tc1_process_form tc (tfun treal treal) f2 in
-  let f3 = TTC.tc1_process_form tc (tfun treal treal) f3 in
-  let d  = TTC.tc1_process_prhl_form tc treal d in
-  let phi = TTC.tc1_process_prhl_form tc tbool phi in
-  let p1 = TTC.tc1_process_form tc treal p1 in
-  let p2 = TTC.tc1_process_form tc treal p2 in
-  let p3 = TTC.tc1_process_form tc treal p3 in
-  let e1  =
-    let hyps = FApi.tc1_hyps tc in
-    let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
-    TTC.pf_process_form !!tc hyps tbool e1 in
-  let e2  =
-    let hyps = FApi.tc1_hyps tc in
-    let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
-    TTC.pf_process_form !!tc hyps tbool e2 in
-
-  t_pcase (f0, [(f1, p1, e1); (f2, p2, e2)], (f3, p3), d, phi) (i, j) tc
+  t_pcase (f0, fps, (f, p), d, phi) info.ep_bd tc
