@@ -139,10 +139,16 @@ let tuplify env (m1, m2) f =
 
   let subst = PVM.empty in
 
+  let theproj =
+    if   (List.length ty1 + List.length ty2 <= 1)
+    then fun f _ _  -> f
+    else fun f i ty  -> f_proj f i ty
+  in
+
   let subst =
     List.fold_lefti (fun subst i (pv, ty) ->
-      let ft1 = f_proj ft1 i ty in
-      let ft2 = f_proj ft2 i ty in
+      let ft1 = theproj ft1 i ty in
+      let ft2 = theproj ft2 i ty in
       let subst = PVM.add env pv m1 ft1 subst in
       let subst = PVM.add env pv m2 ft2 subst in
       subst) subst felts
@@ -151,8 +157,8 @@ let tuplify env (m1, m2) f =
   let subst =
     let n = List.length felts in
     List.fold_lefti (fun subst i gv ->
-      let ft1 = f_proj ft1 (i+n) (tglob gv) in
-      let ft2 = f_proj ft2 (i+n) (tglob gv) in
+      let ft1 = theproj ft1 (i+n) (tglob gv) in
+      let ft2 = theproj ft2 (i+n) (tglob gv) in
       let subst = PVM.add_glob env gv m1 ft1 subst in
       let subst = PVM.add_glob env gv m2 ft2 subst in
       subst) subst fglob
