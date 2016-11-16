@@ -18,19 +18,23 @@ op dpath ['a] (e : 'a -> 'a -> bool) x y =
     (-1).
 
 (* -------------------------------------------------------------------- *)
-pred affine (f : real -> real) = 
-   exists a b, forall x, f x = a*x + b.
+inductive affine (f : real -> real) =
+| Affine a b of (0%r <= a) & (0%r <= b) & (forall x, f x = a*x + b).
       
-pred linear : (real -> real).
+inductive linear (f : real -> real) =
+| Linear a of (0%r <= a) & (forall x, f x = a*x).
+
+lemma linear_affine f : linear f => affine f.
+proof. by case=> a ge0_a eqf; apply/(Affine _ a 0%r). qed.
 
 lemma idfun_affine : affine idfun.
-proof. by exists 1%r 0%r. qed.
+proof. by apply/(Affine _ 1%r 0%r). qed.
 
-lemma comp_affine (f1 f2:real -> real) :
+lemma comp_affine f1 f2 :
   affine f1 => affine f2 => affine (f1 \o f2).
 proof.
-  move=> [a1 b1 Heq1] [a2 b2 Heq2].
-  exists (a1 * a2) (a1 * b2 + b1) => /#.
+case=> [a1 b1 ge0_a1 ge0_b1 Heq1] [a2 b2 ge0_a2 geo_b2 Heq2].
+by apply/(Affine _ (a1 * a2) (a1 * b2 + b1)) => /#.
 qed.
   
 lemma bigo_affine f N:
@@ -40,4 +44,3 @@ elim/natind: N.
 + by move=> n Hn Hf; rewrite bigo0 ?idfun_affine.
 by move=> n Hn Hrec Hf; rewrite bigoS ?comp_affine=> /#.
 qed.
-
