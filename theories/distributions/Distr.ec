@@ -204,10 +204,15 @@ congr=> //.
 by apply fun_ext.
 qed.
 
-op E ['a] : 'a distr -> ('a -> real) -> real.
-
-pred affine : (real -> real).
+pred affine (f:real -> real) = 
+   exists (a b:real), forall x, f x = a*x + b.
+      
 pred linear : (real -> real).
 
 op dpath ['a] : ('a -> 'a -> bool) -> 'a -> 'a -> int.
 op dclosure ['a] : ('a -> 'a -> bool) -> 'a -> 'a -> bool.
+
+
+op E ['a] : 'a distr -> ('a -> real) -> real.
+
+axiom exp_cst (d:'a distr) c: E d (fun _ => c) = c * mu d predT.
