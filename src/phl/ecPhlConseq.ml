@@ -194,6 +194,8 @@ let t_conseq pre post tc =
   | FbdHoareS _ -> t_bdHoareS_conseq pre post tc
   | FequivF _   -> t_equivF_conseq pre post tc
   | FequivS _   -> t_equivS_conseq pre post tc
+  | FespS   es  ->
+      t_espS_conseq es.esps_f (pre, snd es.esps_pr) (post, snd es.esps_po) tc
   | FeagerF _   -> t_eagerF_conseq pre post tc
   | _           -> tc_error_noXhl !!tc
 

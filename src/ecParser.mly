@@ -2456,7 +2456,6 @@ byequivopt:
 %inline esp_case0:
 | f=sform LE p=sform { (f, p) }
 
-
 phltactic:
 | PROC
    { Pfun `Def }
