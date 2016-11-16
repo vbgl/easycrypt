@@ -181,7 +181,7 @@ let t_esp_trans phi' tc =
 
   let mk_linear =
     let f_linear =
-      f_op EcCoreLib.CI_Distr.p_linear []
+      f_op EcCoreLib.CI_Momemtum.p_linear []
         (toarrow [toarrow [treal] treal] tbool) in
     fun f -> f_app f_linear [f] tbool
   in
@@ -253,7 +253,7 @@ let t_esp_trans phi' tc =
     let f_dpath =
       let fty = toarrow [arg1.f_ty; arg2.f_ty] tbool in
       let fty = toarrow [fty; arg1.f_ty; arg2.f_ty] tint in
-      f_op EcCoreLib.CI_Distr.p_dpath [arg1.f_ty] fty in
+      f_op EcCoreLib.CI_Momemtum.p_dpath [arg1.f_ty] fty in
 
     let d = f_lambda [(t1, GTty arg1.f_ty); (t2, GTty arg2.f_ty)] form in
     let d = f_app f_dpath [d; arg1; arg2] tint in
@@ -297,7 +297,7 @@ let t_esp_trans phi' tc =
     let f_closure =
       let fty = toarrow [tty; tty] tbool in
       let fty = toarrow [fty; tty; tty] tbool in
-      f_op EcCoreLib.CI_Distr.p_dclosure [tty] fty in
+      f_op EcCoreLib.CI_Momemtum.p_dclosure [tty] fty in
 
     let concl = f_lambda [(t1, GTty tty); (t2, GTty tty)] phi' in
     let concl = f_app f_closure [concl] (toarrow [tty; tty] tbool) in

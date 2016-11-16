@@ -102,11 +102,20 @@ module CI_Distr = struct
   let p_weight  = _Distr "weight"
 
   let p_expectation = _Distr "E"
-  let p_affine      = _Distr "affine"
-  let p_linear      = _Distr "linear"
-  let p_dpath       = _Distr "dpath"
-  let p_dclosure    = _Distr "dclosure"
   let p_bigo        =  List.fold_left EcPath.pqname p_top ["DList"; "bigo"]
+end
+
+(* -------------------------------------------------------------------- *)
+module CI_Momemtum = struct
+  let i_Momemtum = "Momemtum"
+  let p_Momemtum  = EcPath.pqname p_top i_Momemtum
+
+  let _Momemtum = fun x -> EcPath.pqname p_Momemtum x
+
+  let p_affine   = _Momemtum "affine"
+  let p_linear   = _Momemtum "linear"
+  let p_dpath    = _Momemtum "dpath"
+  let p_dclosure = _Momemtum "dclosure"
 end
 
 (* -------------------------------------------------------------------- *)

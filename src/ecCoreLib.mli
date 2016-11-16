@@ -113,11 +113,18 @@ module CI_Distr : sig
   val p_weight  : path
 
   val p_expectation : path
-  val p_affine      : path
-  val p_linear      : path
-  val p_dpath       : path
-  val p_dclosure    : path
   val p_bigo        : path
+end
+
+(* -------------------------------------------------------------------- *)
+module CI_Momemtum : sig
+  val i_Momemtum : symbol
+  val p_Momemtum : path
+
+  val p_affine   : path
+  val p_linear   : path
+  val p_dpath    : path
+  val p_dclosure : path
 end
 
 (* -------------------------------------------------------------------- *)

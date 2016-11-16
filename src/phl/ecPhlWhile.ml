@@ -376,7 +376,7 @@ let t_esp_while_r inv count n f tc =
       f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n] b_concl)
     in
     let f_affine =
-      f_op EcCoreLib.CI_Distr.p_affine []
+      f_op EcCoreLib.CI_Momemtum.p_affine []
         (toarrow [toarrow [treal] treal] tbool) in
     let cond0 =
       f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n]

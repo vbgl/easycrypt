@@ -154,7 +154,7 @@ let t_esp_app (i, j) (f1, f2) phi tc =
 
   let aff =
     let f_affine =
-      f_op EcCoreLib.CI_Distr.p_affine []
+      f_op EcCoreLib.CI_Momemtum.p_affine []
         (toarrow [toarrow [treal] treal] tbool) in
     f_app f_affine [f2] tbool in
 
@@ -336,7 +336,7 @@ let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
 
   let mk_affine f =
     let f_affine =
-      f_op EcCoreLib.CI_Distr.p_affine []
+      f_op EcCoreLib.CI_Momemtum.p_affine []
       (toarrow [toarrow [treal] treal] tbool)
     in f_app f_affine [f] tbool in
 
