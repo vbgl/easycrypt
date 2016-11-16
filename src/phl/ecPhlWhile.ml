@@ -338,7 +338,7 @@ let t_esp_while_r inv count n f tc =
   EcReduction.check_conv hyps pr pre;
   EcReduction.check_conv hyps po post;
   let bigo =
-    f_op EcCoreLib.CI_Distr.p_bigo []
+    f_op EcCoreLib.CI_Momemtum.p_bigo []
       (toarrow [tint; toarrow [tint;treal] treal; treal] treal) in
   EcReduction.check_conv hyps es.esps_f
     (f_app bigo [n;f] (toarrow [treal] treal));

@@ -96,13 +96,11 @@ module CI_Distr = struct
   let p_dbitstring = List.fold_left EcPath.pqname p_Distr ["Dbitstring"; "dbitstring"]
   let p_dinter     = List.fold_left EcPath.pqname p_top ["DInterval"; "dinter"]
 
-  let p_in_supp = _Distr "in_supp"
-  let p_mu      = _Pervasive "mu"
-  let p_mu_x    = _Distr "mu_x"
-  let p_weight  = _Distr "weight"
-
+  let p_in_supp     = _Distr "in_supp"
+  let p_mu          = _Pervasive "mu"
+  let p_mu_x        = _Distr "mu_x"
+  let p_weight      = _Distr "weight"
   let p_expectation = _Distr "E"
-  let p_bigo        =  List.fold_left EcPath.pqname p_top ["DList"; "bigo"]
 end
 
 (* -------------------------------------------------------------------- *)
@@ -116,6 +114,7 @@ module CI_Momemtum = struct
   let p_linear   = _Momemtum "linear"
   let p_dpath    = _Momemtum "dpath"
   let p_dclosure = _Momemtum "dclosure"
+  let p_bigo     =  List.fold_left EcPath.pqname p_top ["FunExt"; "bigo"]
 end
 
 (* -------------------------------------------------------------------- *)

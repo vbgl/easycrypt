@@ -107,13 +107,11 @@ module CI_Distr : sig
   val p_dbitstring : path
   val p_dinter     : path
 
-  val p_in_supp : path
-  val p_mu      : path
-  val p_mu_x    : path
-  val p_weight  : path
-
+  val p_in_supp     : path
+  val p_mu          : path
+  val p_mu_x        : path
+  val p_weight      : path
   val p_expectation : path
-  val p_bigo        : path
 end
 
 (* -------------------------------------------------------------------- *)
@@ -125,6 +123,7 @@ module CI_Momemtum : sig
   val p_linear   : path
   val p_dpath    : path
   val p_dclosure : path
+  val p_bigo     : path
 end
 
 (* -------------------------------------------------------------------- *)

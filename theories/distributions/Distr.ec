@@ -205,11 +205,6 @@ by apply fun_ext.
 qed.
 
 (* -------------------------------------------------------------------- *)
-pred affine (f:real -> real) = 
-   exists (a b:real), forall x, f x = a*x + b.
-      
-pred linear : (real -> real).
-
 op E ['a] : 'a distr -> ('a -> real) -> real.
 
 axiom exp_cst (d:'a distr) c: E d (fun _ => c) = c * mu d predT.
