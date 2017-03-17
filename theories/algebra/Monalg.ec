@@ -1,6 +1,6 @@
 (* -------------------------------------------------------------------- *)
-require import Option Bool Fun ExtEq Finite Int IntExtra List.
-require (*--*) Monoid Ring Subtype.
+require import Option Bool Pred Fun ExtEq Finite Int IntExtra List.
+require (*--*) Monoid Ring Subtype Bigalg.
 
 pragma -oldip.
 
@@ -12,6 +12,35 @@ clone import Monoid as ZM with type t <- M.
 clone import Ring.IDomain as ZR with type t <- R.
 
 clear [ZR.* ZR.AddMonoid.* ZR.MulMonoid.*].
+
+(* -------------------------------------------------------------------- *)
+clone import Bigalg.BigComRing as Big with
+  type t <- R,
+  pred CR.unit   <- ZR.unit,
+    op CR.zeror  <- ZR.zeror,
+    op CR.oner   <- ZR.oner,
+    op CR.( + )  <- ZR.( + ),
+    op CR.([-])  <- ZR.([-]),
+    op CR.( * )  <- ZR.( * ),
+    op CR.invr   <- ZR.invr,
+    op CR.intmul <- ZR.intmul,
+    op CR.ofint  <- ZR.ofint,
+    op CR.exp    <- ZR.exp
+
+    proof * remove abbrev CR.(-) remove abbrev CR.(/).
+
+realize CR.addrA     . proof. by apply/ZR.addrA     . qed.
+realize CR.addrC     . proof. by apply/ZR.addrC     . qed.
+realize CR.add0r     . proof. by apply/ZR.add0r     . qed.
+realize CR.addNr     . proof. by apply/ZR.addNr     . qed.
+realize CR.oner_neq0 . proof. by apply/ZR.oner_neq0 . qed.
+realize CR.mulrA     . proof. by apply/ZR.mulrA     . qed.
+realize CR.mulrC     . proof. by apply/ZR.mulrC     . qed.
+realize CR.mul1r     . proof. by apply/ZR.mul1r     . qed.
+realize CR.mulrDl    . proof. by apply/ZR.mulrDl    . qed.
+realize CR.mulVr     . proof. by apply/ZR.mulVr     . qed.
+realize CR.unitP     . proof. by apply/ZR.unitP     . qed.
+realize CR.unitout   . proof. by apply/ZR.unitout   . qed.
 
 (* -------------------------------------------------------------------- *)
 type monalg.
@@ -38,42 +67,56 @@ op monalg0 = Supp.insubd (fun _ => zeror).
 op mkmonalg (C : M -> R) = odflt monalg0 (Supp.insub C).
 op mcoeff (m : monalg) = Supp.val m.
 
+abbrev "_.[_]" m z = mcoeff m z.
+
 (* -------------------------------------------------------------------- *)
-lemma monalg_eqE m1 m2 : (m1 = m2) <=>
-  (forall x, mcoeff m1 x = mcoeff m2 x).
+lemma monalg_eqE m1 m2 : (m1 = m2) <=> (forall x, m1.[x] = m2.[x]).
 proof.
 split=> [->//|eq]; apply/Supp.val_inj.
 by apply/ExtEq.fun_ext=> x; rewrite eq.
 qed.
 
 (* -------------------------------------------------------------------- *)
-op support (m : monalg) = Finite.to_seq (fun x => mcoeff m x <> zeror).
+op support (m : monalg) = Finite.to_seq (fun x => m.[x] <> zeror).
 
-lemma supportP (m : monalg) z : z \in support m <=> mcoeff m z <> zeror.
+lemma supportP (m : monalg) z : z \in support m <=> m.[z] <> zeror.
 proof. by apply/mem_to_seq/Supp.valP. qed.
 
-lemma supportPn (m : monalg) z : !(z \in support m) <=> mcoeff m z = zeror.
+lemma supportPn (m : monalg) z : !(z \in support m) <=> m.[z] = zeror.
 proof. by rewrite -iff_negb /= supportP. qed.
 
 (* -------------------------------------------------------------------- *)
-lemma mcoeff0 z : mcoeff monalg0 z = zeror.
+lemma mcoeff0 z : monalg0.[z] = zeror.
 proof. by rewrite Supp.insubdK //; exists []. qed.
 
 hint rewrite mcoeff : mcoeff0.
 
 (* -------------------------------------------------------------------- *)
-lemma mcoeffE C z : qnull C => mcoeff (mkmonalg C) z = C z.
+lemma mcoeffE C z : qnull C => (mkmonalg C).[z] = C z.
 proof.
 move=> qC; case: (Supp.insubP C) => // {qC} |> m.
 by rewrite /mcoeff /mkmonalg => _ ->.
 qed.
 
 (* -------------------------------------------------------------------- *)
-op [-] (m : monalg) = mkmonalg (fun x => - mcoeff m x).
-op (+) (m1 m2 : monalg) = mkmonalg (fun x => mcoeff m1 x + mcoeff m2 x).
+op monalgC z = mkmonalg (fun x => if x = idm then z else zeror).
+op monalg1   = monalgC oner.
 
 (* -------------------------------------------------------------------- *)
-lemma moppE m x : mcoeff (- m) x = - mcoeff m x.
+op [ - ] (m : monalg) =
+  mkmonalg (fun x => - m.[x]).
+
+op ( + ) (m1 m2 : monalg) =
+  mkmonalg (fun x => m1.[x] + m2.[x]).
+
+op ( * ) (m1 m2 : monalg) =
+  mkmonalg (fun x : M => BAdd.big predT idfun
+    (allpairs (fun x1 x2 : M =>
+      if x = x1 + x2 then m1.[x1] * m2.[x2] else zeror)
+      (support m1) (support m2))).
+
+(* -------------------------------------------------------------------- *)
+lemma moppE m x : (- m).[x] = - m.[x].
 proof.
 rewrite mcoeffE // qnullP; exists (support m) => /=.
 by move=> {x}x; rewrite oppr_eq0 => /supportP.
@@ -82,7 +125,7 @@ qed.
 hint rewrite mcoeff : moppE.
 
 (* -------------------------------------------------------------------- *)
-lemma maddE m1 m2 x : mcoeff (m1 + m2) x = mcoeff m1 x + mcoeff m2 x.
+lemma maddE m1 m2 x : (m1 + m2).[x] = m1.[x] + m2.[x].
 proof.
 rewrite mcoeffE // qnullP; exists (support m1 ++ support m2) => /=.
 move=> {x}x; apply/absurd=> /=; rewrite mem_cat -nor; case.
