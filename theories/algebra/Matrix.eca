@@ -1,0 +1,98 @@
+(* -------------------------------------------------------------------- *)
+require import Option Bool Pred Fun ExtEq Finite Int IntExtra List.
+require (*--*) Monoid Ring Subtype Bigalg.
+
+pragma -oldip.
+
+(* -------------------------------------------------------------------- *)
+type R.
+
+clone import Ring.IDomain as ZR with type t <- R.
+clear [ZR.* ZR.AddMonoid.* ZR.MulMonoid.*].
+
+(* -------------------------------------------------------------------- *)
+clone import Bigalg.BigComRing as Big with
+  type t <- R,
+  pred CR.unit   <- ZR.unit,
+    op CR.zeror  <- ZR.zeror,
+    op CR.oner   <- ZR.oner,
+    op CR.( + )  <- ZR.( + ),
+    op CR.([-])  <- ZR.([-]),
+    op CR.( * )  <- ZR.( * ),
+    op CR.invr   <- ZR.invr,
+    op CR.intmul <- ZR.intmul,
+    op CR.ofint  <- ZR.ofint,
+    op CR.exp    <- ZR.exp.
+
+(* -------------------------------------------------------------------- *)
+type prematrix = [ PreMatrix of int & int & (int * int -> R) ].
+
+op size  (m : prematrix) = with m = PreMatrix m n _ => (m, n).
+op tofun (m : prematrix) = with m = PreMatrix _ _ f => f.
+
+op isindex (sz : int * int) (ij : int * int) =
+  0 <= ij.`1 < sz.`1 /\ 0 <= ij.`2 < sz.`2.
+
+op issize (sz : int * int) =
+  0 <= sz.`1 /\ 0 <= sz.`2.
+
+(* -------------------------------------------------------------------- *)
+op mkprematrix (n p : int) F =
+  let (n, p) = (max 0 n, max 0 p) in
+  PreMatrix n p (fun ij => if isindex (n, p) ij then F ij else zeror).
+
+(* -------------------------------------------------------------------- *)
+inductive ismatrix (m : prematrix) = IsMatrix of
+    (issize (size m))
+  & (forall i j, ! isindex (size m) (i, j) => tofun m (i, j) = zeror).
+
+(* -------------------------------------------------------------------- *)
+lemma ismatrix_mkprematrix n m F : ismatrix (mkprematrix n m F).
+proof. admitted.
+
+(* -------------------------------------------------------------------- *)
+type matrix.
+
+clone Subtype as Supp with
+  type T <- prematrix, type sT <- matrix, pred P <- ismatrix.
+
+(* -------------------------------------------------------------------- *)
+op mkmatrix n p F = Supp.insubd (mkprematrix n p F).
+op "_.[_]"  m ij  = tofun (Supp.val m) ij.
+
+(* -------------------------------------------------------------------- *)
+abbrev msize (m : matrix) = size (Supp.val m).
+abbrev nrows (m : matrix) = (msize m).`1.
+abbrev ncols (m : matrix) = (msize m).`2.
+
+(* -------------------------------------------------------------------- *)
+op kck (ij : int * int) = if ij.`1 = ij.`2 then oner else zeror.
+
+op mx_map F (m : matrix) =
+  mkmatrix (nrows m) (ncols m) (fun ij => F m.[ij]).
+
+op mx0 n p = mkmatrix n p (fun _  => zeror).
+op mx1 n p = mkmatrix n p (fun ij => kck ij).
+
+op mx_opp (m : matrix) = mx_map (fun x : R => -x) m.
+
+op mx_add (m1 m2 : matrix) =
+  let n = max (nrows m1) (nrows m2) in
+  let p = max (ncols m1) (ncols m2) in
+  mkmatrix n p (fun ij => m1.[ij] + m2.[ij]).
+
+op mx_mul (m1 m2 : matrix) =
+  mkmatrix (nrows m1) (ncols m2) (fun ij : int * int =>
+    BAdd.bigi predT
+      (fun k => m1.[(ij.`1, k)] * m2.[(k, ij.`2)])
+      0 (max (ncols m1) (nrows m2))).
+
+op mx_trans (m : matrix) =
+  mkmatrix (ncols m) (nrows m)
+   (fun ij : int * int => m.[(ij.`2, ij.`1)]).
+
+op mx_trace (m : matrix) =
+  BAdd.bigi predT (fun k => m.[(k, k)]) 0 (min (nrows m) (ncols m)).
+
+op mx_splice (n ln p lp : int) (m : matrix) =
+  mkmatrix ln lp (fun ij : int * int => m.[(ij.`1 - n, ij.`2 - p)]).
