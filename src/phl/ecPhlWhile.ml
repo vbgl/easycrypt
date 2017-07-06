@@ -325,23 +325,29 @@ let t_equiv_while_r inv tc =
 
 
 (* -------------------------------------------------------------------- *)
-
-let t_esp_while_r inv count n f tc =
+let t_esp_while_r inv count n dist f tc =
   let es = tc1_as_espS tc in
   let hyps = FApi.tc1_hyps tc in
   let pr, d  = es.esps_pr in
   let po, d' = es.esps_po in
   (* TODO: should we add the memories before checking convertibility *)
-  EcReduction.check_conv hyps d d';
+
+  begin match dist with
+  | None -> EcReduction.check_conv hyps d d';
+  | Some dk ->
+      EcReduction.check_conv hyps d  (f_app dk [n] treal);
+      EcReduction.check_conv hyps d' (f_app dk [f_i0] treal)
+  end;
+
   let pre = f_ands [inv; f_eq count n; f_int_le f_i0 n] in
   let post = f_and inv (f_eq count f_i0) in
   EcReduction.check_conv hyps pr pre;
   EcReduction.check_conv hyps po post;
   let bigo =
     f_op EcCoreLib.CI_Momemtum.p_bigo []
-      (toarrow [tint; toarrow [tint;treal] treal; treal] treal) in
+      (toarrow [tint; toarrow [tint; treal] treal; treal] treal) in
   EcReduction.check_conv hyps es.esps_f
-    (f_app bigo [n;f] (toarrow [treal] treal));
+    (f_app bigo [n; f] (toarrow [treal] treal));
 
   let (el, cl), sl = tc1_last_while tc es.esps_sl in
   let (er, cr), sr = tc1_last_while tc es.esps_sr in
@@ -349,7 +355,6 @@ let t_esp_while_r inv count n f tc =
     tc_error !!tc "the left statement is not a single loop";
   if sr.s_node <> [] then
     tc_error !!tc "the right statement is not a single loop";
-
 
   let ml = EcMemory.memory es.esps_ml in
   let mr = EcMemory.memory es.esps_mr in
@@ -371,7 +376,12 @@ let t_esp_while_r inv count n f tc =
     let b_post = f_ands_simpl [inv; sync_cond] (f_eq count fk) in
     let f_k =  f_app f [fk] (toarrow [treal] treal) in
     let b_concl =
-      f_espS es.esps_ml es.esps_mr (b_pre,d) cl cr (b_post,d) f_k in
+      let d1, d2 =
+        match dist with
+        | None -> (d, d)
+        | Some dk -> (f_app dk [fk1] treal, f_app dk [fk] treal)
+      in
+      f_espS es.esps_ml es.esps_mr (b_pre, d1) cl cr (b_post, d2) f_k in
     let b_concl =
       f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n] b_concl)
     in
@@ -379,23 +389,27 @@ let t_esp_while_r inv count n f tc =
       f_op EcCoreLib.CI_Momemtum.p_affine []
         (toarrow [toarrow [treal] treal] tbool) in
     let cond0 =
-      f_forall [k,gtty tint] (f_imps [f_int_le f_i0 fk; f_int_lt fk n]
-                                (f_app f_affine [f_k] tbool)) in
+      f_forall [k, gtty tint]
+               (f_imps [f_int_le f_i0 fk; f_int_lt fk n]
+                       (f_app f_affine [f_k] tbool)) in
     cond0, b_concl in
 
   FApi.xmutate1 tc `While [cond0; cond1; cond2; cond3]
 
 let process_esp_while info tc =
   let es = tc1_as_espS tc in
-  let (inv,count,n,f) = info in
+  let (inv,count,n,f,dist) = info in
   let inv = TTC.tc1_process_prhl_formula tc inv in
   let hyps = FApi.tc1_hyps tc in
   let n = TTC.process_form hyps n tint in
   let f = TTC.process_form hyps f (toarrow [tint;treal] treal) in
   let count =
-    let hyps =  EcEnv.LDecl.push_active es.esps_ml hyps in
+    let hyps = EcEnv.LDecl.push_active es.esps_ml hyps in
     TTC.process_form hyps count tint in
-  t_esp_while_r inv count n f tc
+  let dist =
+    omap (fun x -> TTC.process_form hyps x (tfun tint treal)) dist in
+
+  t_esp_while_r inv count n dist f tc
 
 (* -------------------------------------------------------------------- *)
 let t_hoare_while           = FApi.t_low1 "hoare-while"   t_hoare_while_r

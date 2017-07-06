@@ -2596,7 +2596,10 @@ phltactic:
     { Pconseq_esp c }
 
 | ESP WHILE inv=sform LBRACKET f=form RBRACKET count=sform n=sform
-    { Pwhile_esp (inv,count, n, f) }
+    { Pwhile_esp (inv, count, n, f, None) }
+
+| ESP WHILE inv=sform LBRACKET f=form RBRACKET count=sform n=sform AMP d=sform
+    { Pwhile_esp (inv, count, n, f, Some d) }
 
 | ESP CASE f0=sform LBRACKET
     fps=iplist1(esp_case, SEMICOLON) SEMICOLON fp=esp_case0

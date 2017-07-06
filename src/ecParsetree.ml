@@ -546,7 +546,7 @@ type phltactic =
   | Pwp            of int doption option
   | Psp            of int doption option
   | Pwhile         of (oside * while_info)
-  | Pwhile_esp     of (pformula * pformula * pformula * pformula)
+  | Pwhile_esp     of (pformula * pformula * pformula * pformula * pformula option)
   | Pasyncwhile    of async_while_info
   | Pfission       of (oside * codepos * (int * (int * int)))
   | Pfusion        of (oside * codepos * (int * (int * int)))
