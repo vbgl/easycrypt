@@ -105,7 +105,6 @@ let t_esp_skip =
    t_trivial;
    t_id;
    t_trivial;
-   t_id;
    LowInternal.t_esp_skip]
 
 let t_skip tc =

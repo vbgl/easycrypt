@@ -173,16 +173,16 @@ let t_espS_conseq f (pr,d) (po, d') tc =
     f_forall_mems mems (f_imp pr0 (f_real_le (f_app f [d] treal)
                                              (f_app f0 [d0]  treal))) in
   let concl4 = f_forall_mems mems (f_imp po (f_real_le d0' d')) in
-  let x = EcIdent.create "x" in
+(*  let x = EcIdent.create "x" in
   let app_f f = f_app f [f_local x treal] treal in
   let concl5 =
-    f_forall [x,gtty treal] (f_real_le (app_f f) (app_f f0)) in
+    f_forall [x,gtty treal] (f_real_le (app_f f) (app_f f0)) in *)
   let concl6 = f_espS_r
     { es with
       esps_pr = pr, d;
       esps_po = po, d';
       esps_f  = f } in
-  FApi.xmutate1 tc `HlConseq [concl1; concl2; concl3; concl4; concl5; concl6]
+  FApi.xmutate1 tc `HlConseq [concl1; concl2; concl3; concl4; (*concl5;*) concl6]
 
 
 (* -------------------------------------------------------------------- *)
