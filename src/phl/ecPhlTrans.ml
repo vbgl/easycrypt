@@ -341,7 +341,7 @@ let t_esp_trans phi' tc =
          [mk_linear es.esps_f; po_trans; ti_ineq;
           is_refl_trans_closed; eq_d; concl0; concl1])
     (EcPhlConseq.t_espS_conseq
-       es.esps_f (fst es.esps_pr, dpr) es.esps_po tc)
+       f_r1 es.esps_f (fst es.esps_pr, dpr) es.esps_po tc)
 
 (* -------------------------------------------------------------------- *)
 let process_esp_trans phi' tc =

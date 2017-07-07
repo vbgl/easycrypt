@@ -407,7 +407,7 @@ let process_esp_while info tc =
     let hyps = EcEnv.LDecl.push_active es.esps_ml hyps in
     TTC.process_form hyps count tint in
   let dist =
-    omap (fun x -> TTC.process_form hyps x (tfun tint treal)) dist in
+    omap (TTC.tc1_process_prhl_form_opt tc (Some (tfun tint treal))) dist in
 
   t_esp_while_r inv count n dist f tc
 

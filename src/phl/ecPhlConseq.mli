@@ -25,7 +25,7 @@ val t_bdHoareS_conseq    : form -> form -> FApi.backward
 val t_bdHoareS_conseq_bd : hoarecmp -> form -> FApi.backward
 val t_bdHoareF_conseq_bd : hoarecmp -> form -> FApi.backward
 val t_espS_conseq        :
-  form -> (form * form) -> (form * form) -> FApi.backward
+  form -> form -> (form * form) -> (form * form) -> FApi.backward
 (* -------------------------------------------------------------------- *)
 val t_equivF_conseq_nm   : form -> form -> FApi.backward
 val t_equivS_conseq_nm   : form -> form -> FApi.backward
@@ -45,6 +45,7 @@ val process_conseq   : bool -> conseq_ppterm option tuple3 -> FApi.backward
 val process_bd_equiv : side -> pformula pair -> FApi.backward
 
 val process_conseq_esp : conseq_esp_ppterm -> FApi.backward
+val process_frame_esp  : pformula -> pformula -> pformula -> FApi.backward
 (* -------------------------------------------------------------------- *)
 val process_conseq_opt :
   pcqoptions -> conseq_ppterm option tuple3 -> FApi.backward

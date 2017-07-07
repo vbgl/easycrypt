@@ -100,12 +100,14 @@ end
 let t_esp_skip =
   FApi.t_seqsub (fun tc ->
     let es = tc1_as_espS tc in
-    EcPhlConseq.t_espS_conseq (f_identity EcTypes.treal) es.esps_po es.esps_po tc)
+    EcPhlConseq.t_espS_conseq f_r1 (f_identity EcTypes.treal) es.esps_po es.esps_po tc)
   [t_id;
    t_trivial;
    t_id;
    t_trivial;
-   LowInternal.t_esp_skip]
+   t_trivial;
+   LowInternal.t_esp_skip
+  ]
 
 let t_skip tc =
   t_hS_or_bhS_or_eS

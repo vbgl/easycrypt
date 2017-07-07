@@ -380,6 +380,7 @@
 %token EQ
 %token EQUIV
 %token ESP
+%token FRAME
 %token ETA
 %token EXACT
 %token EXFALSO
@@ -2148,8 +2149,9 @@ conseq_esp:
 | cf2=conseq_form                           { (None,None), cf2 }
 
 conseq_esp1:
-| c=conseq_esp                              { c, None}
-| LBRACKET f=form RBRACKET c=conseq_esp     { c, Some f }
+| c=conseq_esp                              { c, None, None}
+| LBRACKET f=form RBRACKET c=conseq_esp     { c, None, Some f }
+| LBRACKET f=form RBRACKET AMP LBRACKET a=form RBRACKET c=conseq_esp     { c, Some a, Some f }
 
 call_info:
  | f1=form LONGARROW f2=form             { CI_spec (f1, f2) }
@@ -2594,6 +2596,9 @@ phltactic:
 
 | ESP CONSEQ LPAREN c=conseq_esp1 RPAREN
     { Pconseq_esp c }
+
+| ESP FRAME d1=sform d2=sform dnm=sform
+    { Pframe_esp (d1,d2,dnm) }
 
 | ESP WHILE inv=sform LBRACKET f=form RBRACKET count=sform n=sform
     { Pwhile_esp (inv, count, n, f, None) }

@@ -160,30 +160,54 @@ let t_equivS_conseq pre post tc =
   FApi.xmutate1 tc `HlConseq [concl1; concl2; concl3] *)
 
 (* -------------------------------------------------------------------- *)
-let t_espS_conseq f (pr,d) (po, d') tc =
+let t_espS_conseq a f (pr,d) (po, d') tc =
   let es = tc1_as_espS tc in
+  let env = FApi.tc1_env tc in
   let pr0,d0  = es.esps_pr in
   let po0,d0' = es.esps_po in
   let f0      = es.esps_f in
   let cond1, cond2 = conseq_cond pr0 po0 pr po in
+  let modil, modir = s_write env es.esps_sl, s_write env es.esps_sr in
+  let cond2 = generalize_mod env (fst es.esps_mr) modir cond2 in
+  let cond2 = generalize_mod env (fst es.esps_ml) modil cond2 in
   let mems   = [es.esps_ml;es.esps_mr] in
   let concl1 = f_forall_mems mems cond1 in
-  let concl2 = f_forall_mems mems cond2 in
+  let concl2 = f_forall_mems mems (f_imp pr0 cond2) in
   let concl3 =
-    f_forall_mems mems (f_imp pr0 (f_real_le (f_app f [d] treal)
+    f_forall_mems mems (f_imp pr0 (f_real_le (f_real_mul_simpl a (f_app f [d] treal))
                                              (f_app f0 [d0]  treal))) in
-  let concl4 = f_forall_mems mems (f_imp po (f_real_le d0' d')) in
-(*  let x = EcIdent.create "x" in
-  let app_f f = f_app f [f_local x treal] treal in
-  let concl5 =
-    f_forall [x,gtty treal] (f_real_le (app_f f) (app_f f0)) in *)
+  let concl4 = f_forall_mems mems (f_imp po (f_real_le (f_real_div_simpl d0' a) d')) in
+  let concl5 = f_real_le f_r0 a in
   let concl6 = f_espS_r
     { es with
       esps_pr = pr, d;
       esps_po = po, d';
       esps_f  = f } in
-  FApi.xmutate1 tc `HlConseq [concl1; concl2; concl3; concl4; (*concl5;*) concl6]
+  FApi.xmutate1 tc `HlConseq [concl1; concl2; concl3; concl4; concl5; concl6]
 
+let t_espS_frame d d' dnm tc =
+  let es = tc1_as_espS tc in
+  let pr,d0  = es.esps_pr in
+  let po,d0' = es.esps_po in
+  let env = FApi.tc1_env tc in
+  let hyps = FApi.tc1_hyps tc in
+  EcReduction.check_conv hyps (f_real_add d dnm) d0;
+  EcReduction.check_conv hyps (f_real_add d' dnm) d0';
+  let mod1, mod2 = s_write env es.esps_sl, s_write env es.esps_sr in
+  let x1 = EcPV.PV.fv env (fst es.esps_ml) dnm in
+  let x2 = EcPV.PV.fv env (fst es.esps_mr) dnm in
+  let check x m =
+    EcPV.PV.iter (fun x _ -> assert (not(EcPV.PV.mem_pv env x m)))
+                 (fun x -> assert (not(EcPV.PV.mem_glob env x m))) x in
+  check x1 mod1;
+  check x2 mod2;
+  let concl1 =
+    f_espS_r
+      { es with
+        esps_pr = pr, d;
+        esps_po = po, d';
+       } in
+  FApi.xmutate1 tc `HlFrame [concl1]
 
 (* -------------------------------------------------------------------- *)
 let t_conseq pre post tc =
@@ -195,7 +219,7 @@ let t_conseq pre post tc =
   | FequivF _   -> t_equivF_conseq pre post tc
   | FequivS _   -> t_equivS_conseq pre post tc
   | FespS   es  ->
-      t_espS_conseq es.esps_f (pre, snd es.esps_pr) (post, snd es.esps_po) tc
+      t_espS_conseq f_r1 es.esps_f (pre, snd es.esps_pr) (post, snd es.esps_po) tc
   | FeagerF _   -> t_eagerF_conseq pre post tc
   | _           -> tc_error_noXhl !!tc
 
@@ -1038,13 +1062,14 @@ let process_conseq_opt cqopt infos tc =
   process_conseq cqopt.cqo_frame infos tc
 
 (* -------------------------------------------------------------------- *)
-let process_conseq_esp (((pr,d),(po,d')),f) tc =
+let process_conseq_esp (((pr,d),(po,d')),a,f) tc =
   let es = tc1_as_espS tc in
   let hyps = FApi.tc1_hyps tc in
   let env = LDecl.push_all [es.esps_ml; es.esps_mr] hyps in
   let pr0,d0  = es.esps_pr in
   let po0,d0' = es.esps_po in
   let f0      = es.esps_f in
+  let a = a |> omap  (TTC.pf_process_form !!tc hyps treal) |> odfl f_r1 in
   let mk p p0 = p |> omap (TTC.pf_process_formula !!tc env) |> odfl p0 in
   let mkd d d0 = d |> omap (TTC.pf_process_form !!tc env treal) |> odfl d0 in
   let pr      = mk pr pr0 in
@@ -1053,4 +1078,12 @@ let process_conseq_esp (((pr,d),(po,d')),f) tc =
   let d'      = mkd d' d0' in
   let treal2  = toarrow [treal] treal in
   let f       = f|> omap (TTC.pf_process_form !!tc hyps treal2) |> odfl f0 in
-  t_espS_conseq f (pr,d) (po,d') tc
+  t_espS_conseq a f (pr,d) (po,d') tc
+
+
+let process_frame_esp d d' dnm tc =
+   let es = tc1_as_espS tc in
+   let hyps = FApi.tc1_hyps tc in
+   let env = LDecl.push_all [es.esps_ml; es.esps_mr] hyps in
+   let mkd d = (TTC.pf_process_form !!tc env treal) d in
+   t_espS_frame (mkd d) (mkd d') (mkd dnm) tc
