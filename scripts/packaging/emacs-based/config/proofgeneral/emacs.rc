@@ -2,3 +2,4 @@
 (setq easycrypt-prog-name "easycrypt")
 (setq easycrypt-prog-args '("-why3" "etc/why3.conf" "-reloc"))
 (custom-set-variables '(electric-indent-mode nil))
+(setq default-directory "~/")

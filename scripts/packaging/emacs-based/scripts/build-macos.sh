@@ -108,5 +108,8 @@ mv pg/PG package/easycrypt/share/easycrypt/pg/ProofGeneral
 cp ../config/scripts/run-easycrypt package/easycrypt/
 
 # --------------------------------------------------------------------
+touch package/easycrypt/__macos
+
+# --------------------------------------------------------------------
 BZIP2=-9 gtar -C package --owner=0 --group=0 -cjf \
     "easycrypt-${ECNAME}.tbz2" easycrypt

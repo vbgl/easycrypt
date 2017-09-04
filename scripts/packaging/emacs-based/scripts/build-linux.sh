@@ -98,6 +98,9 @@ mv pg/PG package/easycrypt/share/easycrypt/pg/ProofGeneral
 cp ../config/scripts/run-easycrypt package/easycrypt/
 
 # --------------------------------------------------------------------
+touch package/easycrypt/__linux
+
+# --------------------------------------------------------------------
 ldd package/easycrypt/bin/* | fgrep '=>' | \
     egrep -w 'libgmp|libpcre' | awk '{print $3}' | sort -u | \
     xargs -r -I '{}' -- cp '{}' package/easycrypt/lib/

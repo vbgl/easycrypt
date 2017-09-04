@@ -1,7 +1,8 @@
 # -*- Makefile -*-
 
 # --------------------------------------------------------------------
-.PHONY: default linux linux-on-macos macos clean
+.PHONY: default linux linux-on-macos macos
+.PHONY: docker-appimage appimage-base appimage-on-macos clean
 
 # --------------------------------------------------------------------
 default:
@@ -16,6 +17,16 @@ linux-on-macos:
 
 macos:
 	scripts/build-macos.sh
+
+appimage-base:
+	rm -rf _build/appimage && scripts/build-appimage.sh
+
+docker-appimage:
+	cd config/appimage-docker && docker build -t easycryptpa/ec-appimage .
+
+appimage-on-macos: appimage-base
+	docker run -t -i -v "$$PWD:/home/ci/package" easycryptpa/ec-appimage \
+	  sh -c '( set -ex; ./appimagetool package/_build/appimage/EasyCrypt package/_build/EasyCrypt.AppImage )'
 
 clean:
 	rm -rf _build
