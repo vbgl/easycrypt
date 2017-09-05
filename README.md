@@ -30,9 +30,8 @@ EasyCrypt uses the following third-party tools/libraries:
 
  * OCaml ini-files <http://archive.ubuntu.com/ubuntu/pool/universe/o/ocaml-inifiles/>
 
-On POSIX systems (GNU/Linux, *BSD, OS-X), we recommend people to
+On POSIX/Win32 systems (GNU/Linux, *BSD, OS-X), we recommend people to
 install EasyCrypt and all its dependencies via `opam`.
-
 
 Installing requirements using OPAM (POSIX systems)
 --------------------------------------------------------------------
@@ -85,7 +84,40 @@ Opam can be easily installed from source or via your packages manager:
 See [https://opam.ocaml.org/doc/Install.html] for how to install opam.
 
 See [https://opam.ocaml.org/doc/Usage.html] for how to initialize opam
+Installing requirements using OPAM (POSIX systems)
+--------------------------------------------------------------------
 
+You can install all the needed dependencies via the opam OCaml packages manager.
+
+  1. Install the opam Ocaml packages manager, following the instructions at:
+
+     https://fdopen.github.io/opam-repository-mingw/installation/
+
+  2. Add the EasyCrypt repository:
+
+        $> opam repository add easycrypt git://github.com/EasyCrypt/opam.git
+        $> opam update
+
+  3. Optionally, select the EasyCrypt (git) branch you want to use:
+
+       $> opam pin -n add easycrypt https://github.com/EasyCrypt/easycrypt.git#branch
+
+     where `branch` is the branch name you want to use (e.g. `aprhl`).
+
+  4. Use opam to install the system dependencies:
+
+        $> opam install depext depext-cygwinports
+        $> opam depext easycrypt
+
+  5. Add the EasyCrypt meta-packages:
+
+        $> opam install --deps-only easycrypt
+        $> opam install alt-ergo
+
+  6. You can download extra provers at the following URLs:
+
+     - Z3: https://github.com/Z3Prover/z3
+     - EProver: http://wwwlehre.dhbw-stuttgart.de/~sschulz/E/E.html
 
 Configuring Why3
 ====================================================================
