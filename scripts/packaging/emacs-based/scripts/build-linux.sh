@@ -9,11 +9,18 @@ function patchrpath {
 }
 
 # --------------------------------------------------------------------
-set -ex
+BLD=_build-linux
+PKG=package/easycrypt
+
+if [ -e ${BLD} ]; then
+  echo "Delete ${BLD} first." >&2
+  exit 1
+fi
+
+mkdir ${BLD}; cd ${BLD}
 
 # --------------------------------------------------------------------
-[ ! -e _build ] || exit 1
-mkdir _build && cd _build
+set -ex
 
 # --------------------------------------------------------------------
 # Install patchrpath
@@ -53,36 +60,36 @@ opam install ${provers}
 # --------------------------------------------------------------------
 # Create package
 
-mkdir -p package/easycrypt
-mkdir -p package/easycrypt/etc
-mkdir -p package/easycrypt/bin
-mkdir -p package/easycrypt/lib
-mkdir -p package/easycrypt/share
+mkdir -p ${PKG}
+mkdir -p ${PKG}/etc
+mkdir -p ${PKG}/bin
+mkdir -p ${PKG}/lib
+mkdir -p ${PKG}/share
 
 # --------------------------------------------------------------------
-cp ../config/etc/* package/easycrypt/etc/
+cp ../config/etc/* ${PKG}/etc/
 
 # --------------------------------------------------------------------
-mkdir -p package/easycrypt/{lib,share}/easycrypt
-mkdir -p package/easycrypt/share/
+mkdir -p ${PKG}/{lib,share}/easycrypt
+mkdir -p ${PKG}/share/
 
-cp easycrypt/ec.native package/easycrypt/bin/easycrypt
-cp easycrypt/system/callprover package/easycrypt/bin/
-cp -r easycrypt/theories package/easycrypt/lib/easycrypt/
+cp easycrypt/ec.native ${PKG}/bin/easycrypt
+cp easycrypt/system/callprover ${PKG}/bin/
+cp -r easycrypt/theories ${PKG}/lib/easycrypt/
 
-patchrpath package/easycrypt/bin/easycrypt
+patchrpath ${PKG}/bin/easycrypt
 
 # --------------------------------------------------------------------
-mkdir -p package/easycrypt/{lib,share}/why3
+mkdir -p ${PKG}/{lib,share}/why3
 
-cp -r _opam/system/lib/why3/plugins package/easycrypt/lib/why3/
-cp -r _opam/system/lib/why3/why3-cpulimit package/easycrypt/bin/
-cp -r _opam/system/share/why3 package/easycrypt/share/
+cp -r _opam/system/lib/why3/plugins ${PKG}/lib/why3/
+cp -r _opam/system/lib/why3/why3-cpulimit ${PKG}/bin/
+cp -r _opam/system/share/why3 ${PKG}/share/
 
 # --------------------------------------------------------------------
 for name in ${provers}; do
-  cp _opam/system/bin/${name} package/easycrypt/bin/
-  patchrpath package/easycrypt/bin/${name}
+  cp _opam/system/bin/${name} ${PKG}/bin/
+  patchrpath ${PKG}/bin/${name}
 done
 
 # --------------------------------------------------------------------
@@ -90,21 +97,17 @@ mkdir pg && ( set -e; cd pg; \
   git clone --depth=1 https://github.com/ProofGeneral/PG.git; \
   rm -rf PG/.git && make -C PG clean )
 
-mkdir -p package/easycrypt/share/easycrypt/pg
-cp ../config/proofgeneral/emacs.rc package/easycrypt/share/easycrypt/pg/
-mv pg/PG package/easycrypt/share/easycrypt/pg/ProofGeneral
+mkdir -p ${PKG}/share/easycrypt/pg
+cp ../config/proofgeneral/emacs.rc ${PKG}/share/easycrypt/pg/
+mv pg/PG ${PKG}/share/easycrypt/pg/ProofGeneral
 
 # --------------------------------------------------------------------
-cp ../config/scripts/run-easycrypt package/easycrypt/
+cp ../config/scripts/run-easycrypt ${PKG}/
 
 # --------------------------------------------------------------------
-touch package/easycrypt/__linux
+touch ${PKG}/__linux
 
 # --------------------------------------------------------------------
-ldd package/easycrypt/bin/* | fgrep '=>' | \
+ldd ${PKG}/bin/* | fgrep '=>' | \
     egrep -w 'libgmp|libpcre' | awk '{print $3}' | sort -u | \
-    xargs -r -I '{}' -- cp '{}' package/easycrypt/lib/
-
-# --------------------------------------------------------------------
-BZIP2=-9 tar -C package --owner=0 --group=0 -cjf \
-    "easycrypt-${ECNAME}.tbz2" easycrypt
+    xargs -r -I '{}' -- cp '{}' ${PKG}/lib/

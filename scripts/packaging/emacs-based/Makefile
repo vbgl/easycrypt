@@ -19,14 +19,14 @@ macos:
 	scripts/build-macos.sh
 
 appimage-base:
-	rm -rf _build/appimage && scripts/build-appimage.sh
+	rm -rf _build-linux/appimage && scripts/build-appimage.sh
 
 docker-appimage:
 	cd config/appimage-docker && docker build -t easycryptpa/ec-appimage .
 
 appimage-on-macos: appimage-base
 	docker run -t -i -v "$$PWD:/home/ci/package" easycryptpa/ec-appimage \
-	  sh -c '( set -ex; ./appimagetool package/_build/appimage/EasyCrypt package/_build/EasyCrypt.AppImage )'
+	  sh -c '( set -ex; ./appimagetool package/_build-linux/appimage/EasyCrypt package/_build-linux/EasyCrypt.AppImage )'
 
 clean:
 	rm -rf _build

@@ -13,7 +13,19 @@ EMACS = dict(
 # --------------------------------------------------------------------
 def _main():
     mydir = os.path.realpath(os.path.dirname(__file__))
+    emacs = None
     args  = []
+
+    def resource(x):
+        return os.path.join(*([mydir] + x.split('/')))
+
+    args.extend(['--no-init-file', '--no-site-file', '--debug-init'])
+
+    os.chdir(mydir)
+    os.putenv('PATH', '%s%s%s' % (os.path.join(mydir, 'bin'), \\
+                                  os.pathsep, \\
+                                  os.environ.get('PATH', '')))    
+    os.execvp(emacs, [emacs] + args)
 
     if sys.platform == 'darwin':
         emacs = os.path.join(mydir, *EMACS['darwin'].split('/'))
@@ -26,7 +38,8 @@ def _main():
 
     emacs = 'emacs' if emacs is None else emacs
 
-    args.extend(['-l', 'share/easycrypt/pg/emacs.rc'])
+    args.extend(['-l', resource('share/easycrypt/pg/ProofGeneral/generic/proof-site.el')])
+    args.extend(['-l', resource('share/easycrypt/pg/emacs.rc')])
     args.extend(['--no-init-file', '--no-site-file', '--debug-init'])
 
     print >>sys.stderr, 'running: %s' % (' '.join([emacs] + args))
