@@ -19,14 +19,6 @@ def _main():
     def resource(x):
         return os.path.join(*([mydir] + x.split('/')))
 
-    args.extend(['--no-init-file', '--no-site-file', '--debug-init'])
-
-    os.chdir(mydir)
-    os.putenv('PATH', '%s%s%s' % (os.path.join(mydir, 'bin'), \\
-                                  os.pathsep, \\
-                                  os.environ.get('PATH', '')))    
-    os.execvp(emacs, [emacs] + args)
-
     if sys.platform == 'darwin':
         emacs = os.path.join(mydir, *EMACS['darwin'].split('/'))
     if sys.platform == 'cygwin' or sys.platform.startswith('win'):

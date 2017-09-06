@@ -105,9 +105,6 @@ mv pg/PG ${PKG}/share/easycrypt/pg/ProofGeneral
 cp ../config/scripts/run-easycrypt ${PKG}/
 
 # --------------------------------------------------------------------
-touch ${PKG}/__linux
-
-# --------------------------------------------------------------------
 ldd ${PKG}/bin/* | fgrep '=>' | \
     egrep -w 'libgmp|libpcre' | awk '{print $3}' | sort -u | \
     xargs -r -I '{}' -- cp '{}' ${PKG}/lib/

@@ -13,7 +13,7 @@ linux:
 
 linux-on-macos:
 	docker run -t -i -v "$$PWD:/home/ci/package" easycryptpa/ec-build-box \
-	  sh -c '( set -ex; cp -a package package.dev && make -C package.dev linux && cp -a package.dev/_build package )'
+	  sh -c '( set -ex; cp -a package package.dev && make -C package.dev linux && cp -a package.dev/_build-linux package )'
 
 macos:
 	scripts/build-macos.sh
@@ -24,7 +24,7 @@ appimage-base:
 docker-appimage:
 	cd config/appimage-docker && docker build -t easycryptpa/ec-appimage .
 
-appimage-on-macos: appimage-base
+appimage: appimage-base
 	docker run -t -i -v "$$PWD:/home/ci/package" easycryptpa/ec-appimage \
 	  sh -c '( set -ex; ./appimagetool package/_build-linux/appimage/EasyCrypt package/_build-linux/EasyCrypt.AppImage )'
 
