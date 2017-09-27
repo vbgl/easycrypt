@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -97,12 +97,37 @@ let xnpath ove x =
   EcPath.pappend ove.ovre_npath (EcPath.fromqsymbol (ove.ovre_prefix, x))
 
 (* -------------------------------------------------------------------- *)
+let string_of_renaming_kind = function
+  | `Lemma   -> "lemma"
+  | `Op      -> "operator"
+  | `Pred    -> "predicate"
+  | `Type    -> "type"
+  | `Module  -> "module"
+  | `ModType -> "module type"
+  | `Theory  -> "theory"
+
+(* -------------------------------------------------------------------- *)
 let rename ove subst (kind, name) =
   try
     let newname =
       List.find_map
         (fun rnm -> EcThCloning.rename rnm (kind, name))
         ove.ovre_rnms in
+
+    let nameok =
+      match kind with
+      | `Lemma | `Op | `Pred | `Type ->
+          EcIo.is_sym_ident newname
+      | `Module | `ModType | `Theory ->
+          EcIo.is_mod_ident newname
+    in
+
+    if not nameok then
+      ove.ovre_hooks.herr
+        (Format.sprintf
+           "renamings generated an invalid (%s) name: %s -> %s"
+           (string_of_renaming_kind kind) name newname);
+
     let subst =
       EcSubst.add_path subst
         ~src:(xpath ove name) ~dst:(xnpath ove newname)
@@ -137,7 +162,27 @@ let rec replay_tyd (ove : _ ovrenv) (subst, ops, proofs, scope) (x, otyd) =
 
       | `Inline ->
           let subst =
-            EcSubst.add_tydef subst (xpath ove x) (List.map fst nargs, ntyd)
+            EcSubst.add_tydef
+              subst (xpath ove x) (List.map fst nargs, ntyd) in
+
+          let subst =
+            (* FIXME: HACK *)
+            match otyd.tyd_type, ntyd.ty_node with
+            | `Datatype { tydt_ctors = octors }, Tconstr (np, _) -> begin
+                match (EcEnv.Ty.by_path np scenv).tyd_type with
+                | `Datatype { tydt_ctors = _ } ->
+                    List.fold_left (fun subst (name, _) ->
+                      Printf.printf "%s / %s\n%!"
+                        (EcPath.tostring (xpath ove name))
+                        (EcPath.tostring (EcPath.pqoname (EcPath.prefix np) name));
+                      EcSubst.add_path subst
+                        ~src:(xpath ove name)
+                        ~dst:(EcPath.pqoname (EcPath.prefix np) name))
+                      subst octors
+                | _ -> subst
+              end
+            | _, _ -> subst
+
           in (subst, ops, proofs, scope)
   end
 

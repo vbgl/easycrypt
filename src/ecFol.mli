@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -57,13 +57,15 @@ val f_real_div : form -> form -> form
 val f_real_abs : form -> form
 
 (* soft constructors - distributions *)
-val fop_in_supp : EcTypes.ty -> form
-val fop_mu_x    : EcTypes.ty -> form
+val fop_support : EcTypes.ty -> form
 
+val f_predT   : EcTypes.ty -> form
+val f_support : form -> form -> form
 val f_in_supp : form -> form -> form
 val f_mu      : EcEnv.env -> form -> form -> form
 val f_mu_x    : form -> form -> form
-val f_weight  : EcTypes.ty -> form -> form
+val f_weight   : EcTypes.ty -> form -> form
+val f_lossless : EcTypes.ty -> form -> form
 
 (* common functions *)
 val f_identity : ?name:EcSymbols.symbol -> EcTypes.ty -> form

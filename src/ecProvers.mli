@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -45,6 +45,7 @@ type prover_infos = {
   pr_iterate   : bool;
   pr_wanted    : hints;
   pr_unwanted  : hints;
+  pr_selected  : bool;
 }
 
 val dft_prover_infos : prover_infos

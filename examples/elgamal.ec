@@ -1,90 +1,93 @@
-require import Int.
-require import Real.
-require import FMap.
-require import FSet.
+(* -------------------------------------------------------------------- *)
+require import AllCore Int Real NewFMap FSet Distr DBool.
+require (*--*) DiffieHellman PKE_CPA.
 
-require (*--*) DiffieHellman.
-require (*--*) PKE.
+(* ---------------- Sane Default Behaviours --------------------------- *)
+pragma -oldip.
+pragma +implicits.
 
+(* ---------------------- Let's Get Started --------------------------- *)
 (** Assumption: set DDH *)
+(*** WARNING: DiffieHellman is really out of date ***)
 clone import DiffieHellman as DH.
-import DDH.
+import DDH FDistr.
 
 (** Construction: a PKE **)
-type pkey       = group.
-type skey       = F.t.
-type plaintext  = group.
-type ciphertext = group * group.
+type pkey = group.
+type skey = F.t.
+type ptxt = group.
+type ctxt = group * group.
 
-clone import PKE as PKE_ with
+clone import PKE_CPA as PKE with
   type pkey <- pkey,
   type skey <- skey,
-  type plaintext <- plaintext,
-  type ciphertext <- ciphertext.
+  type ptxt <- ptxt,
+  type ctxt <- ctxt.
 
 (** Concrete Construction: Hashed ElGammal **)
 module ElGamal : Scheme = {
   proc kg(): pkey * skey = {
     var sk;
 
-    sk = $FDistr.dt;
+    sk <$ dt;
     return (g ^ sk, sk);
   }
 
-  proc enc(pk:pkey, m:plaintext): ciphertext = {
+  proc enc(pk:pkey, m:ptxt): ctxt = {
     var y;
 
-    y = $FDistr.dt;
-    return (g ^ y, pk^y * m);
+    y <$ dt;
+    return (g ^ y, pk ^ y * m);
   }
 
-  proc dec(sk:skey, c:ciphertext): plaintext option = {
+  proc dec(sk:skey, c:ctxt): ptxt option = {
     var gy, gm;
 
-    (gy, gm) = c;
+    (gy, gm) <- c;
     return Some (gm * gy^(-sk));
   }
 }.
 
-(** Correctness of the scheme *)
-
-hoare Correctness: Correctness(ElGamal).main: true ==> res.
-proof. proc; inline*; auto; progress; algebra. qed.
-
-(** Exact security *)
-
-module DDHAdv(A:Adversary) = {
+(** Reduction: from a PKE adversary, construct a DDH adversary *)
+module DDHAdv (A:Adversary) = {
   proc guess (gx, gy, gz) : bool = {
     var m0, m1, b, b';
-    (m0, m1) = A.choose(gx);
-    b = ${0,1};
-    b' = A.guess(gy, gz * (b?m1:m0));
+    (m0, m1) <- A.choose(gx);
+    b        <$ {0,1};
+    b'       <@ A.guess(gy, gz * (b?m1:m0));
     return b' = b;
   }
 }.
 
+(** We now prove that, for all adversary A, we have:
+      `| Pr[CPA(ElGamal,A).main() @ &m : res] - 1%r/2%r |
+      = `| Pr[DDH0(DDHAdv(A)).main() @ &m : res]
+           - Pr[DDH1(DDHAdv(A)).main() @ &m : res] |.        **)
 section Security.
-
   declare module A:Adversary.
+  axiom Ac_ll: islossless A.choose.
+  axiom Ag_ll: islossless A.guess.
 
   local lemma cpa_ddh0 &m:
       Pr[CPA(ElGamal,A).main() @ &m : res] =
       Pr[DDH0(DDHAdv(A)).main() @ &m : res].
   proof.
-    byequiv => //;proc;inline *.
-    swap{1} 7 -5.
-    auto;call (_:true);auto;call (_:true);auto;progress;smt.
+  byequiv=> //; proc; inline *.
+  swap{1} 7 -5.
+  auto; call (_:true).
+  auto; call (_:true).
+  by auto=> /> sk _ y _ r b _; rewrite pow_pow.
   qed.
 
   local module Gb = {
     proc main () : bool = {
       var x, y, z, m0, m1, b, b';
-      x  = $FDistr.dt;
-      y  = $FDistr.dt;
-      (m0,m1) = A.choose(g^x);
-      z  = $FDistr.dt;
-      b' = A.guess(g^y, g^z);
-      b  = ${0,1};
+      x       <$ FDistr.dt;
+      y       <$ FDistr.dt;
+      (m0,m1) <@ A.choose(g^x);
+      z       <$ FDistr.dt;
+      b'      <@ A.guess(g^y, g^z);
+      b       <$ {0,1};
       return b' = b;
     }
   }.
@@ -93,23 +96,30 @@ section Security.
       Pr[DDH1(DDHAdv(A)).main() @ &m : res] =
       Pr[Gb.main() @ &m : res].
   proof.
-    byequiv => //;proc;inline *.
-    swap{1} 3 2;swap{1} [5..6] 2;swap{2} 6 -2.
-    auto;call (_:true);wp.
-    rnd (fun z, z + log(if b then m1 else m0){2})
-        (fun z, z - log(if b then m1 else m0){2}).
-    auto;call (_:true);auto;progress; (algebra || smt).
+  byequiv=> //; proc; inline *.
+  swap{1} 3 2; swap{1} [5..6] 2; swap{2} 6 -2.
+  auto; call (_:true); wp.
+  rnd (fun z, z + log (if b then m1 else m0){2})
+      (fun z, z - log (if b then m1 else m0){2}).
+  auto; call (_:true).
+  auto=> /> x _ y _ [m0 m1] b _; progress.
+  + by algebra.
+  + exact/FDistr.dt_funi.
+  + exact/FDistr.dt_fu.
+  + by algebra.
+  + by algebra.
   qed.
-
-  axiom Ac_l : islossless A.choose.
-  axiom Ag_l : islossless A.guess.
 
   local lemma Gb_half &m:
      Pr[Gb.main()@ &m : res] = 1%r/2%r.
   proof.
-    byphoare => //;proc.
-    rnd  ((=) b')=> //=.
-    call Ag_l;auto;call Ac_l;auto;progress;smt.
+  byphoare=> //; proc.
+  rnd  (pred1 b')=> //=.
+  conseq (: _ ==> true).
+  + by move=> /> b; rewrite dbool1E pred1E.
+  call Ag_ll.
+  auto; call Ac_ll.
+  by auto=> />; exact/dt_ll.
   qed.
 
   lemma conclusion &m :
@@ -117,9 +127,8 @@ section Security.
     `| Pr[DDH0(DDHAdv(A)).main() @ &m : res] -
          Pr[DDH1(DDHAdv(A)).main() @ &m : res] |.
   proof.
-   by rewrite (cpa_ddh0 &m) (ddh1_gb &m) (Gb_half &m).
+  by rewrite (cpa_ddh0 &m) (ddh1_gb &m) (Gb_half &m).
   qed.
-
 end section Security.
 
 print conclusion.

@@ -1,13 +1,13 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-B-V1 license
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
-require import Bool Option Fun Distr Int IntExtra Real RealExtra.
-require import StdRing StdOrder StdBigop Discrete List RealLub RealSeq.
+require import Bool AllCore List.
+require import StdRing StdOrder StdBigop Discrete RealLub RealSeq.
 (*---*) import IterOp Bigreal Bigreal.BRA IntOrder RField RealOrder.
 
 pragma +implicits.

@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -542,6 +542,7 @@ module Prover = struct
     pl_iterate    : bool option;
     pl_wanted     : EcProvers.hints option;
     pl_unwanted   : EcProvers.hints option;
+    pl_selected   : bool option;
   }
 
   (* -------------------------------------------------------------------- *)
@@ -556,6 +557,7 @@ module Prover = struct
     pl_iterate   = None;
     pl_wanted    = None;
     pl_unwanted  = None;
+    pl_selected  = None;
   }
 
   (* -------------------------------------------------------------------- *)
@@ -589,6 +591,7 @@ module Prover = struct
       pl_iterate   = ppr.plem_iterate;
       pl_wanted    = omap (process_dbhint env) ppr.plem_wanted;
       pl_unwanted  = omap (process_dbhint env) ppr.plem_unwanted;
+      pl_selected  = ppr.plem_selected;
     }
 
   (* -------------------------------------------------------------------- *)
@@ -606,6 +609,7 @@ module Prover = struct
     let pr_iterate   = odfl dft.pr_iterate options.pl_iterate in
     let pr_wanted    = odfl dft.pr_wanted options.pl_wanted in
     let pr_unwanted  = odfl dft.pr_unwanted options.pl_unwanted in
+    let pr_selected  = odfl dft.pr_selected options.pl_selected in
     let pr_provers   =
       let l = odfl dft.pr_provers (fst options.po_provers) in
       let do_ar l (k, p) =
@@ -616,7 +620,7 @@ module Prover = struct
 
     { pr_maxprocs; pr_provers; pr_timelimit; pr_cpufactor;
       pr_wrapper ; pr_verbose; pr_all      ; pr_max      ;
-      pr_iterate ; pr_wanted ; pr_unwanted }
+      pr_iterate ; pr_wanted ; pr_unwanted ; pr_selected}
 
   (* -------------------------------------------------------------------- *)
   let set_wrapper scope wrapper =
@@ -864,9 +868,12 @@ module Ax = struct
       match EcSection.olocals scope.sc_section with
       | None -> ()
       | Some locals ->
-          if EcSection.form_use_local concl locals then
-            hierror "this lemma uses local modules and must be declared as local"
-    end;
+        match EcSection.form_use_local concl locals with
+        | Some mp ->
+          let ppe = EcPrinting.PPEnv.ofenv scope.sc_env in
+          hierror "@[<hov>this lemma uses local modules : %a@\n and must be declared as local@]" (EcPrinting.pp_topmod ppe) mp
+        | None -> ()
+      end;
 
     if ax.pa_local && EcDecl.is_axiom axd.ax_kind then
       hierror "an axiom cannot be local";

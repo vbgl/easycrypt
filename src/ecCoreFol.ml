@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -1340,6 +1340,12 @@ let is_espF      f = is_from_destr destr_espF      f
 let is_espS      f = is_from_destr destr_espS      f
 let is_pr        f = is_from_destr destr_pr        f
 let is_eq_or_iff f = (is_eq f) || (is_iff f)
+
+(* -------------------------------------------------------------------- *)
+let split_args f =
+  match f_node f with
+  | Fapp (f, args) -> (f, args)
+  | _ -> (f, [])
 
 (* -------------------------------------------------------------------- *)
 let quantif_of_equantif (qt : equantif) =

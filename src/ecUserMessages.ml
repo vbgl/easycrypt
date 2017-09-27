@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -137,6 +137,9 @@ end = struct
 
     | UnknownRecFieldName qs ->
         msg "unknown (record) field name: %a" pp_qsymbol qs
+
+    | UnknownInstrMetaVar x ->
+        msg "unkown instruction meta-variable: %a" pp_symbol x
 
     | DuplicatedRecFieldName qs ->
         msg "duplicated (record) field name: %s" qs

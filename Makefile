@@ -36,11 +36,10 @@ SHRDIR := $(PREFIX)/share/easycrypt
 SYSDIR := $(LIBDIR)/system
 
 # --------------------------------------------------------------------
-XUNITOUT  ?= xunit.xml
 ECARGS    ?=
-ECTOUT    ?= 5
+ECTOUT    ?= 10
 ECJOBS    ?= 1
-ECEXTRA   ?= --pretty
+ECEXTRA   ?= --report=report.log
 ECPROVERS ?= Alt-Ergo Z3 Eprover
 CHECKPY   ?=
 CHECK     := $(CHECKPY) scripts/testing/runtest
@@ -50,10 +49,9 @@ CHECK     += $(ECEXTRA) config/tests.config
 CHECKCATS ?= prelude stdlib
 
 # --------------------------------------------------------------------
-.PHONY: all build byte native tests check weak-check check-xunit examples
+.PHONY: all build byte native tests check weak-check examples
 .PHONY: clean install uninstall uninstall-purge dist distcheck
-.PHONY: callprover toolchain update-toolchain provers license
-.PHONY: pg pg-keywords
+.PHONY: callprover license
 .PHONY: %.ml %.mli %.inferred.mli
 
 all: build
@@ -91,19 +89,17 @@ define check-for-staled-files
 	fi
 endef
 
-install: ec.native uninstall
+install: build uninstall
 	-@$(call check-for-staled-files)
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 0755 -T ec.native $(DESTDIR)$(BINDIR)/easycrypt$(EXE)
+	$(INSTALL) -m 0755 -T scripts/testing/runtest $(DESTDIR)$(BINDIR)/ec-runtest$(EXE)
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(SYSDIR)
 	$(INSTALL) -m 0755 -T system/callprover$(EXE) $(DESTDIR)$(SYSDIR)/callprover$(EXE)
 	for i in $$(find theories -type d); do \
 	  $(INSTALL) -m 0755 -d $(DESTDIR)$(LIBDIR)/$$i ';'; \
 	  $(INSTALL) -m 0644 -t $(DESTDIR)$(LIBDIR)/$$i $$i/*.ec*; \
 	done
-	$(INSTALL) -m 0755 -d $(DESTDIR)$(SHRDIR)
-	$(INSTALL) -m 0755 -d $(DESTDIR)$(SHRDIR)/emacs
-	$(INSTALL) -m 0644 -t $(DESTDIR)$(SHRDIR)/emacs proofgeneral/easycrypt/*.el
 
 define rmdir
 	-@if [ -d "$(1)" ]; then rmdir "$(1)"; fi
@@ -128,17 +124,14 @@ uninstall-purge:
 
 tests: check
 
-examples:
+examples: build
 	$(CHECK) examples
 
-check: ec.native
+check: build
 	$(CHECK) $(CHECKCATS)
 
-weak-check: ec.native
+weak-check: build
 	$(CHECK) --bin-args="-pragmas Proofs:weak" $(CHECKCATS) '!unit'
-
-check-xunit: ec.native
-	$(CHECK) --xunit="$(XUNITOUT)" $(CHECKCATS)
 
 license:
 	scripts/srctx/license COPYRIGHT.yaml \
@@ -184,49 +177,3 @@ distcheck: dist
 # --------------------------------------------------------------------
 %.mli:
 	$(call do-core-build,src/$*.cmi)
-
-# --------------------------------------------------------------------
-pg:
-	@if [ "$$EC_TOOLCHAIN_ACTIVATED" = "" -a -d _tools ]; then \
-	  EC_SRC_ROOT="$(PWD)/scripts" \
-	    . ./scripts/activate-toolchain.sh 2>/dev/null; \
-	  if [ "$$EC_TOOLCHAIN_ACTIVATED" = "" ]; then \
-	    echo "Toolchain activation failed" >&2; \
-	  fi; \
-	fi; $(MAKE) -C proofgeneral run-local
-
-pg-keywords:
-	@if git status --porcelain | grep -v '^??' >/dev/null; then \
-	  echo '[E] git working copy is in a dirty state' >&2; \
-	  echo '[E] (or the `git` command failed)' >&2; \
-    exit 1; \
-  fi
-	$(MAKE) -C proofgeneral keywords
-	git add -- proofgeneral/easycrypt/easycrypt-keywords.el
-	if git status --porcelain -- $(OUTDIR) | grep -v '^??' >/dev/null; then \
-    git commit -m 'PG keywords updated'; \
-	fi
-
-# --------------------------------------------------------------------
-toolchain:
-	export OPAMVERBOSE=1; bash ./scripts/toolchain/ec-build-toolchain
-
-update-toolchain:
-	@[ "$$EC_TOOLCHAIN_ACTIVATED" != "" ] || { \
-	  echo "Activate the EasyCrypt toolchain first" >&2; false; \
-	}
-	export OPAMVERBOSE=1; \
-             opam update  -y \
-	  && opam remove  -y ec-toolchain \
-	  && opam install -y ec-toolchain
-
-provers:
-	@[ "$$EC_TOOLCHAIN_ACTIVATED" != "" ] || { \
-	  echo "Activate the EasyCrypt toolchain first" >&2; false; \
-	}
-	export OPAMVERBOSE=1; \
-	     opam update  -y \
-	  && opam remove  -y ec-provers \
-	  && opam install -y ec-provers \
-	  && rm -f _tools/why3.local.conf \
-	  && why3 config --detect -C _tools/why3.local.conf

@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-B-V1 license
  * -------------------------------------------------------------------- *)
@@ -28,7 +28,7 @@ abbrev [-printing] ( >= ) (x y : real) = y <= x.
 op from_int: int -> real.
 
 (* -------------------------------------------------------------------- *)
-op b2r (b:bool) = if b then from_int 1 else from_int 0.
+abbrev b2r (b:bool) = if b then from_int 1 else from_int 0.
 
 (* -------------------------------------------------------------------- *)
 op "`|_|" x = if from_int 0 <= x then x else -x.

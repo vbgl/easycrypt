@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -413,6 +413,9 @@ val is_bdHoareF  : form -> bool
 val is_bdHoareS  : form -> bool
 val is_pr        : form -> bool
 val is_eq_or_iff : form -> bool
+
+(* -------------------------------------------------------------------- *)
+val split_args : form -> form * form list
 
 (* -------------------------------------------------------------------- *)
 val form_of_expr : EcMemory.memory -> EcTypes.expr -> form

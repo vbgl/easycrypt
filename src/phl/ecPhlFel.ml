@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -44,7 +44,7 @@ end = struct
     let bgty = [tpred tint; tfun tint treal; tlist tint] in
     let bg   = EcPath.fromqsymbol (p_BRA, "big") in
     let bg   = f_op bg [tint] (toarrow bgty treal) in
-    let prT  = EcPath.fromqsymbol ([i_top; "Pred"], "predT") in
+    let prT  = EcPath.fromqsymbol ([i_top; "Logic"], "predT") in
     let prT  = f_op prT [tint] (tpred tint) in
     fun f (m, n) -> f_app bg [prT; f; range m n] treal
 

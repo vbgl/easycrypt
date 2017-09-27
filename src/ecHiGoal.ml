@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -544,7 +544,7 @@ let process_delta ?target (s, o, p) tc =
         | EcDecl.OB_pred (Some (EcDecl.PR_Plain f)) ->
             (snd p, op.EcDecl.op_tparams, f, args)
         | _ ->
-            tc_error !!tc "the operator cannot be unfold"
+            tc_error !!tc "the operator cannot be unfolded"
     end
 
     | SFlocal x when LDecl.can_unfold x hyps ->

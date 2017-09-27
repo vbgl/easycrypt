@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-C-V1 license
  * -------------------------------------------------------------------- *)
@@ -2368,6 +2368,12 @@ module NormMp = struct
     EcTypes.pv_equal (norm_pvar env pv1) (norm_pvar env pv2)
 end
 
+let rec ty_hnorm (ty : ty) (env : env) =
+    match ty.ty_node with
+    | Tconstr (p, tys) when Ty.defined p env -> ty_hnorm (Ty.unfold p tys env) env
+    | Tglob p -> NormMp.norm_tglob env p
+    | _ -> ty
+
 (* -------------------------------------------------------------------- *)
 module ModTy = struct
   type t = module_sig
@@ -2457,6 +2463,7 @@ module ModTy = struct
     { mis_params = params;
       mis_body   = List.map do1 items }
 end
+
 
 (* -------------------------------------------------------------------- *)
 module Op = struct

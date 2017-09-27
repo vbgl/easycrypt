@@ -1,6 +1,6 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-B-V1 license
  * -------------------------------------------------------------------- *)
@@ -45,6 +45,9 @@ theory F.
   axiom mulfDl (x y z:t): x * y + x * z = x * (y + z).
   axiom div_def (x y:t): x / y = x * (inv y).
 
+  axiom mulf_eq0:
+    forall (x y : t), x * y = zero <=> x = zero \/ y = zero.
+
   (* Exponentiation *)
   axiom pow0 (x:t): x ^ 0 = one.
   axiom powS (x:t) (n:int): Int.(<=) 0 n => x ^ (Int.(+) n 1) = x * x ^ n.
@@ -62,6 +65,7 @@ theory F.
   axiom toint_bounded (x:t): 0 <= toint x < q.
   axiom oftoint (x:t): ofint (toint x) = x.
   axiom toofint_mod (x:int): toint (ofint x) = IntDiv.(%%) x q.
+
 end F.
 export F.
 
@@ -168,8 +172,7 @@ by [].
 
 lemma nosmt toofint (x:int): 0 <= x => x < q => toint (ofint x) = x.
 proof.
-  move=> Hp Hlt;rewrite toofint_mod.
-  smt all.
+  move=> Hp Hlt;rewrite toofint_mod IntDiv.modz_small /#.
 qed.
 
 lemma nosmt ofint1_: ofint 1 = F.one
@@ -182,13 +185,13 @@ theory FDistr.
   (* distrinution *)
   op dt: t distr.
 
-  axiom supp_def: forall (s:t),
-    in_supp s dt.
+  axiom dt_fu: is_full dt.
 
-  axiom mu_x_def_in: forall (s:t),
-    mu_x dt s = (1%r/q%r)%Real.
+  axiom dt1E: forall (s:t), mu1 dt s = (1%r/q%r)%Real.
 
-  axiom lossless: weight dt = 1%r.
+  axiom dt_ll: is_lossless dt.
 
+  lemma dt_funi: is_funiform dt.
+  proof. by move=> ??;rewrite !dt1E. qed.
 end FDistr.
 

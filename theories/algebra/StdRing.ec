@@ -1,12 +1,12 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-B-V1 license
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
-require import Int Real RealExtra.
+require import Bool Int IntExtra Real RealExtra.
 require (*--*) Ring.
 
 (* -------------------------------------------------------------------- *)
@@ -52,7 +52,7 @@ instance ring with int
   op add   = Int.( + )
   op opp   = Int.([-])
   op mul   = Int.( * )
-  op expr  = Int.( ^ )
+  op expr  = IntExtra.( ^ )
 
   proof oner_neq0 by smt
   proof addr0     by smt
@@ -65,3 +65,24 @@ instance ring with int
   proof mulrDl    by smt
   proof expr0     by smt
   proof exprS     by smt.
+
+op bid (b:bool) = b.
+
+instance bring with bool
+  op rzero = false
+  op rone  = true
+  op add   = Bool.( ^^ )
+  op mul   = (/\)
+  op opp   = bid
+
+  proof oner_neq0 by smt
+  proof addr0     by smt
+  proof addrA     by smt
+  proof addrC     by smt
+  proof addrK     by smt
+  proof mulr1     by smt
+  proof mulrA     by smt
+  proof mulrC     by smt
+  proof mulrDl    by smt
+  proof mulrK     by smt
+  proof oppr_id   by smt.

@@ -1,13 +1,12 @@
 (* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
- * Copyright (c) - 2012--2016 - Inria
+ * Copyright (c) - 2012--2017 - Inria
  *
  * Distributed under the terms of the CeCILL-B-V1 license
  * -------------------------------------------------------------------- *)
 
 (*** A formalization of pseudo-random permutations **)
-require import Option Fun Int Real Distr FSet NewFMap.
-require import Dexcepted.
+require import AllCore Distr FSet NewFMap Dexcepted.
 
 (** A PRP is a family of permutations P on domain D indexed by a
     keyspace K equipped with a distribution dK. For simplicity of use,
