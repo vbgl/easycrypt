@@ -196,7 +196,7 @@ abstract theory Program.
         smt.
     move=> len_xs; rewrite dlist1E 1:smt (_: n{1} <> size xs) /= 1:smt.
     byphoare (_: n = n{1} ==> xs = res)=> //=; hoare.
-    proc; auto; smt (dlist_support_ge0).
+    proc; auto; smt (supp_dlist0).
   qed.
 
   equiv Sample_Loop_eq: Sample.sample ~ Loop.sample: ={n} ==> ={res}.

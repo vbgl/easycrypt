@@ -1,5 +1,5 @@
 (* -------------------------------------------------------------------- *)
-require import Int IntExtra Fun List.
+require import AllCore List.
 
 (* -------------------------------------------------------------------- *)
 op bigo n (f : int -> real -> real) =

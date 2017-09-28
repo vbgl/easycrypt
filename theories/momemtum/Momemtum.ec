@@ -1,6 +1,5 @@
 (* -------------------------------------------------------------------- *)
-require import Int IntExtra Real RealExtra List.
-require export Fun FunExt.
+require import AllCore FunExt List.
 
 op path ['a] (e : 'a -> 'a -> bool) x p =
   with p = [] => true
