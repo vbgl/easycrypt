@@ -262,18 +262,11 @@ let t_esp_trans tc =
   in
 
   let d_def =
-    let m1 = EcIdent.create "&1" in
-    let m2 = EcIdent.create "&2" in
-
+    let m = EcIdent.create "&m" in
     let s = Fsubst.f_subst_id in
-    let s = Fsubst.f_bind_mem s (fst es.esps_ml) m1 in
-    let s = Fsubst.f_bind_mem s (fst es.esps_mr) m2 in
-
+    let s = Fsubst.f_bind_mem s (fst es.esps_ml) m in
     let d = Fsubst.f_subst s (snd es.esps_po) in
-
-    f_forall_mems
-      [(m1, snd es.esps_ml); (m2, snd es.esps_mr)]
-      (f_eq d f_r0)
+    f_forall_mems [m, None] (f_eq d f_r0)
   in
 
   let ti_ineq =
