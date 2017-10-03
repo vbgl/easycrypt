@@ -194,7 +194,7 @@ let tuplify env (m1, m2) f =
   ((t1, t2), (felts, fglob), PVM.subst env subst f)
 
 (* -------------------------------------------------------------------- *)
-let t_esp_trans phi' tc =
+let t_esp_trans tc =
   let es = tc1_as_espS tc in
   let env, _, _ = FApi.tc1_eflat tc in
 
@@ -213,6 +213,10 @@ let t_esp_trans phi' tc =
     fun f -> f_app f_linear [f] tbool
   in
 
+  (* [f] is linear *)
+  let f_lin = mk_linear es.esps_f in
+
+  (* post-condition is transitive *)
   let po_trans =
     let m1 = EcIdent.create "&1" in
     let m2 = EcIdent.create "&2" in
@@ -237,6 +241,39 @@ let t_esp_trans phi' tc =
     f_forall_mems
       [(m1, snd es.esps_ml); (m2, None); (m3, snd es.esps_mr)]
       (f_imp (f_and po1 po2) po)
+  in
+
+  let d_nat =
+    let m1 = EcIdent.create "&1" in
+    let m2 = EcIdent.create "&2" in
+
+    let s = Fsubst.f_subst_id in
+    let s = Fsubst.f_bind_mem s (fst es.esps_ml) m1 in
+    let s = Fsubst.f_bind_mem s (fst es.esps_mr) m2 in
+
+    let d  = Fsubst.f_subst s (snd es.esps_pr) in
+    let n  = EcIdent.create "n" in
+    let vn = f_local n tint in
+
+    f_forall_mems
+      [(m1, snd es.esps_ml); (m2, snd es.esps_mr)]
+      (f_exists [n, GTty tint]
+         (f_and (f_int_le f_i0 vn) (f_eq d (f_real_of_int vn))))
+  in
+
+  let d_def =
+    let m1 = EcIdent.create "&1" in
+    let m2 = EcIdent.create "&2" in
+
+    let s = Fsubst.f_subst_id in
+    let s = Fsubst.f_bind_mem s (fst es.esps_ml) m1 in
+    let s = Fsubst.f_bind_mem s (fst es.esps_mr) m2 in
+
+    let d = Fsubst.f_subst s (snd es.esps_po) in
+
+    f_forall_mems
+      [(m1, snd es.esps_ml); (m2, snd es.esps_mr)]
+      (f_eq d f_r0)
   in
 
   let ti_ineq =
@@ -265,114 +302,26 @@ let t_esp_trans phi' tc =
       (f_real_le (f_real_add d1 d2) d)
   in
 
-  let mk_d (m1, m2) form =
-    let ((t1, t2), (pv, gl), form) = tuplify env (m1, m2) form in
-
-    let a1 = List.map (fun (pv, ty) -> f_pvar pv ty m1) pv in
-    let a2 = List.map (fun (pv, ty) -> f_pvar pv ty m2) pv in
-
-    let g1 = List.map (fun g -> f_glob g m1) gl in
-    let g2 = List.map (fun g -> f_glob g m2) gl in
-
-    let arg1 = f_tuple (a1 @ g1) in
-    let arg2 = f_tuple (a2 @ g2) in
-
-    let f_dpath =
-      let fty = toarrow [arg1.f_ty; arg2.f_ty] tbool in
-      let fty = toarrow [fty; arg1.f_ty; arg2.f_ty] tint in
-      f_op EcCoreLib.CI_Momemtum.p_dpath [arg1.f_ty] fty in
-
-    let d = f_lambda [(t1, GTty arg1.f_ty); (t2, GTty arg2.f_ty)] form in
-    let d = f_app f_dpath [d; arg1; arg2] tint in
-    let d = f_real_of_int d in
-
-    d
-  in
-
-  let ds = mk_d (fst es.esps_ml, fst es.esps_mr)
-                (f_and (fst es.esps_pr) phi') in
-
-  let dpr = mk_d (fst es.esps_ml, fst es.esps_mr) phi' in
-
-  let eq_d =
-    f_forall_mems
-      [es.esps_ml; es.esps_mr]
-      (f_imp (fst es.esps_pr) (f_eq ds (snd es.esps_pr)))
-  in
-
-  let is_refl_trans_closed =
-    let (m1 as old1, _mem1) = es.esps_ml in
-    let (m2 as old2, _mem2) = es.esps_mr in
-
-    let ((t1, t2), (pv, gl), phi') = tuplify env (m1, m2) phi' in
-
-    let m1 = EcIdent.fresh m1 in
-    let m2 = EcIdent.fresh m2 in
-
-    let phi' =
-      let subst = Fsubst.f_subst_id in
-      let subst = Fsubst.f_bind_mem subst old1 m1 in
-      let subst = Fsubst.f_bind_mem subst old2 m2 in
-      Fsubst.f_subst subst phi'
-    in
-
-    let tty = ttuple ((List.map snd pv) @ (List.map tglob gl)) in
-
-    let a1 = EcIdent.fresh t1 in
-    let a2 = EcIdent.fresh t2 in
-
-    let f_closure =
-      let fty = toarrow [tty; tty] tbool in
-      let fty = toarrow [fty; tty; tty] tbool in
-      f_op EcCoreLib.CI_Momemtum.p_dclosure [tty] fty in
-
-    let concl = f_lambda [(t1, GTty tty); (t2, GTty tty)] phi' in
-    let concl = f_app f_closure [concl] (toarrow [tty; tty] tbool) in
-    let concl = f_app concl [f_local a1 tty; f_local a2 tty] tbool in
-    let concl = f_forall [(a1, GTty tty); (a2, GTty tty)] concl in
-
-    concl
-  in
-
   let concl0 =
-    let fv = EcPV.s_read env es.esps_sl in
-    let fv = EcPV.PV.elements fv in
-
-    let eq1 =
-      f_ands (List.map (fun (pv, ty) ->
-        f_eq (f_pvar pv ty (fst es.esps_ml))
-             (f_pvar pv ty (fst es.esps_mr)))
-        (fst fv))
-    and eq2 =
-      f_ands (List.map (fun mp ->
-        f_eq (f_glob mp (fst es.esps_ml))
-             (f_glob mp (fst es.esps_mr)))
-        (snd fv))
-    in
-
+    let eqd0 = f_eq (snd es.esps_pr) f_r0 in
     f_espS es.esps_ml es.esps_mr
-      (f_ands [fst es.esps_pr; eq1; eq2], f_r0)
+      (f_ands [fst es.esps_pr; eqd0], f_r0)
       es.esps_sl es.esps_sr es.esps_po
       (f_lambda [EcIdent.create "_", GTty treal] f_r0)
   in
 
   let concl1 =
+    let eqd1 = f_eq (snd es.esps_pr) f_r1 in
     f_espS es.esps_ml es.esps_mr
-      (f_and (fst es.esps_pr) phi', ds) es.esps_sl es.esps_sr es.esps_po
-      es.esps_f
+      (f_ands [fst es.esps_pr; eqd1], f_r0)
+      es.esps_sl es.esps_sr es.esps_po
+      (f_lambda [EcIdent.create "_", GTty treal]
+         (f_app es.esps_f [f_r1] treal))
   in
 
-  FApi.t_last
-    (fun tc ->
-       FApi.xmutate1 tc `Trans
-         [mk_linear es.esps_f; po_trans; ti_ineq;
-          is_refl_trans_closed; eq_d; concl0; concl1])
-    (EcPhlConseq.t_espS_conseq
-       f_r1 es.esps_f (fst es.esps_pr, dpr) es.esps_po tc)
+  FApi.xmutate1 tc `Trans
+    [f_lin; po_trans; d_nat; d_def; ti_ineq; concl0; concl1]
 
 (* -------------------------------------------------------------------- *)
-let process_esp_trans phi' tc =
-  let _    = tc1_as_espS tc in
-  let phi' = TTC.tc1_process_prhl_formula tc phi' in
-
-  t_esp_trans phi' tc
+let process_esp_trans tc =
+  let _ = tc1_as_espS tc in t_esp_trans tc

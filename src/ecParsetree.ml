@@ -595,7 +595,7 @@ type phltactic =
   | Pconseq_esp    of conseq_esp_ppterm
   | Pframe_esp     of pformula * pformula * pformula
   | Pcase_esp      of espcase
-  | Pcase_trans    of pformula
+  | Pcase_trans
   | Phrex_elim
   | Phrex_intro    of pformula list
   | Pexfalso

@@ -2715,8 +2715,8 @@ phltactic:
         ep_f0  = f0; ep_fps = fps; ep_fp = fp;
         ep_d   = d ; ep_phi = phi; ep_bd = (i, j); } }
 
-| ESP TRANSITIVITY phi2=sform
-    { Pcase_trans phi2 }
+| ESP TRANSITIVITY
+    { Pcase_trans }
 
 | ELIM STAR
     { Phrex_elim }
