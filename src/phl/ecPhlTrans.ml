@@ -265,6 +265,7 @@ let t_esp_trans tc =
     let m = EcIdent.create "&m" in
     let s = Fsubst.f_subst_id in
     let s = Fsubst.f_bind_mem s (fst es.esps_ml) m in
+    let s = Fsubst.f_bind_mem s (fst es.esps_mr) m in
     let d = Fsubst.f_subst s (snd es.esps_po) in
     f_forall_mems [m, None] (f_eq d f_r0)
   in
