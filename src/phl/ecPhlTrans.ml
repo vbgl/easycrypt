@@ -320,7 +320,7 @@ let t_esp_trans tc =
   in
 
   FApi.xmutate1 tc `Trans
-    [f_lin; po_trans; d_nat; d_def; ti_ineq; concl0; concl1]
+    [f_lin; po_trans; d_nat; d_def; ti_ineq; f_false; concl0; concl1]
 
 (* -------------------------------------------------------------------- *)
 let process_esp_trans tc =
