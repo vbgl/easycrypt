@@ -302,6 +302,52 @@ let t_esp_trans tc =
       (f_real_le (f_real_add d1 d2) d)
   in
 
+  let compat =
+    let m1 = EcIdent.create "&1" in
+    let m2 = EcIdent.create "&2" in
+    let m3 = EcIdent.create "&3" in
+
+    let s1 = Fsubst.f_subst_id in
+    let s1 = Fsubst.f_bind_mem s1 (fst es.esps_ml) m1 in
+    let s1 = Fsubst.f_bind_mem s1 (fst es.esps_mr) m2 in
+
+    let s2 = Fsubst.f_subst_id in
+    let s2 = Fsubst.f_bind_mem s2 (fst es.esps_ml) m2 in
+    let s2 = Fsubst.f_bind_mem s2 (fst es.esps_mr) m3 in
+
+    let s = Fsubst.f_subst_id in
+    let s = Fsubst.f_bind_mem s (fst es.esps_ml) m1 in
+    let s = Fsubst.f_bind_mem s (fst es.esps_mr) m3 in
+
+    let d1 = Fsubst.f_subst s1 (snd es.esps_pr) in
+    let d2 = Fsubst.f_subst s2 (snd es.esps_pr) in
+    let d  = Fsubst.f_subst s  (snd es.esps_pr) in
+
+    let pr1 = Fsubst.f_subst s1 (fst es.esps_pr) in
+    let pr2 = Fsubst.f_subst s2 (fst es.esps_pr) in
+    let pr  = Fsubst.f_subst s  (fst es.esps_pr) in
+
+    let n  = EcIdent.create "n" in
+    let vn = f_local n tint in
+
+    let concl1 =
+      let f1 = f_int_le f_i0 vn in
+      let f2 = f_eq d (f_real_of_int (f_int_add vn f_i1)) in
+      f_ands [pr; f1; f2] in
+
+    let concl2 =
+      let f1 = f_eq d1 f_r1 in
+      let f2 = f_eq d2 (f_real_of_int vn) in
+      f_ands [pr1; pr2; f1; f2] in
+
+    let concl = f_imp concl1 (f_exists [m2, (GTmem None)] concl2) in
+    f_forall
+      [(m1, GTmem (snd es.esps_ml));
+       (m3, GTmem (snd es.esps_ml));
+       (n , GTty tint)]
+      concl
+  in
+
   let concl0 =
     let eqd0 = f_eq (snd es.esps_pr) f_r0 in
     f_espS es.esps_ml es.esps_mr
@@ -320,7 +366,7 @@ let t_esp_trans tc =
   in
 
   FApi.xmutate1 tc `Trans
-    [f_lin; po_trans; d_nat; d_def; ti_ineq; f_false; concl0; concl1]
+    [f_lin; po_trans; d_nat; d_def; ti_ineq; compat; concl0; concl1]
 
 (* -------------------------------------------------------------------- *)
 let process_esp_trans tc =
