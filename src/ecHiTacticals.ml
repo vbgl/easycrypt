@@ -212,6 +212,7 @@ and process1_phl (_ : ttenv) (t : phltactic located) (tc : tcenv1) =
     | Prepl_stmt infos          -> EcPhlTrans.process_equiv_trans infos
     | Pcase_esp info            -> EcPhlApp.process_pcase info
     | Pcase_trans               -> EcPhlTrans.process_esp_trans
+    | Pmult_esp (f1, f2)        -> EcPhlEsp.process_esp_mult f1 f2
   in
 
   try  tx tc

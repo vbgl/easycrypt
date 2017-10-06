@@ -59,6 +59,7 @@
     "return"      , RETURN     ;        (* KW: prog *)
     "res"         , RES        ;        (* KW: prog *)
     "momentum"    , ESP        ;        (* KW: prog *)
+    "mult"        , MULT       ;        (* KW: prog *)
     "FRAME"       , FRAME      ;        (* KW: prog *)
     "equiv"       , EQUIV      ;        (* KW: prog *)
     "hoare"       , HOARE      ;        (* KW: prog *)

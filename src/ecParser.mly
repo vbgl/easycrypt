@@ -440,6 +440,7 @@
 %token MODPATH
 %token MODULE
 %token MOVE
+%token MULT
 %token NE
 %token NOSMT
 %token NOT
@@ -592,6 +593,7 @@ _lident:
 | ADMITTED { "admitted" }
 | ABORT    { "abort"    }
 | ASYNC    { "async"    }
+| MULT     { "mult"     }
 
 | x=RING  { match x with `Eq -> "ringeq"  | `Raw -> "ring"  }
 | x=FIELD { match x with `Eq -> "fieldeq" | `Raw -> "field" }
@@ -2717,6 +2719,9 @@ phltactic:
 
 | ESP TRANSITIVITY
     { Pcase_trans }
+
+| ESP MULT s1=sexpr s2=sexpr
+    { Pmult_esp (s1, s2) }
 
 | ELIM STAR
     { Phrex_elim }
