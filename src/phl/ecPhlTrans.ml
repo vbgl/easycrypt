@@ -151,18 +151,16 @@ let process_equiv_trans (tk, p1, q1, p2, q2) g =
   | TKparsedStmt (s, p, c) -> process_replace_stmt s p c p1 q1 p2 q2 g
 
 (* -------------------------------------------------------------------- *)
-let tuplify env (m1, m2) f =
-  let fv = PV.union (PV.fv env m1 f) (PV.fv env m2 f) in
+let tuplify env m f =
+  let fv = PV.fv env m f in
   let felts, fglob = PV.ntr_elements fv in
 
   let ty1 = (List.map snd felts) in
   let ty2 = (List.map (fun x -> tglob x) fglob) in
   let tty = ttuple (ty1 @ ty2) in
 
-  let t1  = EcIdent.create "t1" in
-  let t2  = EcIdent.create "t2" in
-  let ft1 = f_local t1 tty in
-  let ft2 = f_local t2 tty in
+  let t  = EcIdent.create "t" in
+  let ft = f_local t tty in
 
   let subst = PVM.empty in
 
@@ -174,24 +172,20 @@ let tuplify env (m1, m2) f =
 
   let subst =
     List.fold_lefti (fun subst i (pv, ty) ->
-      let ft1 = theproj ft1 i ty in
-      let ft2 = theproj ft2 i ty in
-      let subst = PVM.add env pv m1 ft1 subst in
-      let subst = PVM.add env pv m2 ft2 subst in
+      let ft = theproj ft i ty in
+      let subst = PVM.add env pv m ft subst in
       subst) subst felts
   in
 
   let subst =
     let n = List.length felts in
     List.fold_lefti (fun subst i gv ->
-      let ft1 = theproj ft1 (i+n) (tglob gv) in
-      let ft2 = theproj ft2 (i+n) (tglob gv) in
-      let subst = PVM.add_glob env gv m1 ft1 subst in
-      let subst = PVM.add_glob env gv m2 ft2 subst in
+      let ft = theproj ft (i+n) (tglob gv) in
+      let subst = PVM.add_glob env gv m ft subst in
       subst) subst fglob
   in
 
-  ((t1, t2), (felts, fglob), PVM.subst env subst f)
+  ((t, tty), (felts, fglob), PVM.subst env subst f)
 
 (* -------------------------------------------------------------------- *)
 let t_esp_trans tc =
@@ -334,7 +328,9 @@ let t_esp_trans tc =
       let f2 = f_eq d2 (f_real_of_int vn) in
       f_ands [pr1; pr2; f1; f2] in
 
-    let concl = f_imp concl1 (f_exists [m2, (GTmem None)] concl2) in
+    let ((t, tty), (_pv, _gl), concl2) = tuplify env m2 concl2 in
+
+    let concl = f_imp concl1 (f_exists [t, (GTty tty)] concl2) in
     f_forall
       [(m1, GTmem (snd es.esps_ml));
        (m3, GTmem (snd es.esps_ml));
