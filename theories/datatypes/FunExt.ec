@@ -1,5 +1,6 @@
 (* -------------------------------------------------------------------- *)
-require import AllCore List Real.
+require import AllCore List Real StdRing.
+(*---*) import StdRing.RField.
 
 (* -------------------------------------------------------------------- *)
 op bigo n (f : int -> real -> real) =
@@ -30,9 +31,18 @@ lemma bigo_id n : bigo n (fun k => idfun) = idfun.
 proof. by elim/natind: n => n ih; [rewrite bigo0 | rewrite bigoS]. qed.
 
 lemma bigo_iter_shift (n : int) (x c : real) : 0 <= n =>
-  bigo n (fun k x => x + c) = (fun x => x + n%r * c).
+  bigo n (fun _ x => x + c) = (fun x => x + n%r * c).
 proof.
 move=> ge0_n; apply/fun_ext => y; elim/intind: n ge0_n y => /=.
 + by move=> y; rewrite bigo0.
 by move=> i ge0_i ih y; rewrite bigoS /(\o) //= ih /#.
 qed.
+
+lemma bigo_iter_geo (n : int) (x c : real) : 0 <= n =>
+  bigo n (fun _ x => x * c) = (fun x => x * exp c n).
+proof.
+move=> ge0_n; apply/fun_ext => y; elim/intind: n ge0_n y => /=.
++ by move=> y; rewrite bigo0 // expr0.
+by move=> i ge0_i ih y; rewrite bigoS /(\o) //= ih exprS //#.
+qed.
+
