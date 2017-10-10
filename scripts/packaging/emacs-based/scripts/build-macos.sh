@@ -35,7 +35,11 @@ opam update
 # --------------------------------------------------------------------
 # Build EasyCrypt
 
-git clone --depth=1 https://github.com/EasyCrypt/easycrypt.git
+if [ -z "${ECBRANCH}" ]; then
+  git clone --depth=1 https://github.com/EasyCrypt/easycrypt.git
+else
+  git clone -b "${ECBRANCH}" --depth=1 https://github.com/EasyCrypt/easycrypt.git
+fi
 
 opam install --deps-only easycrypt
 make -C easycrypt
