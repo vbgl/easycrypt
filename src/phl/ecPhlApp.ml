@@ -280,8 +280,7 @@ let process_app (side, dir, k, phi, bd_info) tc =
 
 (* -------------------------------------------------------------------- *)
 let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
-  let es   = tc1_as_espS tc in
-  let hyps = FApi.tc1_hyps tc in
+  let es = tc1_as_espS tc in
 
   let sl1, sl2 = s_split i es.esps_sl in
   let sr1, sr2 = s_split j es.esps_sr in
@@ -320,8 +319,6 @@ let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
         fps (fm sf sp f0x))
   in
 
-  EcReduction.check_conv hyps gf es.esps_f;
-
   let pre = Fsubst.f_subst_mem (fst es.esps_ml) mhr (fst es.esps_pr) in
 
   let gsides = List.map (fun (_, p, e, _) ->
@@ -342,8 +339,12 @@ let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
 
   let gaff = List.map mk_affine (List.map proj4_1 fps @ [sf]) in
 
-  FApi.xmutate1 tc `PCase
-    (gaff @ gsides @ [gsidec] @ [g0] @ gs @ [gc])
+  FApi.t_last
+    (fun tc ->
+       FApi.xmutate1 tc `PCase
+         (gaff @ gsides @ [gsidec] @ [g0] @ gs @ [gc]))
+    (EcPhlConseq.t_espS_conseq
+       f_r1 gf es.esps_pr es.esps_po tc)
 
 (* -------------------------------------------------------------------- *)
 let process_pcase info tc =
