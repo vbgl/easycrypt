@@ -327,9 +327,9 @@ let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
     ) fps in
 
   let gsidec =
-    let ge = f_ands (List.map proj4_3 fps) in
+    let ge = f_ands (List.map (f_not |- proj4_3) fps) in
     f_forall_mems [es.esps_mr]
-      (f_bdHoareS (mhr, snd es.esps_ml) pre (stmt sl1) (f_not ge) FHle sp) in
+      (f_bdHoareS (mhr, snd es.esps_ml) pre (stmt sl1) ge FHle sp) in
 
   let mk_affine f =
     let f_affine =
