@@ -38,8 +38,8 @@ move=> ge0_n; apply/fun_ext => y; elim/intind: n ge0_n y => /=.
 by move=> i ge0_i ih y; rewrite bigoS /(\o) //= ih /#.
 qed.
 
-lemma bigo_iter_geo (n : int) (x c : real) : 0 <= n =>
-  bigo n (fun _ x => x * c) = (fun x => x * exp c n).
+lemma bigo_iter_geo (n : int) (c : real) : 0 <= n =>
+  bigo n (fun _ x => c * x) = (fun x => exp c n * x).
 proof.
 move=> ge0_n; apply/fun_ext => y; elim/intind: n ge0_n y => /=.
 + by move=> y; rewrite bigo0 // expr0.

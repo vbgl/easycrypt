@@ -302,9 +302,9 @@ let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
     ) fps in
 
   let gc =
-    let ge = f_ands (List.map proj4_4 fps) in
+    let ge = f_ands (List.map (f_not |- proj4_4) fps) in
     f_espS_r { es with
-      esps_pr = (f_and phi (f_not ge), d);
+      esps_pr = (f_and phi ge, d);
       esps_sl = stmt sl2; esps_sr = stmt sr2;
       esps_f  = sf; } in
 
