@@ -287,7 +287,7 @@ let t_esp_trans tc =
 
     f_forall_mems
       [(m1, snd es.esps_ml); (m2, None); (m3, snd es.esps_mr)]
-      (f_real_le (f_real_add d1 d2) d)
+      (f_real_le d (f_real_add d1 d2))
   in
 
   let compat =
