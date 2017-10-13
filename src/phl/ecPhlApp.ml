@@ -331,7 +331,7 @@ let t_pcase excl (f0, fps, d, phi) (i, j) tc =
   let gaff = List.map mk_affine (List.map proj4_1 fps) in
 
   let gexcl = if excl then None else Some (
-    let gs = f_ors (List.map proj4_3 fps) in
+    let gs = f_ors (List.map proj4_4 fps) in
     f_forall_mems [es.esps_ml; es.esps_mr] (f_imp phi gs)
   ) in
 
