@@ -560,7 +560,7 @@ type pcqoptions = (bool * pcqoption) list
 type espcase = {
   ep_f0  : pformula;
   ep_fps : pformula tuple3 list;
-  ep_fp  : pformula pair;
+  ep_fp  : pformula * pformula * pformula option;
   ep_d   : pformula;
   ep_phi : pformula;
   ep_bd  : int * int;

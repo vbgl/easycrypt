@@ -2562,7 +2562,8 @@ byequivopt:
 | f=sform PIPE e=sform LE p=sform { (f, p, e) }
 
 %inline esp_case0:
-| f=sform LE p=sform { (f, p) }
+| f=sform LE p=sform { (f, p, None) }
+| f=sform PIPE e=sform LE p=sform { (f, p, Some e) }
 
 phltactic:
 | PROC

@@ -279,7 +279,7 @@ let process_app (side, dir, k, phi, bd_info) tc =
       tc_error !!tc "optional bound parameter not supported"
 
 (* -------------------------------------------------------------------- *)
-let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
+let t_pcase excl (f0, fps, d, phi) (i, j) tc =
   let es = tc1_as_espS tc in
 
   let sl1, sl2 = s_split i es.esps_sl in
@@ -301,22 +301,18 @@ let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
         esps_sr = stmt sr2; }
     ) fps in
 
-  let gc =
-    let ge = f_ands (List.map (f_not |- proj4_4) fps) in
-    f_espS_r { es with
-      esps_pr = (f_and phi ge, d);
-      esps_sl = stmt sl2; esps_sr = stmt sr2;
-      esps_f  = sf; } in
-
   let gf =
     let x   = EcIdent.create "x" in
     let fx  = f_local x treal in
     let f0x = f_app f0 [fx] treal in
     let fm fi pi x = f_real_mul pi (f_app fi [x] treal) in
+
     f_lambda [x, gtty treal]
-      (List.fold_right (fun (f, p, _, _) acc ->
-        f_real_add (fm f p f0x) acc)
-        fps (fm sf sp f0x))
+      (oget (List.fold_right (fun (f, p, _, _) acc ->
+        match acc with
+        | None -> Some (fm f p f0x)
+        | Some acc -> Some (f_real_add (fm f p f0x) acc))
+        fps None))
   in
 
   let pre = Fsubst.f_subst_mem (fst es.esps_ml) mhr (fst es.esps_pr) in
@@ -326,23 +322,23 @@ let t_pcase (f0, fps, (sf, sp), d, phi) (i, j) tc =
         (f_bdHoareS (mhr, snd es.esps_ml) pre (stmt sl1) e FHle p)
     ) fps in
 
-  let gsidec =
-    let ge = f_ands (List.map (f_not |- proj4_3) fps) in
-    f_forall_mems [es.esps_mr]
-      (f_bdHoareS (mhr, snd es.esps_ml) pre (stmt sl1) ge FHle sp) in
-
   let mk_affine f =
     let f_affine =
       f_op EcCoreLib.CI_Momemtum.p_affine []
       (toarrow [toarrow [treal] treal] tbool)
     in f_app f_affine [f] tbool in
 
-  let gaff = List.map mk_affine (List.map proj4_1 fps @ [sf]) in
+  let gaff = List.map mk_affine (List.map proj4_1 fps) in
+
+  let gexcl = if excl then None else Some (
+    let gs = f_ors (List.map proj4_3 fps) in
+    f_forall_mems [es.esps_ml; es.esps_mr] (f_imp phi gs)
+  ) in
 
   FApi.t_last
     (fun tc ->
        FApi.xmutate1 tc `PCase
-         (gaff @ gsides @ [gsidec] @ [g0] @ gs @ [gc]))
+         (gaff @ gsides @ [g0] @ gs @ (otolist gexcl)))
     (EcPhlConseq.t_espS_conseq
        f_r1 gf es.esps_pr es.esps_po tc)
 
@@ -361,7 +357,17 @@ let process_pcase info tc =
       TTC.pf_process_form !!tc hyps tbool e in
 
     (f, p, e)) info.ep_fps in
-  let f = TTC.tc1_process_form tc (tfun treal treal) (fst info.ep_fp) in
-  let p = TTC.tc1_process_form tc treal (snd info.ep_fp) in
+  let f = TTC.tc1_process_form tc (tfun treal treal) (proj3_1 info.ep_fp) in
+  let p = TTC.tc1_process_form tc treal (proj3_2 info.ep_fp) in
+  let e = omap (fun e ->
+      let hyps = FApi.tc1_hyps tc in
+      let hyps = EcEnv.LDecl.push_active (mhr, snd es.esps_ml) hyps in
+      TTC.pf_process_form !!tc hyps tbool e) (proj3_3 info.ep_fp) in
 
-  t_pcase (f0, fps, (f, p), d, phi) info.ep_bd tc
+  let excl, e =
+    match e with
+    | None -> true, f_ands (List.map (f_not |- proj3_3) fps)
+    | Some e -> false, e
+  in
+
+  t_pcase excl (f0, fps @ [f, p, e], d, phi) info.ep_bd tc
