@@ -187,9 +187,25 @@ let t_inline_equiv_r side sp tc =
   FApi.xmutate1 tc `Inline [concl]
 
 (* -------------------------------------------------------------------- *)
+let t_inline_esp_r side sp tc =
+  let equiv = tc1_as_espS tc in
+  let concl =
+    match side with
+    | `Left  ->
+        let (me, stmt) = LowInternal.inline tc equiv.esps_ml sp equiv.esps_sl in
+          f_espS_r { equiv with esps_ml = me; esps_sl = stmt; }
+    | `Right ->
+        let (me, stmt) = LowInternal.inline tc equiv.esps_mr sp equiv.esps_sr in
+          f_espS_r { equiv with esps_mr = me; esps_sr = stmt; }
+  in
+
+  FApi.xmutate1 tc `Inline [concl]
+
+(* -------------------------------------------------------------------- *)
 let t_inline_hoare   = FApi.t_low1 "hoare-inline"   t_inline_hoare_r
 let t_inline_bdhoare = FApi.t_low1 "bdhoare-inline" t_inline_bdhoare_r
 let t_inline_equiv   = FApi.t_low2 "equiv-inline"   t_inline_equiv_r
+let t_inline_esp     = FApi.t_low2 "esp-inline"     t_inline_esp_r
 
 (* -------------------------------------------------------------------- *)
 module HiInternal = struct
@@ -322,6 +338,22 @@ let rec process_inline_all side fs tc =
       | [] -> t_id tc
       | sp -> FApi.t_seq
                 (t_inline_equiv b sp)
+                (process_inline_all side fs)
+                tc
+  end
+
+  | FespS _, None ->
+      FApi.t_seq
+        (process_inline_all (Some `Left ) fs)
+        (process_inline_all (Some `Right) fs)
+        tc
+
+  | FespS es, Some b -> begin
+      let st = sideif b es.esps_sl es.esps_sr in
+      match HiInternal.pat_all env fs st with
+      | [] -> t_id tc
+      | sp -> FApi.t_seq
+                (t_inline_esp b sp)
                 (process_inline_all side fs)
                 tc
   end
