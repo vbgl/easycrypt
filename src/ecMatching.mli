@@ -198,3 +198,159 @@ module RegexpStmt : sig
 
   val search : regexp -> subject -> matches option
 end
+
+
+(* ---------------------------------------------------------------------- *)
+type 'a gen_named =
+  | Anything
+  | Base     of 'a
+  | Named    of 'a gen_named * EcSymbols.symbol
+  (* | Subterm  of 'a gen_named *)
+
+exception CannotUnify
+exception NoNext
+exception NoMatches
+
+module type BaseNamed = sig
+
+  type base
+  type engine
+  type named1
+  type pos
+
+  type interval =
+    | Son     of pos
+    (* | Between of pos * pos *)
+
+  type matches = base Mstr.t
+
+  type named = named1 gen_named
+
+  val mkengine    : base -> engine
+  val eat_down    : engine -> engine
+  val eat_next    : engine -> engine
+  val eat_up      : engine -> engine
+  val eat         : engine -> engine
+  val eat_base    : engine -> named1 -> engine * (pos * named) list
+  val position    : engine -> pos
+  val goto        : engine -> pos -> engine
+  (* add_match can raise the exception : CannotUnify *)
+  val add_match   : engine -> interval -> EcSymbols.symbol -> matches -> engine
+  val get_matches : engine -> matches
+end
+
+
+module Named(B : BaseNamed) : sig
+  type named  = B.named
+  type base = B.base
+  type matches = base Mstr.t
+  type interval = B.interval
+
+  val search : named -> base -> matches option
+end
+
+module BaseBindingsNamed : sig
+  include BaseNamed with type base = bindings
+end
+
+module BindingsNamed : sig
+
+  type named = BaseBindingsNamed.named
+  type base = BaseBindingsNamed.base
+  type matches = base Mstr.t
+  type interval = BaseBindingsNamed.interval
+
+  val search : named -> base -> matches option
+end
+
+module BaseIdentNamed : sig
+  include BaseNamed with type base = EcIdent.t
+end
+
+module IdentNamed : sig
+
+  type named = BaseIdentNamed.named
+  type base = BaseIdentNamed.base
+  type matches = base Mstr.t
+  type interval = BaseIdentNamed.interval
+
+  val search : named -> base -> matches option
+end
+
+module BasePvarNamed : sig
+  include BaseNamed
+  type pvar = EcTypes.prog_var * EcMemory.memory
+  val create_base : pvar -> base
+end
+
+module PvarNamed : sig
+
+  type named = BasePvarNamed.named
+  type base = BasePvarNamed.base
+  type matches = base Mstr.t
+  type interval = BasePvarNamed.interval
+
+  val search : named -> base -> matches option
+end
+
+module BasePglobNamed : sig
+  include BaseNamed
+  type pglob = EcPath.mpath * EcMemory.memory
+  val create_base : pglob -> base
+end
+
+module PglobNamed : sig
+
+  type named = BasePglobNamed.named
+  type base = BasePglobNamed.base
+  type matches = base Mstr.t
+  type interval = BasePglobNamed.interval
+
+  val search : named -> base -> matches option
+end
+
+module BaseOpNamed : sig
+  include BaseNamed
+  type op = EcPath.path * ty list
+  val create_base : op -> base
+end
+
+module OpNamed : sig
+
+  type named = BaseOpNamed.named
+  type base = BaseOpNamed.base
+  type matches = base Mstr.t
+  type interval = BaseOpNamed.interval
+
+  val search : named -> base -> matches option
+end
+
+module BaseFPattern : sig
+  type pattern = pattern1 gen_named
+   and pattern1 =
+     | Pquant  of quantif * BindingsNamed.named * pattern
+     | Pif     of pattern * pattern * pattern
+     | Pmatch  of pattern * pattern list
+     | Plet    of lpattern * pattern * pattern
+     | Pint    of EcBigInt.zint
+     | Plocal  of IdentNamed.named
+     | Ppvar   of PvarNamed.named
+     | Pglob   of PglobNamed.named
+     | Pop     of OpNamed.named
+     | Papp    of pattern * pattern list
+     | Ptuple  of pattern list
+     | Pproj   of pattern * int
+
+  include BaseNamed with type base = form and
+                         type named1 = pattern1
+
+end
+
+module FormPattern : sig
+  type named = BaseFPattern.named
+  type base = BaseFPattern.base
+  type matches = base Mstr.t
+  type interval = BaseFPattern.interval
+
+  val search : named -> base -> matches option
+end

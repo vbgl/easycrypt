@@ -153,6 +153,8 @@
     "kill"        , KILL       ;        (* KW: tactic *)
     "eager"       , EAGER      ;        (* KW: tactic *)
 
+    "test"        , TEST       ;        (* KW: tactic *)
+
     "axiom"       , AXIOM      ;        (* KW: global *)
     "axiomatized" , AXIOMATIZED;        (* KW: global *)
     "lemma"       , LEMMA      ;        (* KW: global *)
