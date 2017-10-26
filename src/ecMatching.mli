@@ -340,6 +340,7 @@ module BaseFPattern : sig
      | Papp    of pattern * pattern list
      | Ptuple  of pattern list
      | Pproj   of pattern * int
+     | Ppr of EcMemory.memory * EcPath.xpath * pattern * pattern
 
   include BaseNamed with type base = form and
                          type named1 = pattern1
