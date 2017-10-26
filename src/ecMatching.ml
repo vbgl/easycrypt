@@ -1333,7 +1333,10 @@ module type Basic = sig
 end
 
 (* -------------------------------------------------------------------------- *)
-module BasicNamed(B : Basic) : BaseNamed = struct
+module BasicNamed(B : Basic) : sig
+  include BaseNamed with type base = B.base
+                     and type named1 = B.base
+end = struct
   type base = B.base
   type named1 = base
   type named = named1 gen_named
@@ -1392,68 +1395,79 @@ module BasicNamed(B : Basic) : BaseNamed = struct
 end
 
 (* -------------------------------------------------------------------------- *)
-module BaseIdentNamed = struct
-
+module BasicIdentNamed : sig
+  include Basic with type base = EcIdent.t
+end = struct
   type base = EcIdent.t
-  type named1 = EcIdent.t
-  type pos = int
-  type engine = {
-      e_id : base ;
-      e_map : base Mstr.t;
-    }
-
-  type interval =
-    | Son of pos
-    (* | Between of pos * pos *)
-
-  type matches = base EcMaps.Mstr.t
-  type named = named1 gen_named
-
-  (* val mkengine : base -> engine *)
-  let mkengine (b : base) = { e_id = b ; e_map = Mstr.empty ; }
-
-  (* val eat_down : engine -> engine *)
-  let eat_down (_e : engine) = raise NoNext
-
-  (* val eat_next : engine -> engine *)
-  let eat_next (_e : engine) = raise NoNext
-
-  (* val eat_up : engine -> engine *)
-  let eat_up (_e : engine) = raise NoNext
-
-  (* val eat : engine -> engine *)
-  let eat (_e : engine) = raise NoNext
-
-  (* val eat_base : engine -> named1 -> engine * (pos * named) list *)
-  let eat_base (e : engine) (x : named1) =
-    if (EcIdent.id_equal e.e_id x) then e, []
-    else raise NoMatches
-
-  (* val position : engine -> pos *)
-  let position (_e : engine) = 1
-
-  (* val goto : engine -> pos -> engine *)
-  let goto (e : engine) (i : int) = if i = 1 then e else raise NoNext
-
-  let add (name : symbol) (id : EcIdent.t) (map : matches) =
-    match Mstr.find_opt name map with
-    | None -> Mstr.add name id map
-    | Some id2 -> if (EcIdent.id_equal id id2) then map
-                  else raise CannotUnify
-
-  (* val add_match : engine -> interval -> EcSymbols.symbol -> engine *)
-  let add_match (e : engine) (i : interval) (name : EcSymbols.symbol) (map : matches) =
-    let map = match i with
-      | Son 1 -> add name e.e_id map
-      | Son _ -> raise CannotUnify
-      (* | Between (1,1) -> add name e.e_id map *)
-      (* | Between _ -> raise CannotUnify *)
-    in { e with e_map = map }
-
-  (* val get_matches : engine -> matches *)
-  let get_matches (e : engine) = e.e_map
-
+  let base_equal = EcIdent.id_equal
 end
+
+
+module BaseIdentNamed = BasicNamed(BasicIdentNamed)
+(* : sig *)
+(*   include type oNamed with type base = EcIdent.t *)
+(* end = struct *)
+
+(*   type base = EcIdent.t *)
+(*   type named1 = EcIdent.t *)
+(*   type pos = int *)
+(*   type engine = { *)
+(*       e_id : base ; *)
+(*       e_map : base Mstr.t; *)
+(*     } *)
+
+(*   type interval = *)
+(*     | Son of pos *)
+(*     (\* | Between of pos * pos *\) *)
+
+(*   type matches = base EcMaps.Mstr.t *)
+(*   type named = named1 gen_named *)
+
+(*   (\* val mkengine : base -> engine *\) *)
+(*   let mkengine (b : base) = { e_id = b ; e_map = Mstr.empty ; } *)
+
+(*   (\* val eat_down : engine -> engine *\) *)
+(*   let eat_down (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_next : engine -> engine *\) *)
+(*   let eat_next (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_up : engine -> engine *\) *)
+(*   let eat_up (_e : engine) = raise NoNext *)
+
+(*   (\* val eat : engine -> engine *\) *)
+(*   let eat (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_base : engine -> named1 -> engine * (pos * named) list *\) *)
+(*   let eat_base (e : engine) (x : named1) = *)
+(*     if (EcIdent.id_equal e.e_id x) then e, [] *)
+(*     else raise NoMatches *)
+
+(*   (\* val position : engine -> pos *\) *)
+(*   let position (_e : engine) = 1 *)
+
+(*   (\* val goto : engine -> pos -> engine *\) *)
+(*   let goto (e : engine) (i : int) = if i = 1 then e else raise NoNext *)
+
+(*   let add (name : symbol) (id : EcIdent.t) (map : matches) = *)
+(*     match Mstr.find_opt name map with *)
+(*     | None -> Mstr.add name id map *)
+(*     | Some id2 -> if (EcIdent.id_equal id id2) then map *)
+(*                   else raise CannotUnify *)
+
+(*   (\* val add_match : engine -> interval -> EcSymbols.symbol -> engine *\) *)
+(*   let add_match (e : engine) (i : interval) (name : EcSymbols.symbol) (map : matches) = *)
+(*     let map = match i with *)
+(*       | Son 1 -> add name e.e_id map *)
+(*       | Son _ -> raise CannotUnify *)
+(*       (\* | Between (1,1) -> add name e.e_id map *\) *)
+(*       (\* | Between _ -> raise CannotUnify *\) *)
+(*     in { e with e_map = map } *)
+
+(*   (\* val get_matches : engine -> matches *\) *)
+(*   let get_matches (e : engine) = e.e_map *)
+
+(* end *)
 
 
 (* -------------------------------------------------------------------------- *)
@@ -1469,89 +1483,18 @@ end = Named(BaseIdentNamed)
 
 
 (* -------------------------------------------------------------------------- *)
-module BasePvarNamed : sig
-  include BaseNamed
-  type pvar = EcTypes.prog_var * EcMemory.memory
-  val create_base : pvar -> base
+module BasicPvarNamed : sig
+  include Basic with type base = EcTypes.prog_var * EcMemory.memory
 end = struct
-  type pvar = EcTypes.prog_var * EcMemory.memory
+  type base = EcTypes.prog_var * EcMemory.memory
+  (* FIXME : get it more complex to be able to enter in functors of in
+    module arguments, etc... *)
 
-  type base = pvar (* FIXME : get it more complex to be able to enter
-                      in functors of in module arguments, etc... *)
-
-  type named1 = pvar
-
-  type pos = int
-
-  type interval = | Son of pos
-                  (* | Between of pos * pos *)
-
-  type matches = base EcMaps.Mstr.t
-
-  type named = named1 gen_named
-
-  type engine = {
-      e_pvar : base ;
-      e_map  : matches ;
-    }
-
-
-  (* val create_base : pvar -> base *)
-  let create_base (p : pvar) : base = p
-
-  (* val mkengine : base -> engine *)
-  let mkengine (b : base) = {
-      e_pvar = b ;
-      e_map = Mstr.empty ;
-    }
-
-  (* val eat_down : engine -> engine *)
-  let eat_down (_e : engine) = raise NoNext
-
-  (* val eat_next : engine -> engine *)
-  let eat_next (_e : engine) = raise NoNext
-
-  (* val eat_up : engine -> engine *)
-  let eat_up (_e : engine) = raise NoNext
-
-  (* val eat : engine -> engine *)
-  let eat (_e : engine) = raise NoNext
-
-  let pvar_equal ((pvar1,mem1) : named1) ((pvar2,mem2) : named1) =
+  let base_equal ((pvar1,mem1) : base) ((pvar2,mem2) : base) =
     pv_equal pvar1 pvar2 && EcMemory.mem_equal mem1 mem2
-
-  (* val eat_base : engine -> named1 -> engine * (pos * named) list *)
-  let eat_base (e : engine) (pvar : named1) =
-    if (pvar_equal pvar e.e_pvar) then e, []
-    else raise NoMatches
-
-  (* val position : engine -> pos *)
-  let position (_e : engine) = 1
-
-  (* val goto : engine -> pos -> engine *)
-  let goto (e : engine) (i : int) = if i = 1 then e else raise NoNext
-
-  let add (name : symbol) (id : base) (map : matches) =
-    match Mstr.find_opt name map with
-    | None -> Mstr.add name id map
-    | Some id2 -> if (pvar_equal id id2) then map
-                  else raise CannotUnify
-
-  (* val add_match : engine -> interval -> EcSymbols.symbol -> engine *)
-  let add_match (e : engine) (i : interval) (name : EcSymbols.symbol) (map : matches) =
-    let map = match i with
-      | Son 1 -> add name e.e_pvar map
-      | Son _ -> raise CannotUnify
-      (* | Between (1,1) -> add name e.e_pvar map *)
-      (* | Between _ -> raise CannotUnify *)
-    in { e with e_map = map }
-
-  (* val get_matches : engine -> matches *)
-  let get_matches (e : engine) = e.e_map
-
-
 end
 
+module BasePvarNamed = BasicNamed(BasicPvarNamed)
 (* -------------------------------------------------------------------------- *)
 module PvarNamed : sig
 
@@ -1565,181 +1508,328 @@ end = Named(BasePvarNamed)
 
 
 
+(* module BasePvarNamed : sig *)
+(*   include BaseNamed *)
+(*   type pvar = EcTypes.prog_var * EcMemory.memory *)
+(*   val create_base : pvar -> base *)
+(* end = struct *)
+(*   type pvar = EcTypes.prog_var * EcMemory.memory *)
+
+(*   type base = pvar (\* FIXME : get it more complex to be able to enter *)
+(*                       in functors of in module arguments, etc... *\) *)
+
+(*   type named1 = pvar *)
+
+(*   type pos = int *)
+
+(*   type interval = | Son of pos *)
+(*                   (\* | Between of pos * pos *\) *)
+
+(*   type matches = base EcMaps.Mstr.t *)
+
+(*   type named = named1 gen_named *)
+
+(*   type engine = { *)
+(*       e_pvar : base ; *)
+(*       e_map  : matches ; *)
+(*     } *)
+
+
+(*   (\* val create_base : pvar -> base *\) *)
+(*   let create_base (p : pvar) : base = p *)
+
+(*   (\* val mkengine : base -> engine *\) *)
+(*   let mkengine (b : base) = { *)
+(*       e_pvar = b ; *)
+(*       e_map = Mstr.empty ; *)
+(*     } *)
+
+(*   (\* val eat_down : engine -> engine *\) *)
+(*   let eat_down (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_next : engine -> engine *\) *)
+(*   let eat_next (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_up : engine -> engine *\) *)
+(*   let eat_up (_e : engine) = raise NoNext *)
+
+(*   (\* val eat : engine -> engine *\) *)
+(*   let eat (_e : engine) = raise NoNext *)
+
+(*   let pvar_equal ((pvar1,mem1) : named1) ((pvar2,mem2) : named1) = *)
+(*     pv_equal pvar1 pvar2 && EcMemory.mem_equal mem1 mem2 *)
+
+(*   (\* val eat_base : engine -> named1 -> engine * (pos * named) list *\) *)
+(*   let eat_base (e : engine) (pvar : named1) = *)
+(*     if (pvar_equal pvar e.e_pvar) then e, [] *)
+(*     else raise NoMatches *)
+
+(*   (\* val position : engine -> pos *\) *)
+(*   let position (_e : engine) = 1 *)
+
+(*   (\* val goto : engine -> pos -> engine *\) *)
+(*   let goto (e : engine) (i : int) = if i = 1 then e else raise NoNext *)
+
+(*   let add (name : symbol) (id : base) (map : matches) = *)
+(*     match Mstr.find_opt name map with *)
+(*     | None -> Mstr.add name id map *)
+(*     | Some id2 -> if (pvar_equal id id2) then map *)
+(*                   else raise CannotUnify *)
+
+(*   (\* val add_match : engine -> interval -> EcSymbols.symbol -> engine *\) *)
+(*   let add_match (e : engine) (i : interval) (name : EcSymbols.symbol) (map : matches) = *)
+(*     let map = match i with *)
+(*       | Son 1 -> add name e.e_pvar map *)
+(*       | Son _ -> raise CannotUnify *)
+(*       (\* | Between (1,1) -> add name e.e_pvar map *\) *)
+(*       (\* | Between _ -> raise CannotUnify *\) *)
+(*     in { e with e_map = map } *)
+
+(*   (\* val get_matches : engine -> matches *\) *)
+(*   let get_matches (e : engine) = e.e_map *)
+
+
+(* end *)
+
+(* (\* -------------------------------------------------------------------------- *\) *)
+(* module PvarNamed : sig *)
+
+(*   type named = BasePvarNamed.named *)
+(*   type base = BasePvarNamed.base *)
+(*   type matches = base Mstr.t *)
+(*   type interval = BasePvarNamed.interval *)
+
+(*   val search : named -> base -> matches option *)
+(* end = Named(BasePvarNamed) *)
+
+
+
 
 (* -------------------------------------------------------------------------- *)
-module BasePglobNamed : sig
-  include BaseNamed
-  type pglob = EcPath.mpath * EcMemory.memory
-  val create_base : pglob -> base
+module BasicPglobNamed : sig
+  include Basic with type base = EcPath.mpath * EcMemory.memory
 end = struct
+  type base = EcPath.mpath * EcMemory.memory
+  (* FIXME : get it more complex to be able to enter in functors of in
+    module arguments, etc... *)
 
-  type pglob = EcPath.mpath * EcMemory.memory
-
-  type base = pglob (* FIXME : get it more complex to be able to enter
-                      in functors of in module arguments, etc... *)
-
-  type named1 = pglob
-
-  type pos = int
-
-  type interval = | Son of pos
-                  (* | Between of pos * pos *)
-
-  type matches = base EcMaps.Mstr.t
-
-  type named = named1 gen_named
-
-  type engine = {
-      e_pglob : base ;
-      e_map  : matches ;
-    }
-
-
-  (* val create_base : pglob -> base *)
-  let create_base (p : pglob) : base = p
-
-  (* val mkengine : base -> engine *)
-  let mkengine (b : base) = {
-      e_pglob = b ;
-      e_map = Mstr.empty ;
-    }
-
-  (* val eat_down : engine -> engine *)
-  let eat_down (_e : engine) = raise NoNext
-
-  (* val eat_next : engine -> engine *)
-  let eat_next (_e : engine) = raise NoNext
-
-  (* val eat_up : engine -> engine *)
-  let eat_up (_e : engine) = raise NoNext
-
-  (* val eat : engine -> engine *)
-  let eat (_e : engine) = raise NoNext
-
-  let pglob_equal ((pglob1,mem1) : named1) ((pglob2,mem2) : named1) =
-    EcPath.m_equal pglob1 pglob2 && EcMemory.mem_equal mem1 mem2
-
-  (* val eat_base : engine -> named1 -> engine * (pos * named) list *)
-  let eat_base (e : engine) (pglob : named1) =
-    if (pglob_equal pglob e.e_pglob) then e, []
-    else raise NoMatches
-
-  (* val position : engine -> pos *)
-  let position (_e : engine) = 1
-
-  (* val goto : engine -> pos -> engine *)
-  let goto (e : engine) (i : int) = if i = 1 then e else raise NoNext
-
-  let add (name : symbol) (id : base) (map : matches) =
-    match Mstr.find_opt name map with
-    | None -> Mstr.add name id map
-    | Some id2 -> if (pglob_equal id id2) then map
-                  else raise CannotUnify
-
-  (* val add_match : engine -> interval -> EcSymbols.symbol -> engine *)
-  let add_match (e : engine) (i : interval) (name : EcSymbols.symbol) (map : matches) =
-    let map = match i with
-      | Son 1 -> add name e.e_pglob map
-      | Son _ -> raise CannotUnify
-      (* | Between (1,1) -> add name e.e_pglob map *)
-      (* | Between _ -> raise CannotUnify *)
-    in { e with e_map = map }
-
-  (* val get_matches : engine -> matches *)
-  let get_matches (e : engine) = e.e_map
-
-
+  let base_equal ((pvar1,mem1) : base) ((pvar2,mem2) : base) =
+    EcPath.m_equal pvar1 pvar2 && EcMemory.mem_equal mem1 mem2
 end
 
+module BasePglobNamed = BasicNamed(BasicPglobNamed)
 (* -------------------------------------------------------------------------- *)
-module PglobNamed = Named(BasePglobNamed)
+module PglobNamed : sig
 
+  type named = BasePglobNamed.named
+  type base = BasePglobNamed.base
+  type matches = base Mstr.t
+  type interval = BasePglobNamed.interval
+
+  val search : named -> base -> matches option
+end = Named(BasePglobNamed)
+
+
+
+(* (\* -------------------------------------------------------------------------- *\) *)
+(* module BasePglobNamed : sig *)
+(*   include BaseNamed *)
+(*   type pglob = EcPath.mpath * EcMemory.memory *)
+(*   val create_base : pglob -> base *)
+(* end = struct *)
+
+(*   type pglob = EcPath.mpath * EcMemory.memory *)
+
+(*   type base = pglob (\* FIXME : get it more complex to be able to enter *)
+(*                       in functors of in module arguments, etc... *\) *)
+
+(*   type named1 = pglob *)
+
+(*   type pos = int *)
+
+(*   type interval = | Son of pos *)
+(*                   (\* | Between of pos * pos *\) *)
+
+(*   type matches = base EcMaps.Mstr.t *)
+
+(*   type named = named1 gen_named *)
+
+(*   type engine = { *)
+(*       e_pglob : base ; *)
+(*       e_map  : matches ; *)
+(*     } *)
+
+
+(*   (\* val create_base : pglob -> base *\) *)
+(*   let create_base (p : pglob) : base = p *)
+
+(*   (\* val mkengine : base -> engine *\) *)
+(*   let mkengine (b : base) = { *)
+(*       e_pglob = b ; *)
+(*       e_map = Mstr.empty ; *)
+(*     } *)
+
+(*   (\* val eat_down : engine -> engine *\) *)
+(*   let eat_down (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_next : engine -> engine *\) *)
+(*   let eat_next (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_up : engine -> engine *\) *)
+(*   let eat_up (_e : engine) = raise NoNext *)
+
+(*   (\* val eat : engine -> engine *\) *)
+(*   let eat (_e : engine) = raise NoNext *)
+
+(*   let pglob_equal ((pglob1,mem1) : named1) ((pglob2,mem2) : named1) = *)
+(*     EcPath.m_equal pglob1 pglob2 && EcMemory.mem_equal mem1 mem2 *)
+
+(*   (\* val eat_base : engine -> named1 -> engine * (pos * named) list *\) *)
+(*   let eat_base (e : engine) (pglob : named1) = *)
+(*     if (pglob_equal pglob e.e_pglob) then e, [] *)
+(*     else raise NoMatches *)
+
+(*   (\* val position : engine -> pos *\) *)
+(*   let position (_e : engine) = 1 *)
+
+(*   (\* val goto : engine -> pos -> engine *\) *)
+(*   let goto (e : engine) (i : int) = if i = 1 then e else raise NoNext *)
+
+(*   let add (name : symbol) (id : base) (map : matches) = *)
+(*     match Mstr.find_opt name map with *)
+(*     | None -> Mstr.add name id map *)
+(*     | Some id2 -> if (pglob_equal id id2) then map *)
+(*                   else raise CannotUnify *)
+
+(*   (\* val add_match : engine -> interval -> EcSymbols.symbol -> engine *\) *)
+(*   let add_match (e : engine) (i : interval) (name : EcSymbols.symbol) (map : matches) = *)
+(*     let map = match i with *)
+(*       | Son 1 -> add name e.e_pglob map *)
+(*       | Son _ -> raise CannotUnify *)
+(*       (\* | Between (1,1) -> add name e.e_pglob map *\) *)
+(*       (\* | Between _ -> raise CannotUnify *\) *)
+(*     in { e with e_map = map } *)
+
+(*   (\* val get_matches : engine -> matches *\) *)
+(*   let get_matches (e : engine) = e.e_map *)
+
+
+(* end *)
+
+(* (\* -------------------------------------------------------------------------- *\) *)
+(* module PglobNamed = Named(BasePglobNamed) *)
 
 
 (* -------------------------------------------------------------------------- *)
-module BaseOpNamed = struct
+module BasicOpNamed : sig
+  include Basic with type base = EcPath.path * ty list
+end = struct
+  type base =  EcPath.path * ty list
+  (* FIXME : get it more complex to be able to enter in functors of in
+    module arguments, etc... *)
 
-  type op = EcPath.path * ty list
-
-  type base = op (* FIXME : get it more complex to be able to enter
-                      in functors of in module arguments, etc... *)
-
-  type named1 = op
-
-  type pos = int
-
-  type interval = | Son of pos
-                  (* | Between of pos * pos *)
-
-  type matches = base EcMaps.Mstr.t
-
-  type named = named1 gen_named
-
-  type engine = {
-      e_op : base ;
-      e_map  : matches ;
-    }
-
-
-  (* val create_base : op -> base *)
-  let create_base (p : op) : base = p
-
-  (* val mkengine : base -> engine *)
-  let mkengine (b : base) = {
-      e_op = b ;
-      e_map = Mstr.empty ;
-    }
-
-  (* val eat_down : engine -> engine *)
-  let eat_down (_e : engine) = raise NoNext
-
-  (* val eat_next : engine -> engine *)
-  let eat_next (_e : engine) = raise NoNext
-
-  (* val eat_up : engine -> engine *)
-  let eat_up (_e : engine) = raise NoNext
-
-  (* val eat : engine -> engine *)
-  let eat (_e : engine) = raise NoNext
-
-  let op_equal ((op1,lty1) : named1) ((op2,lty2) : named1) =
+  let base_equal ((op1,lty1) : base) ((op2,lty2) : base) =
     try EcPath.p_equal op1 op2 && List.all2 ty_equal lty1 lty2 with
     | Invalid_argument _ -> false
-
-  (* val eat_base : engine -> named1 -> engine * (pos * named) list *)
-  let eat_base (e : engine) (op : named1) =
-    if (op_equal op e.e_op) then e, []
-    else raise NoMatches
-
-  (* val position : engine -> pos *)
-  let position (_e : engine) = 1
-
-  (* val goto : engine -> pos -> engine *)
-  let goto (e : engine) (i : int) = if i = 1 then e else raise NoNext
-
-  let add (name : symbol) (id : base) (map : matches) =
-    match Mstr.find_opt name map with
-    | None -> Mstr.add name id map
-    | Some id2 -> if (op_equal id id2) then map
-                  else raise CannotUnify
-
-  (* val add_match : engine -> interval -> EcSymbols.symbol -> engine *)
-  let add_match (e : engine) (i : interval) (name : EcSymbols.symbol) (map : matches) =
-    let map = match i with
-      | Son 1 -> add name e.e_op map
-      | Son _ -> raise CannotUnify
-      (* | Between (1,1) -> add name e.e_op map *)
-      (* | Between _ -> raise CannotUnify *)
-    in { e with e_map = map }
-
-  (* val get_matches : engine -> matches *)
-  let get_matches (e : engine) = e.e_map
-
-
 end
 
+module BaseOpNamed = BasicNamed(BasicOpNamed)
 (* -------------------------------------------------------------------------- *)
-module OpNamed = Named(BaseOpNamed)
+module OpNamed : sig
+
+  type named = BaseOpNamed.named
+  type base = BaseOpNamed.base
+  type matches = base Mstr.t
+  type interval = BaseOpNamed.interval
+
+  val search : named -> base -> matches option
+end = Named(BaseOpNamed)
+
+
+(* (\* -------------------------------------------------------------------------- *\) *)
+(* module BaseOpNamed = struct *)
+
+(*   type op = EcPath.path * ty list *)
+
+(*   type base = op (\* FIXME : get it more complex to be able to enter *)
+(*                       in functors of in module arguments, etc... *\) *)
+
+(*   type named1 = op *)
+
+(*   type pos = int *)
+
+(*   type interval = | Son of pos *)
+(*                   (\* | Between of pos * pos *\) *)
+
+(*   type matches = base EcMaps.Mstr.t *)
+
+(*   type named = named1 gen_named *)
+
+(*   type engine = { *)
+(*       e_op : base ; *)
+(*       e_map  : matches ; *)
+(*     } *)
+
+
+(*   (\* val create_base : op -> base *\) *)
+(*   let create_base (p : op) : base = p *)
+
+(*   (\* val mkengine : base -> engine *\) *)
+(*   let mkengine (b : base) = { *)
+(*       e_op = b ; *)
+(*       e_map = Mstr.empty ; *)
+(*     } *)
+
+(*   (\* val eat_down : engine -> engine *\) *)
+(*   let eat_down (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_next : engine -> engine *\) *)
+(*   let eat_next (_e : engine) = raise NoNext *)
+
+(*   (\* val eat_up : engine -> engine *\) *)
+(*   let eat_up (_e : engine) = raise NoNext *)
+
+(*   (\* val eat : engine -> engine *\) *)
+(*   let eat (_e : engine) = raise NoNext *)
+
+(*   let op_equal ((op1,lty1) : named1) ((op2,lty2) : named1) = *)
+(*     try EcPath.p_equal op1 op2 && List.all2 ty_equal lty1 lty2 with *)
+(*     | Invalid_argument _ -> false *)
+
+(*   (\* val eat_base : engine -> named1 -> engine * (pos * named) list *\) *)
+(*   let eat_base (e : engine) (op : named1) = *)
+(*     if (op_equal op e.e_op) then e, [] *)
+(*     else raise NoMatches *)
+
+(*   (\* val position : engine -> pos *\) *)
+(*   let position (_e : engine) = 1 *)
+
+(*   (\* val goto : engine -> pos -> engine *\) *)
+(*   let goto (e : engine) (i : int) = if i = 1 then e else raise NoNext *)
+
+(*   let add (name : symbol) (id : base) (map : matches) = *)
+(*     match Mstr.find_opt name map with *)
+(*     | None -> Mstr.add name id map *)
+(*     | Some id2 -> if (op_equal id id2) then map *)
+(*                   else raise CannotUnify *)
+
+(*   (\* val add_match : engine -> interval -> EcSymbols.symbol -> engine *\) *)
+(*   let add_match (e : engine) (i : interval) (name : EcSymbols.symbol) (map : matches) = *)
+(*     let map = match i with *)
+(*       | Son 1 -> add name e.e_op map *)
+(*       | Son _ -> raise CannotUnify *)
+(*       (\* | Between (1,1) -> add name e.e_op map *\) *)
+(*       (\* | Between _ -> raise CannotUnify *\) *)
+(*     in { e with e_map = map } *)
+
+(*   (\* val get_matches : engine -> matches *\) *)
+(*   let get_matches (e : engine) = e.e_map *)
+
+
+(* end *)
+
+(* (\* -------------------------------------------------------------------------- *\) *)
+(* module OpNamed = Named(BaseOpNamed) *)
 
 
 
@@ -1754,10 +1844,10 @@ module BaseFPattern = struct
     | Pmatch  of pattern * pattern list
     | Plet    of lpattern * pattern * pattern
     | Pint    of EcBigInt.zint
-    | Plocal  of IdentNamed.named
-    | Ppvar   of PvarNamed.named
-    | Pglob   of PglobNamed.named
-    | Pop     of OpNamed.named
+    | Plocal  of EcIdent.t
+    | Ppvar   of EcTypes.prog_var * EcMemory.memory
+    | Pglob   of EcPath.mpath * EcMemory.memory
+    | Pop     of EcPath.path * EcTypes.ty list
     | Papp    of pattern * pattern list
     | Ptuple  of pattern list
     | Pproj   of pattern * int
@@ -2156,42 +2246,25 @@ module BaseFPattern = struct
        if i = j then (eat_next e, [0::e.e_pos, p])
        else raise NoMatches
 
-    | Flocal id, Plocal id_named -> begin
-        match IdentNamed.search id_named id with
-        | None -> raise NoMatches
-        | Some _map -> (* FIXME : get back this map to merge it with e.e_map *)
-           (eat e, [])
-      end
+    | Flocal id, Plocal id_named ->
+       if BasicIdentNamed.base_equal id id_named
+       then (eat e, [])
+       else raise NoMatches
 
-    | Fpvar (pvar,mem), Ppvar pvar_named -> begin
-        match PvarNamed.search
-                pvar_named
-                (BasePvarNamed.create_base (pvar,mem))
-        with
-        | None -> raise NoMatches
-        | Some _map -> (* FIXME : get back this map to merge it with e.e_map *)
-           (eat e, [])
-      end
+    | Fpvar (pvar,mem), Ppvar (pvar2,mem2) ->
+        if BasicPvarNamed.base_equal (pvar,mem) (pvar2,mem2)
+        then (eat e, [])
+        else raise NoMatches
 
-    | Fglob (module_name,mem), Pglob pglob_named -> begin
-        match PglobNamed.search
-                pglob_named
-                (BasePglobNamed.create_base (module_name,mem))
-        with
-        | None -> raise NoMatches
-        | Some _map -> (* FIXME : get back this map to merge it with e.e_map *)
-           (eat e, [])
-      end
+    | Fglob (module_name,mem), Pglob (mod_name2,mem2) ->
+        if BasicPglobNamed.base_equal (module_name,mem) (mod_name2,mem2)
+        then (eat e, [])
+        else raise NoMatches
 
-    | Fop (op,typ_list), Pop op_named -> begin
-        match OpNamed.search
-                op_named
-                (BaseOpNamed.create_base (op,typ_list))
-        with
-        | None -> raise NoMatches
-        | Some _map -> (* FIXME : get back this map to merge it with e.e_map *)
-           (eat e, [])
-      end
+    | Fop (op,typ_list), Pop (op2,ty_list2) ->
+        if BasicOpNamed.base_equal (op,typ_list) (op2,ty_list2)
+        then (eat e, [])
+        else raise NoMatches
 
     | (Fpr pr, Ppr (mem, proc, args, event)) ->
        if (EcMemory.mem_equal pr.pr_mem mem && EcPath.x_equal pr.pr_fun proc)
