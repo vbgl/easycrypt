@@ -21,13 +21,11 @@ axiom to_seq_finite (P : 'a -> bool):
   /\ (forall x, mem (to_seq P) x <=> P x).
 
 lemma uniq_to_seq (P : 'a -> bool):
-  is_finite P =>
-  uniq (to_seq P).
+  is_finite P => uniq (to_seq P).
 proof. by move=>/to_seq_finite [-> _]. qed.
 
 lemma mem_to_seq (P : 'a -> bool) x:
-  is_finite P =>
-  mem (to_seq P) x <=> P x.
+  is_finite P => mem (to_seq P) x <=> P x.
 proof. by move=>/to_seq_finite [_ ->]. qed.
 
 (* -------------------------------------------------------------------- *)

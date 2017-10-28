@@ -196,15 +196,15 @@ pred is_uniform (d : 'a distr) = forall (x y:'a),
 
 pred is_funiform (d:'a distr) = forall (x y:'a),  mu1 d x = mu1 d y.
 
-lemma is_full_funiform (d:'a distr) : 
+lemma is_full_funiform (d : 'a distr) : 
   is_full d => is_uniform d => is_funiform d.
-proof. by move=> Hf Hu x y;apply Hu;apply Hf. qed.
+proof. by move=> Hf Hu x y; apply: Hu; apply: Hf. qed.
 
-lemma nosmt funi_uni (d:'a distr) : is_funiform d => is_uniform d.
-proof. by move=> H ????;apply H. qed.
+lemma nosmt funi_uni (d : 'a distr) : is_funiform d => is_uniform d.
+proof. by move=> h ????; apply: h. qed.
 
 (* -------------------------------------------------------------------- *)
-axiom mu_bounded (d:'a distr) (p:'a -> bool) : 0%r <= mu d p <= 1%r.
+axiom mu_bounded (d : 'a distr) (p : 'a -> bool) : 0%r <= mu d p <= 1%r.
 
 lemma ge0_mu (d : 'a distr) p : 0%r <= mu d p.
 proof. by case: (mu_bounded d p). qed.
@@ -284,6 +284,13 @@ move/(mu_and_weight _ (pred1 x)) => @/support <-.
 by case/witness_support=> y /> Py <-.
 qed.
 
+lemma weightE_support ['a] (d : 'a distr) : weight d = mu d (support d).
+proof.
+rewrite (@mu_split _ _ (support d)); pose p := predI _ (predC _).
+have ->: predI predT (support d) = support d by apply/fun_ext.
+suff ->: mu d p = 0%r by rewrite addr0. by rewrite mu0_false.
+qed.
+
 (* -------------------------------------------------------------------- *)
 lemma mu_mem_uniq ['a] (d : 'a distr) (s : 'a list) : 
   uniq s => mu d (mem s) = BRA.big predT (mu1 d) s.
@@ -337,27 +344,26 @@ apply/(@ltr_le_trans (r%r * mu1 d x)); last first.
 by have: 0%r <> mu1 d x; [rewrite ltr_eqF | smt(ceil_bound)].
 qed.
 
-lemma mu1_uni ['a] (dt : 'a distr) x : 
-  is_uniform dt => 
-  mu1 dt x = if x \in dt then weight dt / (size (to_seq (support dt)))%r else 0%r.
+lemma mu1_uni ['a] (d : 'a distr) x : is_uniform d => mu1 d x =
+  if x \in d then weight d / (size (to_seq (support d)))%r else 0%r.
 proof.
-  move=> dt_uni;case: (x \in dt) => Hx; 2: by smt (mu_bounded).
-  have Hf:= uniform_finite dt dt_uni.
-  have : mu dt (mem (to_seq (support dt))) = weight dt.  
-  + by apply mu_eq_support => ?;rewrite mem_to_seq 1:// => ->.
-  rewrite mu_mem_uniq 1:uniq_to_seq //.
-  have -> : BRA.big predT (fun (x0 : 'a) => mu1 dt x0) (to_seq (support dt)) = 
-            BRA.big predT (fun (x0 : 'a) => mu1 dt x) (to_seq (support dt)).
-  + by apply BRA.congr_big_seq => // z;rewrite mem_to_seq //= => ? _ _;apply dt_uni.
-  rewrite Bigreal.sumr_const count_predT=> <-;field.
-  have /has_predT /lt_fromint /#: has predT (to_seq (support dt)).
-  by rewrite hasP;exists x;rewrite mem_to_seq.
+move=> uf_d; case: (x \in d) => [xd|]; last first.
+  by rewrite eqr_le ge0_mu1 /= lerNgt.
+have fin_d := uniform_finite d uf_d.
+rewrite weightE_support; have {1}->: support d = mem (to_seq (support d)).
+  by apply/fun_ext=> y; rewrite mem_to_seq.
+rewrite mu_mem_uniq ?uniq_to_seq //=; pose F := fun y => mu1 d y.
+rewrite big_seq -(@eq_bigr _ (fun _ => mu1 d x)) /=.
+  by move=> /= y; rewrite mem_to_seq // => yd; apply/uf_d.
+rewrite -big_seq Bigreal.sumr_const count_predT.
+rewrite mulrAC divff // eq_fromint eq_sym eqr_le size_ge0 /=.
+by rewrite lezNgt /= -has_predT hasP; exists x; rewrite mem_to_seq.
 qed.
 
-lemma mu1_uni_ll ['a] (dt : 'a distr) x : 
-  is_uniform dt => is_lossless dt => 
-  mu1 dt x = if x \in dt then 1%r/ (size (to_seq (support dt)))%r else 0%r.
-proof. by move=> dt_uni dt_ll; rewrite mu1_uni // dt_ll. qed.
+lemma mu1_uni_ll ['a] (d : 'a distr) x : 
+  is_uniform d => is_lossless d => mu1 d x =
+    if x \in d then 1%r / (size (to_seq (support d)))%r else 0%r.
+proof. by move=> uf_d ll_d; rewrite mu1_uni // ll_d. qed.
 
 (* -------------------------------------------------------------------- *)
 op mnull ['a] = fun (x : 'a) => 0%r.
@@ -435,7 +441,22 @@ lemma isdistr_drat (s : 'a list) : isdistr (mrat s).
 proof.
 rewrite /mrat; split=> /= [x|J uq_J].
   by rewrite divr_ge0 // le_fromint ?(count_ge0, size_ge0).
-rewrite -divr_suml -sumr_ofint. admit.
+rewrite -divr_suml -sumr_ofint; pose F := fun x => count (pred1 x) s.
+have := size_ge0 s; rewrite lez_eqVlt => -[<-//|nz_s].
+rewrite ler_pdivr_mulr ?lt_fromint // mul1r le_fromint.
+apply/(@lez_trans (BIA.big predT F (undup s))); last first.
+  by rewrite big_count filter_predT.
+have /BIA.eq_big_perm <- := perm_filterC (mem s) J.
+rewrite BIA.big_cat addzC BIA.big_seq BIA.big1 /=.
+  move=> x /mem_filter [@/predC h _] @/F; rewrite -count_eq0.
+  by move: h; apply/contra => /has_pred1.
+have /BIA.eq_big_perm <- := perm_filterC (mem J) (undup s).
+pose s1 := filter (mem s) J; pose s2 := filter (mem J) _.
+rewrite BIA.big_cat; suff: perm_eq s1 s2.
+  move/BIA.eq_big_perm=> <-; rewrite lez_addl sumr_ge0.
+  by move=> x _; apply/count_ge0.
+apply/uniq_perm_eq; rewrite ?filter_uniq ?undup_uniq //.
+by move=> x; rewrite !mem_filter mem_undup andbC.
 qed.
 
 op drat ['a] (s : 'a list) = mk (mrat s).
@@ -509,7 +530,6 @@ proof.
 move=> nz_s; rewrite prratE count_predT divrr //.
 by rewrite eq_fromint size_eq0.
 qed.
-
 end MRat.
 
 (* --------------------------------------------------------------------- *)
@@ -576,15 +596,12 @@ proof. by move=> nz_s; apply/MRat.drat_ll; rewrite undup_nilp. qed.
 
 lemma duniform_uni (s : 'a list) : is_uniform (duniform s).
 proof. by move=> x y; rewrite !duniform1E !supp_duniform => !->. qed.
-
-
 end MUniform.
+
 export MUniform.
 
 (* -------------------------------------------------------------------- *)
 abstract theory MFinite.
-
-
 type t.
 
 clone import FinType as Support with type t <- t.
@@ -619,13 +636,10 @@ lemma dunifin_funi : is_funiform dunifin.
 proof. 
 by apply is_full_funiform;[apply dunifin_fu|apply dunifin_uni].
 qed.
-
-
 end MFinite.
 
 (* -------------------------------------------------------------------- *)
 theory MIntUniform.
-
 op drange (m n : int) = MUniform.duniform (range m n).
 
 lemma drange1E (m n x : int):
@@ -654,8 +668,8 @@ proof. by move=> H;apply MUniform.duniform_ll;rewrite range_ltn. qed.
 
 lemma drange_uni (m n : int) : is_uniform (drange m n).
 proof. apply MUniform.duniform_uni. qed.
-
 end MIntUniform.
+
 export MIntUniform.
 
 (* -------------------------------------------------------------------- *)
