@@ -291,6 +291,9 @@ have ->: predI predT (support d) = support d by apply/fun_ext.
 suff ->: mu d p = 0%r by rewrite addr0. by rewrite mu0_false.
 qed.
 
+lemma mu_le_weight ['a] (d : 'a distr) p : mu d p <= weight d.
+proof. by apply/mu_le. qed.
+
 (* -------------------------------------------------------------------- *)
 lemma mu_mem_uniq ['a] (d : 'a distr) (s : 'a list) : 
   uniq s => mu d (mem s) = BRA.big predT (mu1 d) s.
@@ -834,12 +837,18 @@ theory DScalar.
 op mscalar (k : real) (m : 'a -> real) (x : 'a) = k * (m x).
 
 lemma isdistr_mscalar k (m : 'a -> real):
-  isdistr m =>
-  0%r <= k => k <= inv (weight (mk m)) => isdistr (mscalar k m).
+  isdistr m => 0%r <= k <= inv (weight (mk m)) => isdistr (mscalar k m).
 proof.
-move=> @/mscalar [] ge0_mx le1_mx ge0_k k_le_invm; split=> [/#|].
-move=> s uniq_s.
-admit. (* partial sums of a positive sum are bounded by the sum *)
+move=> distr_m [ge0_k le_k_Vm]; split=> @/mscalar.
+  by move=> x; rewrite mulr_ge0 // ge0_isdistr.
+move=> s uq_s; have := mu_le_weight (mk m) (mem s).
+rewrite mu_mem -mulr_sumr; case: (k = 0%r) => [->//|nz_k].
+have {ge0_k nz_k} lt0_k : 0%r < k by rewrite ltr_neqAle eq_sym.
+rewrite -ler_pdivl_mull // mulr1 => le; move: (le_k_Vm).
+have gt0_Vm := ltr_le_trans _ _ _ lt0_k le_k_Vm.
+rewrite -ler_pinv 1?gtr_eqF // invrK => h; apply/(ler_trans _ _ h).
+apply/(ler_trans _ _ le) => {h le}; apply/lerr_eq.
+by rewrite undup_id //; apply/eq_bigr=> /= x _; rewrite -massE muK.
 qed.
 
 op dscalar (k : real) (d : 'a distr) = mk (mscalar k (mass d)).
@@ -847,10 +856,10 @@ op dscalar (k : real) (d : 'a distr) = mk (mscalar k (mass d)).
 abbrev (\cdot) (k : real) (d : 'a distr) = dscalar k d.
 
 lemma dscalar1E (k : real) (d : 'a distr) (x : 'a):
-  0%r <= k => k <= inv (weight d) =>
-  mu1 (k \cdot d) x = k * mu1 d x.
+  0%r <= k <= inv (weight d) => mu1 (k \cdot d) x = k * mu1 d x.
 proof.
-by move=> ge0_k le1_k;rewrite -!massE muK // isdistr_mscalar 1:isdistr_mass 2:mkK.
+move=> [ge0_k le1_k]; rewrite -!massE muK //.
+by rewrite isdistr_mscalar 1:isdistr_mass mkK.
 qed.
 
 lemma dscalarE (k : real) (d : 'a distr) (E : 'a -> bool):
@@ -887,11 +896,10 @@ lemma dscalar_ll (d : 'a distr):
 proof. move=> gt0;rewrite /is_lossless dscalarE // /#. qed.
 
 lemma dscalar_uni (k : real) (d : 'a distr):
-  0%r < k => k <= inv (weight d) =>
-  is_uniform d => is_uniform (k \cdot d).
+  0%r < k <= inv (weight d) => is_uniform d => is_uniform (k \cdot d).
 proof. 
-  move=> gt0k gekw Hu x y;rewrite !dscalar1E // ?ltrW //.
-  by rewrite !supp_dscalar // => /Hu H/H ->.
+move=> [gt0_k lek] Hu x y; rewrite !dscalar1E ?(@ltrW 0%r) //.
+by rewrite !supp_dscalar // => /Hu H/H ->.
 qed.
 
 end DScalar.
@@ -937,4 +945,3 @@ case: (weight d = 0%r) => Hw.
 + by move=> _ x y _ _; rewrite !dscale1E Hw.
 apply dscalar_uni =>//; smt (ge0_weight @Real).
 qed.
-
