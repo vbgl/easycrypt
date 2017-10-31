@@ -1,6 +1,6 @@
 open EcCoreFol
 open EcMatching
-open BaseFPattern
+open FPattern
 
 let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
   let add_name n p = Named (p, n) in
@@ -13,7 +13,7 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
   let nb_tests = 4 in
 
   let get_test i f p =
-    let err = match BaseFPattern.search f p with
+    let err = match search f p with
       | None ->
          ["Test ";
           string_of_int i;
@@ -22,9 +22,9 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
          ["Test ";
           string_of_int i;
           " : there are ";
-          string_of_int (EcMaps.Mstr.cardinal map);
+          string_of_int (M.cardinal map);
           " names : ";
-          String.concat " and " (List.map fst (EcMaps.Mstr.bindings map))
+          String.concat " and " (List.map fst (M.bindings map))
          ] in
     String.concat "" err in
 

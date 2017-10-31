@@ -201,60 +201,31 @@ end
 
 
 (* ---------------------------------------------------------------------- *)
-type 'a gen_named =
-  | Anything
-  | Base     of 'a
-  | Named    of 'a gen_named * EcSymbols.symbol
-  (* | Subterm  of 'a gen_named *)
 
 exception CannotUnify
 exception NoNext
 exception NoMatches
 
-(* module type BaseNamed = sig *)
+(* ---------------------------------------------------------------------- *)
 
-(*   type base *)
-(*   type engine *)
-(*   type named1 *)
-(*   type pos *)
+module Name : module type of String
 
-(*   type interval = *)
-(*     | Son     of pos *)
-(*     (\* | Between of pos * pos *\) *)
+(* ---------------------------------------------------------------------- *)
 
-(*   type matches = base Mstr.t *)
+module BaseFPattern(Name : EcMaps.Map.OrderedType) : sig
 
-(*   type named = named1 gen_named *)
+  type name = Name.t
 
-(*   val mkengine    : base -> engine *)
-(*   val eat_down    : engine -> engine *)
-(*   val eat_next    : engine -> engine *)
-(*   val eat_up      : engine -> engine *)
-(*   val eat         : engine -> engine *)
-(*   val eat_base    : engine -> named1 -> engine * (pos * named) list *)
-(*   val position    : engine -> pos *)
-(*   val goto        : engine -> pos -> engine *)
-(*   (\* add_match can raise the exception : CannotUnify *\) *)
-(*   val add_match   : engine -> interval -> EcSymbols.symbol -> matches -> engine *)
-(*   val get_matches : engine -> matches *)
-(* end *)
-
-
-(* module Named(B : BaseNamed) : sig *)
-(*   type named  = B.named *)
-(*   type base = B.base *)
-(*   type matches = base Mstr.t *)
-(*   type interval = B.interval *)
-
-(*   val search : named -> base -> matches option *)
-(* end *)
-
-module BaseFPattern : sig
+  module M : module type of Map.Make(Name)
 
   type pattern =
     | Anything
-    | Named   of pattern * EcSymbols.symbol
+    | Named   of pattern * name
     | Sub     of pattern
+    | Or      of pattern list
+
+    | Memory  of name
+
     | Pif     of pattern * pattern * pattern
     | Pint    of EcBigInt.zint
     | Plocal  of EcIdent.t
@@ -265,8 +236,8 @@ module BaseFPattern : sig
     | Pmatch  of pattern * pattern list
     (* | Pquant  of quantif * bindings * pattern *)
     (* | Plet    of lpattern * pattern * pattern *)
-    (* | Ppvar   of EcTypes.prog_var * EcMemory.memory *)
-    (* | Pglob   of EcPath.mpath * EcMemory.memory *)
+    (* | Ppvar   of pattern * pattern (* EcTypes.prog_var * EcMemory.memory *) *)
+    (* | Pglob   of pattern * pattern (* EcPath.mpath * EcMemory.memory *) *)
     (* | FhoareF of hoareF (\* $hr / $hr *\) *)
     (* | FhoareS of hoareS *)
     (* | FbdHoareF of bdHoareF (\* $hr / $hr *\) *)
@@ -276,48 +247,46 @@ module BaseFPattern : sig
     (* | FeagerF of eagerF *)
     (* | Ppr of EcMemory.memory * EcPath.xpath * pattern * pattern *)
 
-  type matches = form Mstr.t
-  type pos = int list
+  type t_matches =
+    | Form of form
+    | Mem  of EcMemory.memory
+  type matches = t_matches M.t
+
   type to_match = form * pattern
-  type pat_zipper =
+
+  type pat_continuation =
     | ZTop
-    | Znamed     of form * EcSymbols.symbol                  * pat_zipper
-    | Zor        of pat_zipper * engine list                 * nengine
-    | Zand       of to_match list * to_match list            * pat_zipper
-    (* | Zproj      of                                            pat_zipper *)
-    (* | PZquant    of form * quantif * bindings                * pat_zipper *)
-    (* | PZmatch1   of form * form list * pattern list * ty       * pat_zipper *)
-    (* | PZmatch2   of form * form * form list * form list * ty   * pat_zipper *)
-    (* | PZlet1     of form * lpattern * form                   * pat_zipper *)
-    (* | PZlet2     of form * lpattern * form                   * pat_zipper *)
-    (* | PZprArgs   of form * EcMemory.memory * EcPath.xpath * form *)
-    (*                                                   * pat_zipper *)
-    (* | PZprEvent  of form * EcMemory.memory * EcPath.xpath * form *)
-    (*                                                   * pat_zipper *)
+    | Znamed     of t_matches * name * pat_continuation
+    (* Zor (cont, e_list, ne) :
+       - cont   : the continuation if the matching is correct
+       - e_list : if not, the sorted list of next engines to try matching with
+       - ne     : if no match at all, then take the nengine to go up
+     *)
+    | Zor        of pat_continuation * engine list * nengine
+    (* Zand (before, after, cont) :
+       - before : list of couples (form, pattern) that has already been checked
+       - after  : list of couples (form, pattern) to check in the following
+       - cont   : continuation if all the matches succeed
+     *)
+    | Zand       of to_match list * to_match list * pat_continuation
 
-  and engine = private {
-      e_form     : form;
-      e_zipper   : pat_zipper;
-      e_pattern  : pattern;
-      e_map      : matches;
+  and engine = {
+      e_form         : form;
+      e_continuation : pat_continuation;
+      e_pattern      : pattern;
+      e_map          : matches;
     }
 
-  and nengine = private {
-      ne_zipper   : pat_zipper;
-      ne_map      : matches;
+  and nengine = {
+      ne_continuation : pat_continuation;
+      ne_map          : matches;
     }
-  (* ---------------------------------------------------------------------- *)
 
   val get_matches   :  engine -> matches
   val get_n_matches : nengine -> matches
   val search        : form -> pattern -> matches option
 end
 
-(* module FormPattern : sig *)
-(*   type named = BaseFPattern.named *)
-(*   type base = BaseFPattern.base *)
-(*   type matches = base Mstr.t *)
-(*   type interval = BaseFPattern.interval *)
+(* ---------------------------------------------------------------------- *)
 
-(*   val search : named -> base -> matches option *)
-(* end *)
+module FPattern : module type of BaseFPattern(Name)
