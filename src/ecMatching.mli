@@ -16,6 +16,7 @@ open EcFol
 open EcUnify
 open EcEnv
 open EcGenRegexp
+open EcPath
 
 (* -------------------------------------------------------------------- *)
 module Zipper : sig
@@ -206,38 +207,38 @@ exception CannotUnify
 exception NoNext
 exception NoMatches
 
-(* ---------------------------------------------------------------------- *)
-
-module Name : module type of String
 
 (* ---------------------------------------------------------------------- *)
 
-module BaseFPattern(Name : EcMaps.Map.OrderedType) : sig
+module FPattern : sig
 
-  type name = Name.t
+  type name = EcIdent.t
 
-  module M : module type of Map.Make(Name)
+  module M : module type of Map.Make(struct
+                                      include EcIdent
+                                      let compare = id_compare
+                                    end)
 
   type pattern =
-    | Anything
-    | Named   of pattern * name
-    | Sub     of pattern
-    | Or      of pattern list
+    | Panything
+    | Pnamed    of pattern * name
+    | Psub      of pattern
+    | Por       of pattern list
 
-    | Memory  of name
+    | Pobject   of object_matches
 
     | Pif     of pattern * pattern * pattern
     | Pint    of EcBigInt.zint
     | Plocal  of EcIdent.t
-    | Pop     of EcPath.path * EcTypes.ty list
+    | Pop     of path * EcTypes.ty list
     | Papp    of pattern * pattern list
     | Ptuple  of pattern list
     | Pproj   of pattern * int
     | Pmatch  of pattern * pattern list
     (* | Pquant  of quantif * bindings * pattern *)
     (* | Plet    of lpattern * pattern * pattern *)
-    (* | Ppvar   of pattern * pattern (* EcTypes.prog_var * EcMemory.memory *) *)
-    (* | Pglob   of pattern * pattern (* EcPath.mpath * EcMemory.memory *) *)
+    (* | Ppvar   of EcTypes.prog_var * EcMemory.memory *)
+    (* | Pglob   of EcPath.mpath * EcMemory.memory *)
     (* | FhoareF of hoareF (\* $hr / $hr *\) *)
     (* | FhoareS of hoareS *)
     (* | FbdHoareF of bdHoareF (\* $hr / $hr *\) *)
@@ -245,14 +246,19 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) : sig
     (* | FequivF of equivF (\* $left,$right / $left,$right *\) *)
     (* | FequivS of equivS *)
     (* | FeagerF of eagerF *)
-    (* | Ppr of EcMemory.memory * EcPath.xpath * pattern * pattern *)
+    (* | Ppr of pattern * EcPath.xpath * pattern * form *)
 
-  type t_matches =
-    | Form of form
-    | Mem  of EcMemory.memory
+   and object_matches =
+    | Oform    of form
+    | Omem     of EcMemory.memory
+    | Ompath   of mpath
+    | Oxpath   of xpath
+
+  type t_matches = object_matches (* * bindings *)
+
   type matches = t_matches M.t
 
-  type to_match = form * pattern
+  type to_match = t_matches * pattern
 
   type pat_continuation =
     | ZTop
@@ -271,7 +277,7 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) : sig
     | Zand       of to_match list * to_match list * pat_continuation
 
   and engine = {
-      e_form         : form;
+      e_head         : t_matches;
       e_continuation : pat_continuation;
       e_pattern      : pattern;
       e_map          : matches;
@@ -282,11 +288,7 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) : sig
       ne_map          : matches;
     }
 
-  val get_matches   :  engine -> matches
-  val get_n_matches : nengine -> matches
+  (* val get_matches   :  engine -> matches *)
+  (* val get_n_matches : nengine -> matches *)
   val search        : form -> pattern -> matches option
 end
-
-(* ---------------------------------------------------------------------- *)
-
-module FPattern : module type of BaseFPattern(Name)

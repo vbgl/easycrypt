@@ -3,7 +3,7 @@ open EcMatching
 open FPattern
 
 let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
-  let add_name n p = Named (p, n) in
+  let add_name n p = Pnamed (p, n) in
   let rec tuple_r f acc (i : int) =
     if i <= 0 then acc
     else tuple_r f (f :: acc) (i-1) in
@@ -24,7 +24,7 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
           " : there are ";
           string_of_int (M.cardinal map);
           " names : ";
-          String.concat " and " (List.map fst (M.bindings map))
+          String.concat " and " (List.map EcIdent.tostring (List.map fst (M.bindings map)))
          ] in
     String.concat "" err in
 
@@ -38,10 +38,10 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
          get_test i f p
 
       | 1 ->
-         let (name1 : EcSymbols.symbol) = "tuple1" in
-         let name2 = "tuple2" in
-         let name3 = "tuple3" in
-         let name4 = "tuple4" in
+         let name1 = EcIdent.create "tuple1" in
+         let name2 = EcIdent.create "tuple2" in
+         let name3 = EcIdent.create "tuple3" in
+         let name4 = EcIdent.create "tuple4" in
 
          let (f : form) = EcCoreFol.f_int EcBigInt.one in
          let p = Pint EcBigInt.one in
@@ -87,9 +87,9 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
 
       | 2 ->
          let cacahuete = EcIdent.create "cacahuete" in
-         let pcond = Anything in
+         let pcond = Panything in
          let pthen = Plocal cacahuete in
-         let pelse = Pproj (Anything,2) in
+         let pelse = Pproj (Panything,2) in
          let p = Pif (pcond,pthen,pelse) in
 
          let fcond = f_false in
@@ -100,9 +100,9 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
 
       | 3 ->
          let cacahuete = EcIdent.create "cacahuete" in
-         let pcond = Anything in
+         let pcond = Panything in
          let pthen = Plocal cacahuete in
-         let pelse = Sub (Pproj (Anything,2)) in
+         let pelse = Psub (Pproj (Panything,2)) in
          let p = Pif (pcond,pthen,pelse) in
 
          let fcond = f_false in

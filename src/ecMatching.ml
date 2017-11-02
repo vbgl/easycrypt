@@ -19,6 +19,7 @@ open EcTypes
 open EcModules
 open EcFol
 open EcGenRegexp
+open EcPath
 
 (* -------------------------------------------------------------------- *)
 module Zipper = struct
@@ -1075,28 +1076,32 @@ exception CannotUnify
 exception NoNext
 
 
+module Name = struct
+  include EcIdent
+  let compare = id_compare
+end
+
+
 (* -------------------------------------------------------------------------- *)
 
-module Name = String
-
-module BaseFPattern(Name : EcMaps.Map.OrderedType) = struct
+module FPattern = struct
 
   type name = Name.t
 
   module M = Map.Make(Name)
 
   type pattern =
-    | Anything
-    | Named   of pattern * name
-    | Sub     of pattern
-    | Or      of pattern list
+    | Panything
+    | Pnamed    of pattern * name
+    | Psub      of pattern
+    | Por       of pattern list
 
-    | Memory  of name
+    | Pobject   of object_matches
 
     | Pif     of pattern * pattern * pattern
     | Pint    of EcBigInt.zint
     | Plocal  of EcIdent.t
-    | Pop     of EcPath.path * EcTypes.ty list
+    | Pop     of path * EcTypes.ty list
     | Papp    of pattern * pattern list
     | Ptuple  of pattern list
     | Pproj   of pattern * int
@@ -1112,14 +1117,20 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) = struct
     (* | FequivF of equivF (\* $left,$right / $left,$right *\) *)
     (* | FequivS of equivS *)
     (* | FeagerF of eagerF *)
-    (* | Ppr of EcMemory.memory * EcPath.xpath * pattern * pattern *)
+    (* | Ppr of pattern * EcPath.xpath * pattern * form *)
 
-  type t_matches =
-    | Form of form
-    | Mem  of EcMemory.memory
+   and object_matches =
+    | Oform    of form
+    | Omem     of EcMemory.memory
+    | Ompath   of mpath
+    | Oxpath   of xpath
+
+  type t_matches = object_matches (* * bindings *)
+
   type matches = t_matches M.t
 
-  type to_match = form * pattern
+  type to_match = t_matches * pattern
+
   type pat_continuation =
     | ZTop
     | Znamed     of t_matches * name * pat_continuation
@@ -1137,7 +1148,7 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) = struct
     | Zand       of to_match list * to_match list * pat_continuation
 
   and engine = {
-      e_form         : form;
+      e_head         : t_matches;
       e_continuation : pat_continuation;
       e_pattern      : pattern;
       e_map          : matches;
@@ -1147,11 +1158,10 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) = struct
       ne_continuation : pat_continuation;
       ne_map          : matches;
     }
-  (* ---------------------------------------------------------------------- *)
 
   (* val mkengine    : base -> engine *)
   let mkengine (f : form) (p : pattern) : engine = {
-      e_form         = f ;
+      e_head         = Oform f ;
       e_continuation = ZTop ;
       e_map          = M.empty ;
       e_pattern      = p ;
@@ -1161,55 +1171,53 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) = struct
     | Match
     | NoMatch
 
+  let object_equal (o1 : object_matches) (o2 : object_matches) : bool =
+    match o1,o2 with
+    | Oform f1, Oform f2 -> f_equal f1 f2
+    | Omem m1, Omem m2 -> EcMemory.mem_equal m1 m2
+    | Ompath p1, Ompath p2 -> m_equal p1 p2
+    | Oxpath x1, Oxpath x2 -> x_equal x1 x2
+    | (Oform _, (Omem _|Ompath _|Oxpath _))
+      | (Omem _, (Oform _|Ompath _|Oxpath _))
+      | (Ompath _, (Omem _|Oform _|Oxpath _))
+      | (Oxpath _, (Omem _|Ompath _|Oform _)) -> false
+
   (* add_match can raise the exception : CannotUnify *)
-  let add_match_form (map : matches) (name : name) (f1 : form) = (* FIXME : f_equal should be replaced by EcReduction.is_conv *)
+  (* val add_match : matches -> name -> t_matches -> matches *)
+  let add_match (map : matches) (name : name) (o : object_matches) =
     let map = match M.find_opt name map with
-      | None -> M.add name (Form f1) map
-      | Some (Mem _) -> raise CannotUnify
-      | Some (Form f2) -> if f_equal f1 f2 then map
+      | None -> M.add name o map
+      | Some  x -> if object_equal x o then map
                    else raise CannotUnify
     in map
-  let add_match_mem (map : matches) (name : name) (m1 : EcMemory.memory) =
-    let map = match M.find_opt name map with
-      | None -> M.add name (Mem m1) map
-      | Some (Mem m2) -> if EcMemory.mem_equal m1 m2 then map
-                         else raise CannotUnify
-      | Some (Form _) -> raise CannotUnify
-    in map
-
-  (* val add_match : matches -> name -> t_matches -> matches *)
-  let add_match (map : matches) (name : name) = function
-    | Form f -> add_match_form map name f
-    | Mem  m -> add_match_mem  map name m
 
   let e_next (e : engine) : nengine =
     { ne_continuation = e.e_continuation;
       ne_map = e.e_map;
     }
 
-  let n_engine (e_form : form) (e_pattern : pattern) (n : nengine) =
-    { e_form; e_pattern; e_continuation = n.ne_continuation; e_map = n.ne_map }
-
+  let n_engine (e_head : t_matches) (e_pattern : pattern) (n : nengine) =
+    { e_head; e_pattern; e_continuation = n.ne_continuation; e_map = n.ne_map }
 
   let sub_engine e p f =
-    { e with e_form = f; e_pattern = Sub p }
+    { e with e_head = Oform f; e_pattern = Psub p }
 
   let rec process (e : engine) : nengine =
-    match e.e_pattern, e.e_form.f_node with
-    | Anything, _ -> next Match e
-    | Named (p,name), _ ->
+    match e.e_pattern, e.e_head with
+    | Panything, _ -> next Match e
+    | Pnamed (p,name), _ ->
        process { e with
                  e_pattern = p;
-                 e_continuation = Znamed(Form e.e_form,name,e.e_continuation);
+                 e_continuation = Znamed(e.e_head,name,e.e_continuation);
                }
-    | Sub p, _ ->
+    | Psub p, _ ->
        let le = sub_engines e p in
        process { e with
                  e_pattern = p;
                  e_continuation = Zor (e.e_continuation,le,e_next e);
                }
-    | Or [], _ -> next NoMatch e
-    | Or (p::pl), _ ->
+    | Por [], _ -> next NoMatch e
+    | Por (p::pl), _ ->
        let f p = { e with
                    e_pattern = p;
                  } in
@@ -1217,88 +1225,107 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) = struct
                  e_pattern = p;
                  e_continuation = Zor (e.e_continuation,List.map f pl,e_next e);
                }
-    | Pif (pcond,p1,p2), Fif (cond,b1,b2) ->
-       process { e with
-                 e_form = cond;
-                 e_pattern = pcond;
-                 e_continuation = Zand ([],[(b1,p1);(b2,p2)],e.e_continuation);
-               }
-    | Pint pi, Fint fi ->
-       if EcBigInt.equal pi fi
-       then next Match e
-       else next NoMatch e
-    | Plocal id1, Flocal id2 ->
-       if EcIdent.id_equal id1 id2
-       then next Match e
-       else next NoMatch e
-    | Pop (op1,lty1), Fop (op2,lty2) ->
-       if EcPath.p_equal op1 op2 && List.all2 ty_equal lty1 lty2 (* FIXME : replace by EqTest.for_type *)
-       then next Match e
-       else next NoMatch e
-    | Papp (pop,pargs), Fapp (fop,fargs) ->
-       let pl,fl = List.length pargs, List.length fargs in
-       if fl < pl
-       then next NoMatch e
-       else let fargs1,fargs2 = List.split_at (fl - pl) fargs in
+    | Pif (pcond,p1,p2), Oform f ->
+       begin match f_node f with
+       | Fif (cond,b1,b2) ->
+          process { e with
+                    e_head = Oform cond;
+                    e_pattern = pcond;
+                    e_continuation = Zand ([],[(Oform b1,p1);(Oform b2,p2)],e.e_continuation);
+                  }
+       | _ -> next NoMatch e
+       end
+    | Pint pi, Oform f ->
+       begin match f_node f with
+       | Fint fi ->
+          if EcBigInt.equal pi fi
+          then next Match e
+          else next NoMatch e
+       | _ -> next NoMatch e
+       end
+    | Plocal id1, Oform f ->
+       begin match f_node f with
+       | Flocal id2 ->
+          if EcIdent.id_equal id1 id2
+          then next Match e
+          else next NoMatch e
+       | _ -> next NoMatch e
+       end
+    | Pop (op1,lty1), Oform f ->
+       begin match f_node f with
+       | Fop (op2,lty2) ->
+          if EcPath.p_equal op1 op2 && List.all2 ty_equal lty1 lty2 (* FIXME : replace by EqTest.for_type *)
+          then next Match e
+          else next NoMatch e
+       | _ -> next NoMatch e
+       end
+    | Papp (pop,pargs), Oform f ->
+       begin match f_node f with
+       | Fapp (fop,fargs) ->
+          let pl,fl = List.length pargs, List.length fargs in
+          if fl < pl
+          then next NoMatch e
+          else
+            let fargs1,fargs2 = List.split_at (fl - pl) fargs in
             let fop' = f_app fop fargs1 (EcTypes.toarrow (List.map f_ty fargs2) (f_ty fop)) in
-            let to_match_args = List.combine fargs2 pargs in
+            let to_match_args = List.combine (List.map (fun x -> Oform x)fargs2) pargs in
             process { e with
                       e_pattern = pop;
-                      e_form = fop';
+                      e_head = Oform fop';
                       e_continuation = Zand ([],to_match_args,e.e_continuation);
                     }
-    | Ptuple [], Ftuple [] -> next Match e
-    | Ptuple [], Ftuple _
-      | Ptuple _, Ftuple [] -> next NoMatch e
-    | Ptuple (p::ptuple), Ftuple (f::ftuple) ->
-       if (List.length ptuple = List.length ftuple)
-       then process { e with
-                      e_pattern = p;
-                      e_form = f;
-                      e_continuation = Zand ([],List.combine ftuple ptuple,e.e_continuation);
-                    }
-       else next NoMatch e
-    | Pproj (e_pattern,i), Fproj (e_form,j) when i = j ->
-       process { e with
-                 e_pattern;
-                 e_form;
-               }
-    | Pproj _, Fproj _ -> next NoMatch e
-    | Pmatch (p,pl) , Fmatch (f,fl,_) ->
-       if (List.length fl = List.length pl)
-       then process { e with
-                      e_pattern = p;
-                      e_form = f;
-                      e_continuation = Zand ([],List.combine fl pl,e.e_continuation);
-                    }
-       else next NoMatch e
-    | Memory _, _-> raise NoMatches (* FIXME *)
-    | (Pproj _, (Fquant _|Fif _|Fmatch _|Flet _|Fint _|Flocal _|Fpvar _
-                 |Fglob _|Fop _|Fapp _|Ftuple _|FhoareF _|FhoareS _
-                 |FbdHoareF _|FbdHoareS _|FequivF _|FequivS _|FeagerF _|Fpr _))
-      | (Ptuple _, (Fquant _|Fif _|Fmatch _|Flet _|Fint _|Flocal _|Fpvar _
-                    |Fglob _|Fop _|Fapp _|Fproj _|FhoareF _|FhoareS _
-                    |FbdHoareF _|FbdHoareS _|FequivF _|FequivS _|FeagerF _|Fpr _))
-      | (Papp _, (Fquant _|Fif _|Fmatch _|Flet _|Fint _|Flocal _|Fpvar _
-                  |Fglob _|Fop _|Ftuple _|Fproj _|FhoareF _|FhoareS _
-                  |FbdHoareF _|FbdHoareS _|FequivF _|FequivS _|FeagerF _|Fpr _))
-      | (Pop _, (Fquant _|Fif _|Fmatch _|Flet _|Fint _|Flocal _|Fpvar _
-                 |Fglob _|Fapp _|Ftuple _|Fproj _|FhoareF _|FhoareS _
-                 |FbdHoareF _|FbdHoareS _|FequivF _|FequivS _|FeagerF _|Fpr _))
-      | (Plocal _, (Fquant _|Fif _|Fmatch _|Flet _|Fint _|Fop _|Fpvar _
-                    |Fglob _|Fapp _|Ftuple _|Fproj _|FhoareF _|FhoareS _
-                    |FbdHoareF _|FbdHoareS _|FequivF _|FequivS _|FeagerF _|Fpr _))
-      | (Pint _, (Fquant _|Fif _|Fmatch _|Flet _|Fop _|Fpvar _
-                  |Fglob _|Fapp _|Ftuple _|Fproj _|FhoareF _|FhoareS _|Flocal _
-                  |FbdHoareF _|FbdHoareS _|FequivF _|FequivS _|FeagerF _|Fpr _))
-      | (Pif _, (Fquant _|Fmatch _|Flet _|Fint _|Fop _|Fpvar _
-                 |Fglob _|Fapp _|Ftuple _|Fproj _|FhoareF _|FhoareS _|Flocal _
-                 |FbdHoareF _|FbdHoareS _|FequivF _|FequivS _|FeagerF _|Fpr _))
-      | (Pmatch _, (Fquant _|Flet _|Fint _|Fop _|Fpvar _|Fif _
-                 |Fglob _|Fapp _|Ftuple _|Fproj _|FhoareF _|FhoareS _|Flocal _
-                 |FbdHoareF _|FbdHoareS _|FequivF _|FequivS _|FeagerF _|Fpr _))
-      -> next NoMatch e
-    (* | _,_ -> assert false (\* FIXME : should disapear without warnings *\) *)
+       | _ -> next NoMatch e
+       end
+    | Ptuple [], Oform f ->
+       begin match f_node f with
+       | Ftuple [] -> next Match e
+       | _ -> next NoMatch e
+       end
+    | Ptuple (p::ptuple), Oform f ->
+       begin match f_node f with
+       | Ftuple [] -> next NoMatch e
+       | Ftuple (f::ftuple) ->
+          if (List.length ptuple = List.length ftuple)
+          then process {
+                   e with
+                   e_pattern = p;
+                   e_head = Oform f;
+                   e_continuation =
+                     Zand ([],List.combine (List.map (fun x -> Oform x) ftuple)
+                                           ptuple,
+                           e.e_continuation);
+                       }
+          else next NoMatch e
+       | _ -> next NoMatch e
+       end
+    | Pproj (e_pattern,i), Oform f ->
+       begin match f_node f with
+       | Fproj (f,j) when i = j ->
+          process { e with
+                    e_pattern;
+                    e_head = Oform f;
+                  }
+       | _ -> next NoMatch e
+       end
+    | Pmatch (p,pl) , Oform f ->
+       begin match f_node f with
+       | Fmatch (f,fl,_) when (List.length fl = List.length pl) ->
+          process {
+              e with
+              e_pattern = p;
+              e_head = Oform f;
+              e_continuation =
+                Zand ([],List.combine (List.map (fun x -> Oform x) fl)
+                                      pl,
+                      e.e_continuation);
+            }
+       | _ -> next NoMatch e
+       end
+    | Pobject o1, o2 when object_equal o1 o2 -> next Match e
+    | Pobject _, _ -> next NoMatch e
+
+    | (Pproj _|Ptuple _|Papp _|Pop _|Plocal _|Pint _|Pif _|Pmatch _),
+      (Omem _|Ompath _|Oxpath _) -> next NoMatch e
 
   and next (m : ismatch) (e : engine) : nengine = next_n m (e_next e)
 
@@ -1340,27 +1367,30 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) = struct
        process { e' with e_continuation = Zor (e'.e_continuation, engines, ne); }
 
   and sub_engines (e : engine) (p : pattern) : engine list =
-    match e.e_form.f_node with
-    | Fquant _
-    | Fpvar _
-    | Fglob _
-    | Flet _
-    | FhoareF _
-    | FhoareS _
-    | FbdHoareF _
-    | FbdHoareS _
-    | FequivF _
-    | FequivS _
-    | FeagerF _
-    | Fint _
-    | Flocal _
-    | Fop _
-    | Fpr _ -> []
-    | Fif (cond,f1,f2) -> List.map (sub_engine e p) [cond;f1;f2]
-    | Fapp (f, args) -> List.map (sub_engine e p) (f::args)
-    | Ftuple args -> List.map (sub_engine e p) args
-    | Fproj (f,_) -> [sub_engine e p f]
-    | Fmatch (f,fl,_) -> List.map (sub_engine e p) (f::fl)
+    match e.e_head with
+    | Omem _ | Ompath _ | Oxpath _ -> []
+    | Oform f ->
+       match f_node f with
+       | Fquant _
+         | Fpvar _
+         | Fglob _
+         | Flet _
+         | FhoareF _
+         | FhoareS _
+         | FbdHoareF _
+         | FbdHoareS _
+         | FequivF _
+         | FequivS _
+         | FeagerF _
+         | Fint _
+         | Flocal _
+         | Fop _
+         | Fpr _ -> []
+       | Fif (cond,f1,f2) -> List.map (sub_engine e p) [cond;f1;f2]
+       | Fapp (f, args) -> List.map (sub_engine e p) (f::args)
+       | Ftuple args -> List.map (sub_engine e p) args
+       | Fproj (f,_) -> [sub_engine e p f]
+       | Fmatch (f,fl,_) -> List.map (sub_engine e p) (f::fl)
 
   let get_matches (e : engine) : matches = e.e_map
   let get_n_matches (e : nengine) : matches = e.ne_map
@@ -1370,6 +1400,3 @@ module BaseFPattern(Name : EcMaps.Map.OrderedType) = struct
     | NoMatches -> None
 
 end
-
-
-module FPattern = BaseFPattern(Name)
