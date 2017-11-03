@@ -227,10 +227,8 @@ module FPattern : sig
 
     | Pobject   of object_matches
 
+    (* form patterns *)
     | Pif     of pattern * pattern * pattern
-    | Pint    of EcBigInt.zint
-    | Plocal  of EcIdent.t
-    | Pop     of path * EcTypes.ty list
     | Papp    of pattern * pattern list
     | Ptuple  of pattern list
     | Pproj   of pattern * int
@@ -248,11 +246,27 @@ module FPattern : sig
     (* | FeagerF of eagerF *)
     (* | Ppr of pattern * EcPath.xpath * pattern * form *)
 
+    (* path patterns *)
+    (*                   symbol  , path option *)
+    | Ppath_id        of EcSymbols.symbol
+    | Ppath           of pattern * pattern option
+
+    (* mpath patterns *)
+    | Pmpath          of pattern * pattern list
+    | Pmpath_local    of ident
+    | Pmpath_concrete of pattern * pattern option
+
+    (* xpath patterns *)
+    (*                   mpath   , path   *)
+    | Pxpath          of pattern * pattern
+
+
    and object_matches =
     | Oform    of form
     | Omem     of EcMemory.memory
     | Ompath   of mpath
     | Oxpath   of xpath
+    | Opath    of path
 
   type t_matches = object_matches (* * bindings *)
 
@@ -290,5 +304,6 @@ module FPattern : sig
 
   (* val get_matches   :  engine -> matches *)
   (* val get_n_matches : nengine -> matches *)
-  val search        : form -> pattern -> matches option
+  val search          : form -> pattern -> matches option
+  val pattern_of_form : bindings -> form -> pattern
 end

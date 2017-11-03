@@ -34,7 +34,7 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
       | i when i < 0 -> ""
       | 0 ->
          let (f : form) = EcCoreFol.f_int EcBigInt.one in
-         let p = Pint EcBigInt.one in
+         let p = Pobject (Oform f) in
          get_test i f p
 
       | 1 ->
@@ -44,7 +44,7 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
          let name4 = EcIdent.create "tuple4" in
 
          let (f : form) = EcCoreFol.f_int EcBigInt.one in
-         let p = Pint EcBigInt.one in
+         let p = Pobject (Oform (EcCoreFol.f_int EcBigInt.one)) in
          let p = add_name name1 p in
 
          let f = tuple f size_tuple in
@@ -88,7 +88,7 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
       | 2 ->
          let cacahuete = EcIdent.create "cacahuete" in
          let pcond = Panything in
-         let pthen = Plocal cacahuete in
+         let pthen = Pobject (Oform (f_local cacahuete EcTypes.tint)) in
          let pelse = Pproj (Panything,2) in
          let p = Pif (pcond,pthen,pelse) in
 
@@ -101,7 +101,7 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
       | 3 ->
          let cacahuete = EcIdent.create "cacahuete" in
          let pcond = Panything in
-         let pthen = Plocal cacahuete in
+         let pthen = Pobject (Oform (f_local cacahuete EcTypes.tint)) in
          let pelse = Psub (Pproj (Panything,2)) in
          let p = Pif (pcond,pthen,pelse) in
 
