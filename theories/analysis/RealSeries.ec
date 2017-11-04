@@ -225,6 +225,33 @@ by rewrite !ger0_norm ?neg_ge0 ler_neg.
 qed.
 
 (* -------------------------------------------------------------------- *)
+lemma nosmt summable_le (s2 s1 : 'a -> real) :
+     summable s2
+  => (forall x, `|s1 x| <= `|s2 x|)
+  => summable s1.
+proof.
+by case=> M h le_s12; exists M => J /h; apply/ler_trans/Bigreal.ler_sum.
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt summable_le_pos (s1 s2 : 'a -> real) :
+     summable s2
+  => (forall x, 0%r <= s1 x <= s2 x)
+  => summable s1.
+proof.
+move=> sbl_s2 h; apply/(summable_le _ sbl_s2) => x.
+by have {h} [h1 h2] := h x; rewrite !ger0_norm // (ler_trans _ h1 h2).
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt summable_cond (s : 'a -> real) (p : 'a -> bool) :
+  summable s => summable (fun x => if p x then s x else 0%r).
+proof.
+move=> sbl_s; apply/(summable_le _ sbl_s) => x /=.
+by case: (p x) => // _; rewrite normr0 normr_ge0.
+qed.
+
+(* -------------------------------------------------------------------- *)
 lemma nosmt eq_sum (s1 s2 : 'a -> real) :
   (forall x, s1 x = s2 x) => sum s1 = sum s2.
 proof. by move/fun_ext=> ->. qed.

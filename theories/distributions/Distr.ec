@@ -49,7 +49,11 @@ axiom muE ['a] (d : 'a distr) (E : 'a -> bool):
 
 abbrev mu1 (d:'a distr) x = mu d (pred1 x).
 
-axiom massE ['a] (d : 'a distr) x : mass d x = mu1 d x. 
+lemma massE ['a] (d : 'a distr) x : mass d x = mu1 d x. 
+proof.
+rewrite muE (@sumE_fin _ [x]) ?big_seq1 //=.
+by move=> y @/pred1; case: (y = x).
+qed.
 
 (* -------------------------------------------------------------------- *)
 op mk : ('a -> real) -> 'a distr.
@@ -105,6 +109,10 @@ exists 1%r=> s eq_s; rewrite (@eq_bigr _ _ (mass d)) => /=.
   by move=> i _; rewrite ger0_norm // ge0_mass.
 by apply/le1_mass.
 qed.
+
+lemma summable_mass_cond (d : 'a distr) (p : 'a -> bool) :
+  summable (fun x => if p x then mass d x else 0%r).
+proof. by apply/summable_cond/summable_mass. qed.
 
 lemma countable_mass ['a] (d : 'a distr):
   countable (fun x => mass d x <> 0%r).
@@ -184,8 +192,11 @@ op support (d : 'a distr) x = 0%r < mu1 d x.
 abbrev (\in) (x : 'a) (d : 'a distr) = support d x.
 abbrev (\notin) (x : 'a) (d : 'a distr) = !support d x.
 
-lemma supportP (d : 'a distr) x : support d x = (0%r <> mu1 d x).
+lemma supportP (d : 'a distr) x : (x \in d) <=> (0%r <> mu1 d x).
 proof. by rewrite eqr_le -massE ge0_mass /= lerNgt massE. qed.
+
+lemma supportPn (d : 'a distr) x : (x \notin d) <=> (mu1 d x = 0%r).
+proof. by rewrite supportP eq_sym. qed.
 
 pred is_lossless (d : 'a distr) = weight d = 1%r.
 
@@ -212,9 +223,18 @@ proof. by case: (mu_bounded d p). qed.
 lemma le1_mu (d : 'a distr) p : mu d p <= 1%r.
 proof. by case: (mu_bounded d p). qed.
 
-axiom mu_le (d:'a distr) (p q:'a -> bool):
-  (forall x, x \in d => p x => q x) =>
-  mu d p <= mu d q.
+lemma mu_le (d : 'a distr) (p q : 'a -> bool):
+     (forall x, x \in d => p x => q x)
+  => mu d p <= mu d q.
+proof.
+move=> le_pq; rewrite !muE ler_sum /=.
++ move=> x; case: (p x) => Px; case: (q x) => Qx //=; last first.
+  - by apply/ge0_mass.
+  case: (x \in d); first by move/le_pq => /(_ Px).
+  by move/supportPn; rewrite massE => ->.
++ by apply/summable_mass_cond.
++ by apply/summable_mass_cond.
+qed.
 
 lemma mu_sub (d:'a distr) (p q:('a -> bool)):
   p <= q => mu d p <= mu d q.
