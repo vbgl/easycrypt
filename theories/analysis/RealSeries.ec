@@ -156,11 +156,21 @@ lemma nosmt sum_Nsbl (s : 'a -> real) : !summable s => sum s = 0%r.
 proof. by move=> @/sum ->. qed.
 
 (* -------------------------------------------------------------------- *)
-axiom nosmt sumE (s : 'a -> real) :
+lemma nosmt sumE (s : 'a -> real) :
   forall (J : int -> 'a option),
        enumerate J (support s)
     => summable s
     => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
+proof. admitted.
+
+(* -------------------------------------------------------------------- *)
+lemma sumEw (s : 'a -> real) :
+  forall (J : int -> 'a option) (p : 'a -> bool),
+       enumerate J p
+    => p <= support s
+    => summable s
+    => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
+proof. admitted.
 
 (* -------------------------------------------------------------------- *)
 (*
@@ -296,9 +306,12 @@ move=> cv1 cv2; pose s := fun x => s1 x + s2 x.
 have cvs: summable s by move=> @/s; apply/summableD.
 have /sum_to_enum[J1 cJ1] := cv1; have /sum_to_enum[J2 cj2] := cv2.
 have /sum_to_enum[Js cJs] := cvs; pose J := cunions [Js; J1; J2].
-rewrite (@sumE s J) -1:(@sumE s1 J) -1:(@sumE s2 J) //; 1..3: admit.
-admit.
-qed.
+rewrite (@sumE s J) -1:(@sumE s1 J) -1:(@sumE s2 J) //.
++ admit.
++ admit.
++ admit.
+rewrite -limD.
+admitted.
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt sumZ (s : 'a -> real) c : sum (fun x => c * s x) = c * sum s.
@@ -307,10 +320,10 @@ case: (c = 0%r) => [->/=|]; first by rewrite sum0_eq.
 move=> nz_c; case: (summable s); last first.
 + by move=> h; rewrite !sum_Nsbl // -summableZ_iff.
 move=> sbl_s; have sbl_cs := summableZ _ c sbl_s.
-have /sum_to_enum[J1 cJ1] := sbl_s.
-have /sum_to_enum[J2 cJ2] := sbl_cs.
-rewrite (@sumE s J1) // (@sumE _ J2) //.
-admit.
+have /sum_to_enum[J cJ] := sbl_s; rewrite !(@sumE _ J) //.
++ apply/(@eq_enumerate (support s)) => //= y.
+  by rewrite /support mulf_eq0 nz_c.
+by rewrite -limZ; apply/(@lim_eq 0) => n /= _; rewrite mulr_sumr.
 qed.
 
 (* -------------------------------------------------------------------- *)
