@@ -680,49 +680,42 @@ let int_of_form =
 
   in fun f -> try Some (doit f) with E.NotAConstant -> None
 
-let binint_of_forms f1 f2 =
-  match int_of_form f1 with
-  | Some i1 -> begin
-      match int_of_form f2 with
-      | Some i2 -> Some (i1, i2)
-      | None -> None
-    end
+let real_of_form f =
+  match sform_of_form f with
+  | SFop ((op, []), [a]) ->
+      if   EcPath.p_equal op CI.CI_Real.p_real_of_int
+      then int_of_form a
+      else None
+  | _ -> None
 
-  | None -> None
-
+(* -------------------------------------------------------------------- *)
 let f_int_le_simpl f1 f2 =
   if f_equal f1 f2 then f_true else
 
-  match binint_of_forms f1 f2 with
+  match opair int_of_form f1 f2 with
   | Some (x1, x2) -> f_bool (BI.compare x1 x2 <= 0)
   | None -> f_int_le f1 f2
 
 let f_int_lt_simpl f1 f2 =
   if f_equal f1 f2 then f_false else
 
-  match binint_of_forms f1 f2 with
+  match opair int_of_form f1 f2 with
   | Some (x1, x2) -> f_bool (BI.compare x1 x2 < 0)
   | None -> f_int_lt f1 f2
 
 let f_real_le_simpl f1 f2 =
   if f_equal f1 f2 then f_true else
-    match f1.f_node, f2.f_node with
-    | Fapp (op1, [{f_node = Fint x1}]), Fapp (op2, [{f_node = Fint x2}])
-        when f_equal op1 f_op_real_of_int
-          && f_equal op2 f_op_real_of_int
-        -> f_bool (BI.compare x1 x2 <= 0)
 
-    | _, _ -> f_real_le f1 f2
+  match opair real_of_form f1 f2 with
+  | Some (x1, x2) -> f_bool (BI.compare x1 x2 <= 0)
+  | _ -> f_real_le f1 f2
 
 let f_real_lt_simpl f1 f2 =
   if f_equal f1 f2 then f_false else
-    match f1.f_node, f2.f_node with
-    | Fapp (op1, [{f_node = Fint x1}]), Fapp (op2, [{f_node = Fint x2}])
-        when f_equal op1 f_op_real_of_int
-          && f_equal op2 f_op_real_of_int
-        -> f_bool (BI.compare x1 x2 < 0)
 
-    | _, _ -> f_real_lt f1 f2
+  match opair real_of_form f1 f2 with
+  | Some (x1, x2) -> f_bool (BI.compare x1 x2 < 0)
+  | _ -> f_real_lt f1 f2
 
 (* -------------------------------------------------------------------- *)
 (* destr_exists_prenex destructs recursively existentials in a formula
