@@ -702,7 +702,7 @@ let f_int_lt_simpl f1 f2 =
 
   match binint_of_forms f1 f2 with
   | Some (x1, x2) -> f_bool (BI.compare x1 x2 < 0)
-  | None -> f_int_le f1 f2
+  | None -> f_int_lt f1 f2
 
 let f_real_le_simpl f1 f2 =
   if f_equal f1 f2 then f_true else
