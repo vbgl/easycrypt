@@ -10,7 +10,7 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
   let tuple f n = f_tuple (tuple_r f [] n) in
   let ptuple p n = Ptuple (tuple_r p [] n) in
 
-  let nb_tests = 4 in
+  let nb_tests = 5 in
 
   let get_test i f p =
     let err = match search f p with
@@ -114,6 +114,39 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
          let felse = tuple felse size_tuple in
          let felse = tuple felse size_tuple in
          let f = f_if fcond fthen felse in
+         get_test i f p
+
+      | 4 ->
+         let tint = EcTypes.tint in
+         let x = EcIdent.create "x" in
+         let y = EcIdent.create "y" in
+         let z = EcIdent.create "z" in
+         let s = EcIdent.create "s" in
+         let t = EcIdent.create "t" in
+         let u = EcIdent.create "u" in
+         let vars = List.map (fun x -> (x, GTty tint)) in
+         let fx = f_local x tint in
+         let fy = f_local y tint in
+         let fz = f_local z tint in
+         let fs = f_local s tint in
+         let ft = f_local t tint in
+         let fu = f_local u tint in
+
+         let fst = f_int_sub fs ft in
+         let fx1 = f_int_add fx f_i1 in
+         let fyz = f_int_mul fy fz in
+         let fx1yz = f_int_add fx1 fyz in
+         let f = f_int_mul fx1yz fst in
+         let f = f_int_pow f fu in
+         let f = f_int_pow f fu in
+         let f = f_int_pow f fu in
+         let f = f_int_pow f fu in
+         let f = f_int_pow f fu in
+
+         let f = f_quant Llambda (vars [x;y;z]) f in
+
+         let p = FPattern.pattern_of_form (vars [s;u;t]) f in
+
          get_test i f p
 
       | _ -> ""

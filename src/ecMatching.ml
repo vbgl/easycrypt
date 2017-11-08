@@ -1088,7 +1088,7 @@ module FPattern = struct
 
   type name = Name.t
 
-  module M = Map.Make(Name)
+  module M = Mid
 
   type pattern =
     | Panything
@@ -1103,10 +1103,10 @@ module FPattern = struct
     | Ptuple  of pattern list
     | Pproj   of pattern * int
     | Pmatch  of pattern * pattern list
-    (* | Pquant  of quantif * bindings * pattern *)
+    | Pquant  of quantif * bindings * pattern
     (* | Plet    of lpattern * pattern * pattern *)
-    (* | Ppvar   of EcTypes.prog_var * EcMemory.memory *)
-    (* | Pglob   of EcPath.mpath * EcMemory.memory *)
+    | Ppvar   of pattern * pattern
+    | Pglob   of pattern * pattern
     (* | FhoareF of hoareF (\* $hr / $hr *\) *)
     (* | FhoareS of hoareS *)
     (* | FbdHoareF of bdHoareF (\* $hr / $hr *\) *)
@@ -1114,30 +1114,23 @@ module FPattern = struct
     (* | FequivF of equivF (\* $left,$right / $left,$right *\) *)
     (* | FequivS of equivS *)
     (* | FeagerF of eagerF *)
-    (* | Ppr of pattern * EcPath.xpath * pattern * form *)
+    | Ppr             of pattern * pattern * pattern * form
 
-    (* path patterns *)
-    (*                   symbol  , path option *)
-    | Ppath_id        of EcSymbols.symbol
-    | Ppath           of pattern * pattern option
+    | Pprog_var       of prog_var
 
+    | Pxpath          of xpath
     (* mpath patterns *)
+    (*                   mpath_top, mpath  list *)
     | Pmpath          of pattern * pattern list
-    | Pmpath_local    of ident
-    | Pmpath_concrete of pattern * pattern option
-
-    (* xpath patterns *)
-    (*                   mpath   , path   *)
-    | Pxpath          of pattern * pattern
 
    and object_matches =
-    | Oform    of form
-    | Omem     of EcMemory.memory
-    | Ompath   of mpath
-    | Oxpath   of xpath
-    | Opath    of path
+    | Oform      of form
+    | Omem       of EcMemory.memory
+    (* | Ompath     of mpath *)
+      (* | Oxpath   of xpath *)
+    | Ompath_top of mpath_top
 
-  type t_matches = object_matches (* * bindings *)
+  type t_matches = object_matches * Sid.t
 
   type matches = t_matches M.t
 
@@ -1159,6 +1152,8 @@ module FPattern = struct
      *)
     | Zand       of to_match list * to_match list * pat_continuation
 
+    | Zbinds     of pat_continuation * Sid.t
+
   and engine = {
       e_head         : t_matches;
       e_continuation : pat_continuation;
@@ -1169,11 +1164,12 @@ module FPattern = struct
   and nengine = {
       ne_continuation : pat_continuation;
       ne_map          : matches;
+      ne_binds        : Sid.t;
     }
 
   (* val mkengine    : base -> engine *)
   let mkengine (f : form) (p : pattern) : engine = {
-      e_head         = Oform f ;
+      e_head         = Oform f, Sid.empty ;
       e_continuation = ZTop ;
       e_map          = M.empty ;
       e_pattern      = p ;
@@ -1185,37 +1181,52 @@ module FPattern = struct
 
   let object_equal (o1 : object_matches) (o2 : object_matches) : bool =
     match o1,o2 with
-    | Oform f1, Oform f2 -> f_equal f1 f2
+    | Oform f1, Oform f2 -> f_equal f1 f2 (* FIXME *)
     | Omem m1, Omem m2 -> EcMemory.mem_equal m1 m2
-    | Ompath p1, Ompath p2 -> m_equal p1 p2
-    | Oxpath x1, Oxpath x2 -> x_equal x1 x2
-    | Opath p1, Opath p2 -> p_equal p1 p2
-    | (Oform _, (Omem _|Ompath _|Oxpath _|Opath _))
-      | (Omem _, (Oform _|Ompath _|Oxpath _|Opath _))
-      | (Ompath _, (Omem _|Oform _|Oxpath _|Opath _))
-      | (Oxpath _, (Omem _|Ompath _|Oform _|Opath _))
-      | (Opath _, (Omem _|Oform _|Oxpath _|Ompath _)) -> false
+    | Ompath_top (`Local id1), Ompath_top (`Local id2) -> id_equal id1 id2
+    | Ompath_top (`Concrete (p1,None)), Ompath_top (`Concrete (p2,None)) ->
+       p_equal p1 p2
+    | Ompath_top (`Concrete (p1,Some op1)), Ompath_top (`Concrete (p2,Some op2)) ->
+       p_equal p1 p2 && p_equal op1 op2
+    | ((Omem _|Ompath_top _|Oform _),
+       (Omem _|Ompath_top _|Oform _))
+      -> false
 
   (* add_match can raise the exception : CannotUnify *)
   (* val add_match : matches -> name -> t_matches -> matches *)
-  let add_match (map : matches) (name : name) (o : object_matches) =
-    let map = match M.find_opt name map with
-      | None -> M.add name o map
-      | Some  x -> if object_equal x o then map
-                   else raise CannotUnify
-    in map
+  let add_match (map : matches) (name : name) (o : t_matches) =
+    if Mid.set_disjoint (snd o) map
+    then
+      let (o1,o2) = o in
+      let o = o1,match o1 with
+                 | Oform      f  -> Mid.set_inter o2 (f_fv f)
+                 | Omem       m  -> Mid.set_inter o2 (Sid.singleton m)
+                 | Ompath_top mp -> Mid.set_inter o2 (m_fv Mid.empty (mpath mp [])) in
+      let map = match M.find_opt name map with
+        | None   -> M.add name o map
+        | Some x -> if object_equal (fst x) (fst o) then map
+                    else raise CannotUnify
+      in map
+    else raise CannotUnify
 
   let e_next (e : engine) : nengine =
     { ne_continuation = e.e_continuation;
       ne_map = e.e_map;
+      ne_binds = snd e.e_head;
     }
 
-  let n_engine (e_head : t_matches) (e_pattern : pattern) (n : nengine) =
-    { e_head; e_pattern; e_continuation = n.ne_continuation; e_map = n.ne_map }
+  let n_engine (tm : t_matches) (e_pattern : pattern) (n : nengine) =
+    { e_head = (fst tm, n.ne_binds);
+      e_pattern;
+      e_continuation = n.ne_continuation;
+      e_map = n.ne_map
+    }
 
   let sub_engine e p f =
-    { e with e_head = Oform f; e_pattern = Psub p }
+    { e with e_head = f; e_pattern = Psub p }
 
+
+  (* ---------------------------------------------------------------------- *)
   let rec process (e : engine) : nengine =
     match e.e_pattern, e.e_head with
     | Panything, _ -> next Match e
@@ -1239,17 +1250,40 @@ module FPattern = struct
                  e_pattern = p;
                  e_continuation = Zor (e.e_continuation,List.map f pl,e_next e);
                }
-    | Pif (pcond,p1,p2), Oform f ->
+    | Pquant (q1,bs1,p), (Oform f,binds) ->
+       begin match f.f_node with
+       | Fquant (q2,bs2,f2) ->
+          if not(q1 = q2) then next NoMatch e
+          else if try List.exists2 (fun (x,y) (a,b) ->
+                          not(id_equal x a) || not(gty_equal y b)) bs1 bs2
+                  with | _ -> true
+          then next NoMatch e
+          else if not(Mid.set_disjoint binds (Sid.of_list (List.map fst bs1)))
+          then
+            next NoMatch e
+          else if not(M.set_disjoint e.e_map binds)
+          then
+            next NoMatch e
+          else
+            process { e with
+                      e_pattern = p;
+                      e_head = Oform f2, Mid.set_union binds (Sid.of_list (List.map fst bs1));
+                      e_continuation = Zbinds (e.e_continuation, binds);
+                    }
+       | _ -> next NoMatch e
+       end
+    | Pif (pcond,p1,p2), (Oform f,binds) ->
        begin match f_node f with
        | Fif (cond,b1,b2) ->
+          let zand = [((Oform b1,binds),p1);((Oform b2,binds),p2)] in
           process { e with
-                    e_head = Oform cond;
+                    e_head = Oform cond, binds;
                     e_pattern = pcond;
-                    e_continuation = Zand ([],[(Oform b1,p1);(Oform b2,p2)],e.e_continuation);
+                    e_continuation = Zand ([],zand,e.e_continuation);
                   }
        | _ -> next NoMatch e
        end
-    | Papp (pop,pargs), Oform f ->
+    | Papp (pop,pargs), (Oform f, binds) ->
        begin match f_node f with
        | Fapp (fop,fargs) ->
           let pl,fl = List.length pargs, List.length fargs in
@@ -1258,141 +1292,113 @@ module FPattern = struct
           else
             let fargs1,fargs2 = List.split_at (fl - pl) fargs in
             let fop' = f_app fop fargs1 (EcTypes.toarrow (List.map f_ty fargs2) (f_ty fop)) in
-            let to_match_args = List.combine (List.map (fun x -> Oform x)fargs2) pargs in
+            let to_match_args = List.combine (List.map (fun x -> Oform x, binds)fargs2) pargs in
             process { e with
                       e_pattern = pop;
-                      e_head = Oform fop';
+                      e_head = Oform fop', binds;
                       e_continuation = Zand ([],to_match_args,e.e_continuation);
                     }
        | _ -> next NoMatch e
        end
-    | Ptuple [], Oform f ->
+    | Ptuple [], (Oform f,_) ->
        begin match f_node f with
        | Ftuple [] -> next Match e
        | _ -> next NoMatch e
        end
-    | Ptuple (p::ptuple), Oform f ->
+    | Ptuple (p::ptuple), (Oform f, binds) ->
        begin match f_node f with
        | Ftuple [] -> next NoMatch e
        | Ftuple (f::ftuple) ->
           if (List.length ptuple = List.length ftuple)
-          then process {
+          then
+            let zand =
+              List.combine (List.map (fun x -> Oform x, binds) ftuple) ptuple in
+            process {
                    e with
                    e_pattern = p;
-                   e_head = Oform f;
-                   e_continuation =
-                     Zand ([],List.combine (List.map (fun x -> Oform x) ftuple)
-                                           ptuple,
-                           e.e_continuation);
-                       }
+                   e_head = Oform f, binds;
+                   e_continuation = Zand ([],zand,e.e_continuation);
+              }
           else next NoMatch e
        | _ -> next NoMatch e
        end
-    | Pproj (e_pattern,i), Oform f ->
+    | Pproj (e_pattern,i), (Oform f, binds) ->
        begin match f_node f with
        | Fproj (f,j) when i = j ->
           process { e with
                     e_pattern;
-                    e_head = Oform f;
+                    e_head = Oform f, binds;
                   }
        | _ -> next NoMatch e
        end
-    | Pmatch (p,pl) , Oform f ->
+    | Pmatch (p,pl) , (Oform f,binds) ->
        begin match f_node f with
        | Fmatch (f,fl,_) when (List.length fl = List.length pl) ->
+          let zand = List.combine (List.map (fun x -> Oform x, binds) fl) pl in
           process {
               e with
               e_pattern = p;
-              e_head = Oform f;
-              e_continuation =
-                Zand ([],List.combine (List.map (fun x -> Oform x) fl)
-                                      pl,
-                      e.e_continuation);
+              e_head = Oform f, binds;
+              e_continuation = Zand ([],zand,e.e_continuation);
             }
        | _ -> next NoMatch e
        end
-    | Pobject o1, o2 when object_equal o1 o2 -> next Match e
-    | Pobject _, _ -> next NoMatch e
-
-    | Ppath_id id, Opath p ->
-       begin match p.p_node with
-       | Psymbol id2 when id = id2 -> next Match e
-       | Pqname (_,id2) when id = id2 -> next Match e
+    | Pobject o1, (o2,_) when object_equal o1 o2 -> next Match e
+    | Ppvar (p1,p2), (Oform f,binds) ->
+       begin match f.f_node with
+       | Fpvar (_,m) ->
+          process { e with
+                    e_pattern = p2;
+                    e_head = Omem m, binds;
+                    e_continuation = Zand ([],[(Oform f,binds),p1],e.e_continuation);
+                  }
        | _ -> next NoMatch e
        end
-
-    | Ppath (p1,None), Opath pat ->
-       begin match pat.p_node with
-       | Pqname (_, _) -> next NoMatch e
-       | Psymbol _ -> process { e with e_pattern = p1 }
+    | Pprog_var x1, (Oform f,_) ->
+       begin match f.f_node with
+       | Fpvar (x2,_) when pv_equal x1 x2 -> next Match e
+       | _ -> next NoMatch e
        end
-
-    | Ppath (p1,Some p2), Opath pat ->
-       begin match pat.p_node with
-       | Pqname (pat2, _) ->
+    | Pglob (p1,p2), (Oform f,binds) ->
+       begin match f.f_node with
+       | Fglob (x,m) ->
+          let zand = [(Ompath_top x.m_top,binds), p1] in
           process { e with
-                    e_pattern = p1;
-                    e_continuation = Zand ([],[(Opath pat2, p2)],e.e_continuation);
+                    e_pattern = p2;
+                    e_head = Omem m, binds;
+                    e_continuation = Zand ([],zand,e.e_continuation);
                   }
-       | Psymbol _ -> next NoMatch e
+       | _ -> next NoMatch e
        end
-
-    | Pmpath (fonct,args), Ompath mp ->
-       let l1 = List.length args in
-       let l2 = List.length mp.m_args in
-       if  l1 <= l2 then
-         let margs1,margs2 = List.split_at (l2-l1) mp.m_args in
-         let e_head = Ompath (mpath mp.m_top margs1) in
-         process { e with
-                   e_pattern = fonct;
-                   e_head;
-                   e_continuation =
-                     Zand ([],List.combine (List.map (fun x -> Ompath x) margs2)
-                                           args,
-                           e.e_continuation);
-               }
-       else next NoMatch e
-    | Pmpath_local id1, Ompath pm ->
-       begin match pm.m_top with
-       | `Local id2 when id1 = id2 -> next Match e
-       | `Local _|`Concrete _ -> next NoMatch e
-       end
-    | Pmpath_concrete (p,None), Ompath mp ->
-       begin match mp.m_top with
-       | `Concrete (p1,None) ->
-          process { e with
-                    e_pattern = p;
-                    e_head = Opath p1;
-                  }
-       | `Concrete _|`Local _ -> next NoMatch e
-       end
-
-    | Pmpath_concrete (p1,Some p2), Ompath mp ->
-       begin match mp.m_top with
-       | `Concrete (mp1,Some mp2) ->
-          process { e with
-                    e_pattern = p1;
-                    e_head = Opath mp1;
-                    e_continuation = Zand ([],[(Opath mp2,p2)],e.e_continuation);
-                  }
-       | `Concrete _|`Local _ -> next NoMatch e
-       end
-
-    | Pxpath (mpath,path), Oxpath xp ->
+    | Pmpath (m,[]), (Ompath_top _,_ as omp) ->
        process { e with
-                 e_pattern = path;
-                 e_head = Opath xp.x_sub;
-                 e_continuation = Zand ([],[Ompath xp.x_top,mpath],e.e_continuation);
+                 e_pattern = m;
+                 e_head = omp;
                }
-
-    | (Pmpath_concrete _, (Oform _|Omem _|Oxpath _|Opath _))
-      | (Pxpath (_, _), (Oform _|Omem _|Ompath _|Opath _))
-      | (Pmpath_local _, (Oform _|Omem _|Oxpath _|Opath _))
-      | (Pmpath (_, _), (Oform _|Omem _|Oxpath _|Opath _))
-      | (Ppath _, (Oform _|Omem _|Ompath _|Oxpath _))
-      | (Ppath_id _, (Oform _|Omem _|Ompath _|Oxpath _))
+    | Pmpath _,(Ompath_top _,_) -> next NoMatch e
+    | Ppr (pmem,pfun,pargs,pevent), (Oform f, binds) ->
+       begin match f.f_node with
+       | Fpr pr ->
+          let zand = [((Oform f, binds), pfun);
+                      ((Oform pr.pr_args,binds), pargs);
+                      ((Oform pr.pr_event, binds), Pobject (Oform pevent))] in
+          process { e with
+                    e_pattern = pmem;
+                    e_head = Omem pr.pr_mem, binds;
+                    e_continuation = Zand ([], zand, e.e_continuation);
+                  }
+       | _ -> next NoMatch e
+       end
+    | Pxpath pxp, (Oform f, _) ->
+       begin match f.f_node with
+       | Fpr pr when x_equal pr.pr_fun pxp -> next Match e
+       | _ -> next NoMatch e
+       end
+    | Pobject _, _ -> next NoMatch e
+    | ((Pmpath _|Pglob _|Pprog_var _|Ppvar _|Pquant _|Ppr _|Pxpath _),
+       ((Oform _|Omem _|Ompath_top _),_))
       | (Pproj _|Ptuple _|Papp _|Pif _|Pmatch _),
-        (Omem _|Ompath _|Oxpath _|Opath _) ->
+        ((Omem _|Ompath_top _),_) ->
        next NoMatch e
 
   and next (m : ismatch) (e : engine) : nengine = next_n m (e_next e)
@@ -1434,18 +1440,19 @@ module FPattern = struct
     | NoMatch, Zor (_, e'::engines, ne) ->
        process { e' with e_continuation = Zor (e'.e_continuation, engines, ne); }
 
+    | Match, Zbinds (ne_continuation, ne_binds) ->
+       next_n Match { e with ne_continuation; ne_binds }
+
+    | NoMatch, Zbinds (ne_continuation, ne_binds) ->
+       next_n NoMatch { e with ne_continuation; ne_binds }
+
   and sub_engines (e : engine) (p : pattern) : engine list =
     match e.e_head with
-    | Omem _  -> []
-    | Ompath _ -> []
-    | Oxpath _ -> []
-    | Opath _ -> []
-    | Oform f ->
+    | Omem _,_  -> []
+    | Ompath_top _,_ -> []
+    | Oform f, binds ->
        match f_node f with
-       | Fquant _
-         | Fpvar _
-         | Fglob _
-         | Flet _
+       | Flet _
          | FhoareF _
          | FhoareS _
          | FbdHoareF _
@@ -1455,13 +1462,28 @@ module FPattern = struct
          | FeagerF _
          | Fint _
          | Flocal _
-         | Fop _
-         | Fpr _ -> []
-       | Fif (cond,f1,f2) -> List.map (sub_engine e p) [cond;f1;f2]
-       | Fapp (f, args) -> List.map (sub_engine e p) (f::args)
-       | Ftuple args -> List.map (sub_engine e p) args
-       | Fproj (f,_) -> [sub_engine e p f]
-       | Fmatch (f,fl,_) -> List.map (sub_engine e p) (f::fl)
+         | Fop _-> []
+       | Fif (cond,f1,f2) ->
+          List.map (sub_engine e p) [ Oform cond,binds ; Oform f1,binds ; Oform f2,binds ]
+       | Fapp (f, args) ->
+          List.map (sub_engine e p) ((Oform f,binds)::(List.map (fun x -> Oform x, binds) args))
+       | Ftuple args ->
+          List.map (sub_engine e p) (List.map (fun x -> Oform x, binds) args)
+       | Fproj (f,_) -> [sub_engine e p (Oform f, binds)]
+       | Fmatch (f,fl,_) ->
+          List.map (sub_engine e p) ((Oform f, binds)::(List.map (fun x -> Oform x, binds) fl))
+       | Fpr pr ->
+          List.map (sub_engine e p) [ Omem pr.pr_mem   , binds ;
+                                      Oform pr.pr_args , binds ;
+                                      Oform pr.pr_event, (Sid.add mhr binds) ]
+       | Fquant (_,bs,f1) ->
+          [sub_engine e p (Oform f1,
+                           Mid.set_union binds (Sid.of_list (List.map fst bs)))]
+       | Fglob (mp,mem) ->
+          List.map (sub_engine e p) [ Ompath_top mp.m_top,binds ;
+                                      Omem mem, binds ]
+       | Fpvar (_pv,mem) ->
+          List.map (sub_engine e p) [ Omem mem, binds ]
 
   let get_matches (e : engine) : matches = e.e_map
   let get_n_matches (e : nengine) : matches = e.ne_map
@@ -1470,240 +1492,45 @@ module FPattern = struct
     try Some (get_n_matches (process (mkengine f p))) with
     | NoMatches -> None
 
-  type zipper =
-    | ZTop
-    (* form zipper *)
-    | ZFquant     of quantif * bindings * zipper                  * form
-    | ZFifcond    of zipper * form * form                         * form
-    | ZFifthen    of pattern * zipper * form                      * form
-    | ZFifelse    of pattern * pattern * zipper                   * form
-    | ZFmatchOp   of zipper * form list                           * form
-    | ZFmatchArgs of pattern * pattern list * zipper * form list  * form
-    | ZFappOp     of zipper * form list                           * form
-    | ZFappArgs   of pattern * pattern list * zipper * form list  * form
-    | ZFtuple     of pattern list * zipper * form list            * form
-    | ZFproj      of int * zipper                                 * form
-    (* (\* path zipper *\) *)
-    (* | Zpath       of zipper * pattern * form option               * path *)
-    (* (\* mpath zipper *\) *)
-    (* | ZmpathTop   of zipper * mpath list                          * mpath *)
-    (* | ZmpathArgs  of pattern * pattern list * zipper * mpath list * mpath *)
-    (* (\* xpath zipper *\) *)
-    (* | ZxpathTop   of zipper * path                                * xpath *)
-    (* | ZxpathSub   of pattern * zipper                             * xpath *)
+  let pattern_of_form (bindings: bindings) (f : form) =
+    let sbd = Sid.of_list (List.map fst bindings) in
+    let rec aux f =
+      if Mid.set_disjoint sbd f.f_fv then Pobject (Oform f)
+      else
+        match f.f_node with
+        | Fif(f1,f2,f3)      -> Pif(aux f1, aux f2, aux f3)
+        | Fapp(f,args)       -> Papp(aux f, List.map aux args)
+        | Ftuple args        -> Ptuple(List.map aux args)
+        | Fmatch(f,args,_ty) -> Pmatch(aux f, List.map aux args)
+        | Fproj(f,i)         -> Pproj(aux f, i)
+        | Flocal id          -> Pnamed (Panything, id)
+        | Fpvar(x,m)         -> Ppvar(Pprog_var x, aux_mem m)
+        | Fglob(mp, m)       -> Pglob(aux_mp mp, aux_mem m)
+        | Fpr(pr)            -> Ppr (aux_mem pr.pr_mem,
+                                     aux_xpath pr.pr_fun,
+                                     aux pr.pr_args,
+                                     pr.pr_event) (* <- FIXME *)
+        | Fquant(quant,binds,f) -> Pquant (quant,binds,aux f)
+        | _ -> raise (Invalid_argument "match case non-exhaustive in pattern_of_form")
 
-  type engine_of_form = {
-      e_head     : object_matches;
-      e_zipper   : zipper;
-      e_pattern  : pattern;
-      e_bindings : bindings;
-    }
+    and aux_mem m =
+      if Sid.mem m sbd then Pnamed (Panything, m)
+      else Pobject(Omem m)
 
-  type is_pattern =
-    | IsObject
-    | IsPattern
+    and aux_mp mp =
+      Pmpath (aux_mp_top mp.m_top, List.map aux_mp mp.m_args)
 
-  let mem_is_in (m : EcMemory.memory) (b : bindings) =
-    List.mem m (List.map fst b)
+    and aux_mp_top mpt =
+      match mpt with
+      | `Local id when Sid.mem id sbd -> Pnamed (Panything, id)
+      | _                             -> Pobject (Ompath_top mpt)
 
-(*  EcFol.binding *)
-(* EcModules.module_type *)
-(* EcFol.gty *)
-(* (\* type gty = *\) *)
-(* (\*   EcCoreFol.gty = *\) *)
-(* (\*     GTty of EcTypes.ty *\) *)
-(* (\*   | GTmodty of EcModules.module_type * EcModules.mod_restr *\) *)
-(* (\*   | GTmem of EcMemory.memtype *\) *)
-(* EcMemory.memtype *)
-  let rec pattern_process (e : engine_of_form) =
-    match e.e_head with
-    | Omem mem when List.mem mem (List.map fst e.e_bindings) ->
-         pattern_next IsPattern { e with e_pattern = Pnamed (Panything, mem) }
-    | Omem _ -> pattern_next IsObject e
-    | Opath _ -> pattern_next IsObject e
-    | Oform f ->
-       begin match f.f_node with
-       | Fquant (q,bs,f1) ->
-          pattern_process { e with
-                            e_head = Oform f1;
-                            e_zipper = ZFquant (q,bs,e.e_zipper,f);
-                          }
-       | Fif (cond,f1,f2) ->
-          pattern_process { e with
-                            e_head = Oform cond;
-                            e_zipper = ZFifcond (e.e_zipper,f1,f2,f);
-                          }
-       | Fmatch (op,args,_) ->
-          pattern_process { e with
-                            e_head = Oform op;
-                            e_zipper = ZFmatchOp (e.e_zipper,args,f);
-                          }
-       | Flet _ -> pattern_next IsObject e
-       | Fint _ -> pattern_next IsObject e
-       | Flocal id when List.mem id (List.map fst e.e_bindings) ->
-          pattern_next IsPattern { e with e_pattern = Pnamed (Panything, id) }
-       | Ftuple [] -> pattern_next IsObject e
-       | Ftuple (f1::fl) ->
-          pattern_process { e with
-                            e_head = Oform f1;
-                            e_zipper = ZFtuple ([],e.e_zipper,fl,f);
-                          }
-       | Fapp (op,args) ->
-          pattern_process { e with
-                            e_head = Oform op;
-                            e_zipper = ZFappOp (e.e_zipper,args,f);
-                          }
-       | Fproj (f1,i) ->
-          pattern_process { e with
-                            e_head = Oform f1;
-                            e_zipper = ZFproj (i,e.e_zipper,f);
-                          }
-       |Fpvar _ |Fglob _|Fop _|FhoareS _|FhoareF _|FbdHoareF _|FbdHoareS _|FequivF _
-        |FequivS _|FeagerF _|Fpr _|Flocal _ ->
-         pattern_next IsObject e
-       end
-    | Oxpath _ -> pattern_next IsObject e
-    | Ompath _ -> pattern_next IsObject e
+    and aux_xpath xpath = Pxpath xpath (* FIXME ?? *)
+    in
+
+    aux f
 
 
-    and pattern_next (i : is_pattern) (e : engine_of_form) =
-      match i, e.e_zipper with
-      | IsObject, ZTop -> Pobject e.e_head
-      | IsPattern, ZTop -> e.e_pattern
-      | IsObject, (ZFquant(_,_,z,f)|ZFmatchOp(z,[],f)
-                  |ZFappOp(z,[],f)|ZFproj(_,z,f)) ->
-         pattern_next IsObject { e with
-                                 e_head = Oform f;
-                                 e_zipper = z;
-                                 e_pattern = Pobject (Oform f);
-                               }
-      | IsPattern, ZFproj (_,z,f) ->
-         (* FIXME *) pattern_next IsObject { e with
-                                             e_head = Oform f;
-                                             e_zipper = z;
-                                             e_pattern = Pobject (Oform f);
-                                           }
-      | (IsObject|IsPattern), ZFifcond (z,f1,f2,f) ->
-         pattern_process { e with
-                           e_head = Oform f1;
-                           e_zipper = ZFifthen (Pobject e.e_head,z,f2,f);
-                         }
-      | (IsObject|IsPattern), ZFifthen (pcond,z,f2,f) ->
-         pattern_process { e with
-                           e_head = Oform f2;
-                           e_zipper = ZFifelse (pcond,Pobject e.e_head,z,f);
-                         }
-      | IsObject, ZFifelse (Pobject _,Pobject _,z,f) ->
-         pattern_next IsObject { e with
-                                 e_head = Oform f;
-                                 e_zipper = z;
-                                 e_pattern = Pobject (Oform f);
-                               }
-      | (IsObject|IsPattern), ZFifelse (cond,p1,z,f) ->
-         pattern_next IsPattern { e with
-                                  e_head = Oform f;
-                                  e_zipper = z;
-                                  e_pattern = Pif (cond,p1,e.e_pattern);
-                                }
-      | IsPattern, ZFmatchOp (z,[],f) ->
-         pattern_next IsPattern { e with
-                                  e_head = Oform f;
-                                  e_zipper = z;
-                                  e_pattern = Pmatch (e.e_pattern,[]);
-                                }
-      | (IsObject|IsPattern), ZFmatchOp (z,f1::fl,f) ->
-         pattern_process { e with
-                           e_head = Oform f1;
-                           e_zipper = ZFmatchArgs (Pobject e.e_head,[],z,fl,f);
-                         }
-      | IsObject, ZFmatchArgs (Pobject _,before,z,[],f)
-           when List.for_all (function Pobject _ -> true |_ -> false) before ->
-         pattern_next IsObject { e with
-                                 e_head = Oform f;
-                                 e_zipper = z;
-                                 e_pattern = Pobject (Oform f);
-                               }
-      | (IsObject|IsPattern), ZFmatchArgs (op,before,z,[],f) ->
-         pattern_next IsPattern { e with
-                                  e_head = Oform f;
-                                  e_zipper = z;
-                                  e_pattern = Pmatch (op, List.rev (e.e_pattern::before));
-                                }
-      | (IsObject|IsPattern), ZFmatchArgs (op,before,z,f1::after,f) ->
-         pattern_process { e with
-                           e_head = Oform f1;
-                           e_zipper = ZFmatchArgs (op,e.e_pattern::before,z,after,f);
-                         }
-      | IsPattern, ZFappOp (z,[],f) ->
-         pattern_next IsPattern { e with
-                                  e_head = Oform f;
-                                  e_zipper = z;
-                                  e_pattern = Papp (e.e_pattern,[]);
-                                }
-      | (IsObject|IsPattern), ZFappOp (z,f1::after,f) ->
-         pattern_process { e with
-                           e_head = Oform f1;
-                           e_zipper = ZFappArgs (e.e_pattern,[],z,after,f);
-                         }
-      | IsObject, ZFappArgs (Pobject _,before,z,[],f)
-           when List.for_all (function Pobject _ -> true |_ -> false) before ->
-         pattern_next IsObject { e with
-                                 e_head = Oform f;
-                                 e_zipper = z;
-                                 e_pattern = Pobject (Oform f);
-                               }
-      | (IsObject|IsPattern), ZFappArgs (op,before,z,[],f) ->
-         pattern_next IsPattern { e with
-                                 e_head = Oform f;
-                                 e_zipper = z;
-                                 e_pattern = Papp (op,List.rev (e.e_pattern::before));
-                                }
-      | (IsObject|IsPattern), ZFappArgs (op,before,z,f1::fl,f) ->
-         pattern_process { e with
-                           e_head = Oform f1;
-                           e_zipper = ZFappArgs (op,e.e_pattern::before,z,fl,f);
-                         }
-      | IsObject, ZFtuple (before,z,[],f)
-           when List.for_all (function Pobject _ -> true |_ -> false) before ->
-         pattern_next IsObject { e with
-                                 e_head = Oform f;
-                                 e_zipper = z;
-                                 e_pattern = Pobject (Oform f);
-                               }
-      | (IsObject|IsPattern), ZFtuple (before,z,[],f) ->
-         pattern_next IsPattern { e with
-                                  e_head = Oform f;
-                                  e_zipper = z;
-                                  e_pattern = Ptuple (List.rev (e.e_pattern::before));
-                                }
-      | (IsObject|IsPattern), ZFtuple (before,z,f1::after,f) ->
-         pattern_process { e with
-                           e_head = Oform f1;
-                           e_zipper = ZFtuple (e.e_pattern::before,z,after,f);
-                         }
-      | IsPattern, ZFquant (_q,_bs,z,f) ->
-         (* FIXME *) pattern_next IsObject { e with
-                                             e_head = Oform f;
-                                             e_zipper = z;
-                                             e_pattern = Pobject (Oform f);
-                                           }
-         (* pattern_next IsPattern { e with *)
-         (*                          e_head = Oform f; *)
-         (*                          e_zipper = z; *)
-         (*                          e_pattern = Pquant (q,b, *)
-      (* | _,_ -> raise NoMatches (\* FIXME : this should be erased without a warning *\) *)
-
-  (* let rec process_pattern_of_form (b : bindings) (f : form) : pattern = *)
-  (*   match f_node f with *)
-  (*   | Flocal id when -> *)
-
-  let pattern_of_form (b : bindings) (f : form) : pattern =
-    let e = {
-        e_head = Oform f;
-        e_pattern = Panything;
-        e_zipper = ZTop;
-        e_bindings = b;
-      } in pattern_process e
 
 
 end

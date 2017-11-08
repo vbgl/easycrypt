@@ -214,10 +214,7 @@ module FPattern : sig
 
   type name = EcIdent.t
 
-  module M : module type of Map.Make(struct
-                                      include EcIdent
-                                      let compare = id_compare
-                                    end)
+  module M : module type of Mid
 
   type pattern =
     | Panything
@@ -227,16 +224,15 @@ module FPattern : sig
 
     | Pobject   of object_matches
 
-    (* form patterns *)
     | Pif     of pattern * pattern * pattern
     | Papp    of pattern * pattern list
     | Ptuple  of pattern list
     | Pproj   of pattern * int
     | Pmatch  of pattern * pattern list
-    (* | Pquant  of quantif * bindings * pattern *)
+    | Pquant  of quantif * bindings * pattern
     (* | Plet    of lpattern * pattern * pattern *)
-    (* | Ppvar   of EcTypes.prog_var * EcMemory.memory *)
-    (* | Pglob   of EcPath.mpath * EcMemory.memory *)
+    | Ppvar   of pattern * pattern
+    | Pglob   of pattern * pattern
     (* | FhoareF of hoareF (\* $hr / $hr *\) *)
     (* | FhoareS of hoareS *)
     (* | FbdHoareF of bdHoareF (\* $hr / $hr *\) *)
@@ -244,31 +240,23 @@ module FPattern : sig
     (* | FequivF of equivF (\* $left,$right / $left,$right *\) *)
     (* | FequivS of equivS *)
     (* | FeagerF of eagerF *)
-    (* | Ppr of pattern * EcPath.xpath * pattern * form *)
+    | Ppr             of pattern * pattern * pattern * form
 
-    (* path patterns *)
-    (*                   symbol  , path option *)
-    | Ppath_id        of EcSymbols.symbol
-    | Ppath           of pattern * pattern option
+    | Pprog_var       of prog_var
 
+    | Pxpath          of xpath
     (* mpath patterns *)
+    (*                   mpath_top, mpath  list *)
     | Pmpath          of pattern * pattern list
-    | Pmpath_local    of ident
-    | Pmpath_concrete of pattern * pattern option
-
-    (* xpath patterns *)
-    (*                   mpath   , path   *)
-    | Pxpath          of pattern * pattern
 
 
    and object_matches =
-    | Oform    of form
-    | Omem     of EcMemory.memory
-    | Ompath   of mpath
-    | Oxpath   of xpath
-    | Opath    of path
+    | Oform      of form
+    | Omem       of EcMemory.memory
+    (* | Ompath     of mpath *)
+    | Ompath_top of mpath_top
 
-  type t_matches = object_matches (* * bindings *)
+  type t_matches = object_matches * Sid.t
 
   type matches = t_matches M.t
 
@@ -290,6 +278,8 @@ module FPattern : sig
      *)
     | Zand       of to_match list * to_match list * pat_continuation
 
+    | Zbinds     of pat_continuation * Sid.t
+
   and engine = {
       e_head         : t_matches;
       e_continuation : pat_continuation;
@@ -300,6 +290,7 @@ module FPattern : sig
   and nengine = {
       ne_continuation : pat_continuation;
       ne_map          : matches;
+      ne_binds        : Sid.t;
     }
 
   (* val get_matches   :  engine -> matches *)
