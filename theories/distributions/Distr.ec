@@ -84,12 +84,17 @@ proof. by elim/distrW: d x => m dm; rewrite muK //; case: dm. qed.
 
 hint exact : ge0_mass.
 
-lemma le1_mass ['a] (d : 'a distr) (s : 'a list) :
+lemma le1_mass_fin ['a] (d : 'a distr) (s : 'a list) :
   uniq s => big predT (mass d) s <= 1%r.
 proof. by elim/distrW: d s => m dm; rewrite muK //; case: dm. qed.
 
+lemma le1_mass ['a] (d : 'a distr) x : mass d x <= 1%r.
+proof. by have := le1_mass_fin d [x] _; rewrite ?big_seq1. qed.
+
+hint exact : le1_mass.
+
 lemma isdistr_mass (d : 'a distr) : isdistr (mass d).
-proof. split; [exact/ge0_mass | exact/le1_mass]. qed.
+proof. by split; [exact/ge0_mass | exact/le1_mass_fin]. qed.
 
 lemma isdistr_mu1 (d : 'a distr): isdistr (mu1 d).
 proof.
@@ -114,7 +119,7 @@ lemma summable_mass ['a] (d : 'a distr) : summable (mass d).
 proof.
 exists 1%r=> s eq_s; rewrite (@eq_bigr _ _ (mass d)) => /=.
   by move=> i _; rewrite ger0_norm // ge0_mass.
-by apply/le1_mass.
+by apply/le1_mass_fin.
 qed.
 
 lemma summable_mass_cond (d : 'a distr) (p : 'a -> bool) :
@@ -971,4 +976,158 @@ proof.
 case: (weight d = 0%r) => Hw.
 + by move=> _ x y _ _; rewrite !dscale1E Hw.
 apply dscalar_uni =>//; smt (ge0_weight @Real).
+qed.
+
+(* -------------------------------------------------------------------- *)
+op mprod ['a,'b] (ma : 'a -> real) (mb : 'b -> real) (ab : 'a * 'b) =
+  (ma ab.`1) * (mb ab.`2).
+
+lemma isdistr_mprod ['a 'b] ma mb :
+  isdistr<:'a> ma => isdistr<:'b> mb => isdistr (mprod ma mb).
+proof.
+move=> isa isb; split=> [x|s uqs].
++ by apply/mulr_ge0; apply/ge0_isdistr.
+(* FIXME: This instance should be in bigops *)
+rewrite (@partition_big ofst _ predT _ _ (undup (unzip1 s))).
++ by apply/undup_uniq.
++ by case=> a b ab_in_s _; rewrite mem_undup map_f /mprod.
+pose P := fun x ab => ofst<:'a, 'b> ab = x.
+pose F := fun (ab : 'a * 'b) => mb ab.`2.
+rewrite -(@eq_bigr _ (fun x => ma x * big (P x) F s)) => /= [x _|].
++ by rewrite mulr_sumr; apply/eq_bigr=> -[a b] /= @/P <-.
+pose s' := undup _; apply/(@ler_trans (big predT (fun x => ma x) s')).
++ apply/ler_sum=> a _ /=; apply/ler_pimulr; first by apply/ge0_isdistr.
+  rewrite -big_filter -(@big_map snd predT) le1_sum_isdistr //.
+  rewrite map_inj_in_uniq ?filter_uniq //; case=> [a1 b1] [a2 b2].
+  by rewrite !mem_filter => @/P @/ofst @/osnd |>.
+by apply/le1_sum_isdistr/undup_uniq.
+qed.
+
+op (`*`) (da : 'a distr) (db : 'b distr) =
+  mk (mprod (mu1 da) (mu1 db))
+axiomatized by dprod_def.
+
+lemma dprod1E (da : 'a distr) (db : 'b distr) a b:
+  mu1 (da `*` db) (a,b) = mu1 da a * mu1 db b.
+proof. by rewrite dprod_def -massE muK // isdistr_mprod isdistr_mu1. qed.
+
+lemma dprodE Pa Pb (da : 'a distr) (db : 'b distr):
+    mu (da `*` db) (fun (ab : 'a * 'b) => Pa ab.`1 /\ Pb ab.`2)
+  = mu da Pa * mu db Pb.
+proof. admitted.
+
+lemma supp_dprod (da : 'a distr) (db : 'b distr) ab:
+  ab \in da `*` db <=> ab.`1 \in da /\ ab.`2 \in db.
+proof.
+by case: ab => a b /=; rewrite !supportP dprod1E; smt(mu_bounded).
+qed.
+
+lemma weight_dprod (da : 'a distr) (db : 'b distr):
+  weight (da `*` db) = weight da * weight db.
+proof.
+pose F := fun ab : 'a * 'b => predT ab.`1 /\ predT ab.`2.
+by rewrite (@mu_eq _ _ F) // dprodE.
+qed.
+
+lemma dprod_ll (da : 'a distr) (db : 'b distr):
+  is_lossless (da `*` db) <=> is_lossless da /\ is_lossless db.
+proof. by rewrite /is_lossless weight_dprod [smt(mu_bounded)]. qed.
+
+lemma dprod_uni (da : 'a distr) (db : 'b distr):
+  is_uniform da => is_uniform db => is_uniform (da `*` db).
+proof.
+move=> da_uni db_uni [a b] [a' b']; rewrite !supp_dprod !dprod1E /=.
+by case=> /da_uni ha /db_uni hb [/ha-> /hb->].
+qed.
+
+lemma dprod_funi (da : 'a distr) (db : 'b distr):
+  is_funiform da => is_funiform db => is_funiform (da `*` db).
+proof.
+move=> da_uni db_uni [a b] [a' b']; rewrite !dprod1E.
+by congr; [apply da_uni | apply db_uni].
+qed.
+
+lemma dprod_fu (da : 'a distr) (db : 'b distr):
+  is_full (da `*` db) <=> (is_full da /\ is_full db).
+proof. smt(supp_dprod). qed.
+
+(* -------------------------------------------------------------------- *)
+op E ['a] (d : 'a distr) (f : 'a -> real) =
+  sum (fun x => f x * mass d x).
+
+pred hasE (d : 'a distr) (f : 'a -> real) =
+  summable (fun x => f x * mass d x).
+
+lemma hasE_le (d : 'a distr) (f g : 'a -> real) :
+     hasE d g
+  => (forall x, `|f x| <= `|g x|)
+  => hasE d f.
+proof.
+move=> heg le_fg; apply/(summable_le _ heg) => /=.
+by move=> x; rewrite !normrM ler_wpmul2r 1:normr_ge0 le_fg.
+qed.
+
+lemma hasEC (d : 'a distr) (c : real) : hasE d (fun _ => c).
+proof.
+exists `|c| => J uqJ; pose f := fun i => `|c| * mass d i.
+rewrite -(@eq_bigr _ f) /= => [i _|].
++ by rewrite normrM (@ger0_norm (mass _ _)).
+rewrite /f -mulr_sumr ler_pimulr 1:normr_ge0.
+by apply/(@le1_mass_fin d).
+qed.
+
+lemma summable_hasE (d : 'a distr) (f : 'a -> real) :
+  summable f => hasE d f.
+proof.
+move=> sbl_f; apply/(@summable_le f) => //= x.
+by rewrite normrM ler_pimulr ?normr_ge0 ger0_norm.
+qed.
+
+lemma expC_cond (d : 'a distr) (c : real) (P : 'a -> bool) :
+  E d (fun x => if P x then c else 0%r) = c * mu d P.
+proof.
+by rewrite /E muE -sumZ; apply/eq_sum => x /=; rewrite !fun_if2.
+qed.
+
+lemma expC (d : 'a distr) (c : real) :
+  E d (fun _ => c) = c * weight d.
+proof. by rewrite /E sumZ -weightE. qed.
+
+lemma expC_prod ['a 'b] (d1 : 'a distr) (d2 : 'b distr) c :
+  E d1 (fun _ => E d2 (fun _ => c)) = E (d1 `*` d2) (fun _ => c).
+proof. by rewrite !expC weight_dprod #ring. qed.
+
+lemma expD (d : 'a distr) f1 f2 :
+     hasE d f1 => hasE d f2 
+  => E d (fun x => f1 x + f2 x) = E d f1 + E d f2.
+proof.
+move=> h1 h2; pose f := fun x => f1 x * mass d x + f2 x * mass d x.
+by rewrite /E -(@eq_sum f) /f 1?sumD //= => x; rewrite mulrDl.
+qed.
+
+lemma eq_exp (d : 'a distr) (f g : 'a -> real) :
+     (forall x, x \in d => f x = g x)
+  => E d f = E d g.
+proof.
+move=> eq_fg; apply/eq_sum => x /=; case: (mass d x = 0%r) => [->//|].
+by rewrite massE => /supportP /eq_fg ->.
+qed.
+
+lemma ler_exp (d : 'a distr) (f g : 'a -> real) :
+     hasE d f => hasE d g
+  => (forall x, f x <= g x)
+  => E d f <= E d g.
+proof.
+move=> hef heg le_fg; apply/RealSeries.ler_sum => //=.
+by move=> x; rewrite ler_wpmul2r 2:&(le_fg).
+qed.
+
+lemma ler_exp_pos (d : 'a distr) (f g : 'a -> real) :
+     hasE d g
+  => (forall x, 0%r <= f x <= g x)
+  => E d f <= E d g.
+proof.
+move=> hef le_fg; apply/ler_exp => //.
++ by apply/(hasE_le _ hef) => x /#.
++ by move=> x; case: (le_fg x).
 qed.
