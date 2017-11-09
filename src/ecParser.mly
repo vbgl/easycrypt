@@ -2167,7 +2167,7 @@ rwarg1:
    { RWApp f }
 
 | SHARP x=ident {
-    let tactics = ["ring", `Ring] in
+    let tactics = [("ring", `Ring); ("field", `Field)] in
     match List.Exceptionless.assoc (unloc x) tactics with
     | Some x -> RWTactic x
     | None ->

@@ -43,6 +43,14 @@ op omap ['a 'b] (f : 'a -> 'b) ox =
 
 op oget (ox : 'a option) = odflt witness<:'a> ox.
 
+op is_none (ox : 'a option) =
+  with ox = None   => true
+  with ox = Some _ => false.
+
+op is_some (ox : 'a option) =
+  with ox = None   => false
+  with ox = Some _ => true.
+
 op (\c) ['a 'b 'c] (f : 'b -> 'a option) (g : 'c -> 'b option) =
   fun x => obind f (g x).
 

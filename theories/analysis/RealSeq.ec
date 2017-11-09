@@ -213,6 +213,23 @@ by rewrite subr_lt0 ltrNge (ltrW lt_l21).
 qed.
 
 (* -------------------------------------------------------------------- *)
+lemma cnvD (s1 s2 : int -> real) :
+  converge s1 => converge s2 => converge (fun x => s1 x + s2 x).
+proof. by case=> [l1 h1] [l2 h2]; exists (l1 + l2); apply/cnvtoD. qed.
+
+lemma cnvZ c (s : int -> real) :
+  converge s => converge (fun x => c * s x).
+proof. by case=> [l h]; exists (c * l); apply/cnvtoZ. qed.
+
+lemma cnvZ_iff c (s : int -> real) : c <> 0%r =>
+  converge (fun x => c * s x) <=> converge s.
+proof.
+move=> nz_c; split; last by apply/cnvZ.
+suff {2}->: s = fun x => inv c * (c * s x) by apply/cnvZ.
+by apply/fun_ext=> x; rewrite mulrA (@mulrC _ c) divff.
+qed.
+
+(* -------------------------------------------------------------------- *)
 op lim (s : int -> real) =
   choiceb (fun l => convergeto s l) 0%r.
 
@@ -250,3 +267,20 @@ proof. by apply/limC_eq_from. qed.
 
 lemma limC c : lim (fun x => c) = c.
 proof. by apply/limC_eq. qed.
+
+lemma limZ c (s : int -> real) :
+  lim (fun x => c * s x) = c * lim s.
+proof.
+case: (converge s) => [[l] ^/cnvtoZ /(_ c) h1 h2|].
++ by rewrite (lim_cnvto h1) (lim_cnvto h2).
+case: (c = 0%r) => [-> _ /=|nz_c ^h1]; first by rewrite limC.
+by rewrite -(@cnvZ_iff c) // => h2; rewrite !lim_Ncnv.
+qed.
+
+lemma limD (s1 s2 : int -> real) :
+  converge s1 => converge s2 =>
+    lim (fun x => s1 x + s2 x) = lim s1 + lim s2.
+proof.
+case=> [l1 h1] [l2 h2]; rewrite (lim_cnvto h1) (lim_cnvto h2).
+by have := cnvtoD _ _ _ _ h1 h2 => /lim_cnvto ->.
+qed.
