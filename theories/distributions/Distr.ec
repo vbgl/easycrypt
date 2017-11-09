@@ -1131,4 +1131,3 @@ move=> hef le_fg; apply/ler_exp => //.
 + by apply/(hasE_le _ hef) => x /#.
 + by move=> x; case: (le_fg x).
 qed.
->>>>>>> deploy-distr
