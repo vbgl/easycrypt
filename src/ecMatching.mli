@@ -240,7 +240,7 @@ module FPattern : sig
     (* | FequivF of equivF (\* $left,$right / $left,$right *\) *)
     (* | FequivS of equivS *)
     (* | FeagerF of eagerF *)
-    | Ppr             of pattern * pattern * pattern * form
+    | Ppr             of pattern * pattern * pattern * pattern
 
     | Pprog_var       of prog_var
 

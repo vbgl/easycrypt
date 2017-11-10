@@ -1,4 +1,4 @@
-(* --------------------------------------------------------------------
+3(* --------------------------------------------------------------------
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2017 - Inria
  *
@@ -1114,7 +1114,7 @@ module FPattern = struct
     (* | FequivF of equivF (\* $left,$right / $left,$right *\) *)
     (* | FequivS of equivS *)
     (* | FeagerF of eagerF *)
-    | Ppr             of pattern * pattern * pattern * form
+    | Ppr             of pattern * pattern * pattern * pattern
 
     | Pprog_var       of prog_var
 
@@ -1381,7 +1381,7 @@ module FPattern = struct
        | Fpr pr ->
           let zand = [((Oform f, binds), pfun);
                       ((Oform pr.pr_args,binds), pargs);
-                      ((Oform pr.pr_event, binds), Pobject (Oform pevent))] in
+                      ((Oform pr.pr_event, binds), pevent)] in
           process { e with
                     e_pattern = pmem;
                     e_head = Omem pr.pr_mem, binds;
@@ -1509,7 +1509,7 @@ module FPattern = struct
         | Fpr(pr)            -> Ppr (aux_mem pr.pr_mem,
                                      aux_xpath pr.pr_fun,
                                      aux pr.pr_args,
-                                     pr.pr_event) (* <- FIXME *)
+                                     aux_event pr.pr_event) (* <- FIXME *)
         | Fquant(quant,binds,f) -> Pquant (quant,binds,aux f)
         | _ -> raise (Invalid_argument "match case non-exhaustive in pattern_of_form")
 
@@ -1526,6 +1526,9 @@ module FPattern = struct
       | _                             -> Pobject (Ompath_top mpt)
 
     and aux_xpath xpath = Pxpath xpath (* FIXME ?? *)
+
+    and aux_event event =
+      Pquant (Llambda,[mhr,GTmem None], aux event)
     in
 
     aux f
