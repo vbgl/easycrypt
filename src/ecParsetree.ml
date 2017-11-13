@@ -773,6 +773,7 @@ type logtactic =
   | Psimplify   of preduction
   | Pchange     of pformula
   | Ppose       of (psymbol * rwocc * pformula)
+  | Ptest_match of pqsymbol
 
 (* -------------------------------------------------------------------- *)
 and ptactic_core_r =

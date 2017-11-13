@@ -1088,8 +1088,6 @@ module FPattern = struct
 
   type name = Name.t
 
-  module M = Mid
-
   type pattern =
     | Panything
     | Pnamed    of pattern * name
@@ -1132,7 +1130,7 @@ module FPattern = struct
 
   type t_matches = object_matches * Sid.t
 
-  type matches = t_matches M.t
+  type matches = t_matches Mid.t
 
   type to_match = t_matches * pattern
 
@@ -1171,7 +1169,7 @@ module FPattern = struct
   let mkengine (f : form) (p : pattern) : engine = {
       e_head         = Oform f, Sid.empty ;
       e_continuation = ZTop ;
-      e_map          = M.empty ;
+      e_map          = Mid.empty ;
       e_pattern      = p ;
     }
 
@@ -1202,8 +1200,8 @@ module FPattern = struct
                  | Oform      f  -> Mid.set_inter o2 (f_fv f)
                  | Omem       m  -> Mid.set_inter o2 (Sid.singleton m)
                  | Ompath_top mp -> Mid.set_inter o2 (m_fv Mid.empty (mpath mp [])) in
-      let map = match M.find_opt name map with
-        | None   -> M.add name o map
+      let map = match Mid.find_opt name map with
+        | None   -> Mid.add name o map
         | Some x -> if object_equal (fst x) (fst o) then map
                     else raise CannotUnify
       in map
@@ -1261,7 +1259,7 @@ module FPattern = struct
           else if not(Mid.set_disjoint binds (Sid.of_list (List.map fst bs1)))
           then
             next NoMatch e
-          else if not(M.set_disjoint e.e_map binds)
+          else if not(Mid.set_disjoint e.e_map binds)
           then
             next NoMatch e
           else
@@ -1527,8 +1525,7 @@ module FPattern = struct
 
     and aux_xpath xpath = Pxpath xpath (* FIXME ?? *)
 
-    and aux_event event =
-      Pquant (Llambda,[mhr,GTmem None], aux event)
+    and aux_event event = aux event
     in
 
     aux f

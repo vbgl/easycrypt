@@ -214,8 +214,6 @@ module FPattern : sig
 
   type name = EcIdent.t
 
-  module M : module type of Mid
-
   type pattern =
     | Panything
     | Pnamed    of pattern * name
@@ -258,7 +256,7 @@ module FPattern : sig
 
   type t_matches = object_matches * Sid.t
 
-  type matches = t_matches M.t
+  type matches = t_matches Mid.t
 
   type to_match = t_matches * pattern
 

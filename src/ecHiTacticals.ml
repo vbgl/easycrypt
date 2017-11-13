@@ -150,6 +150,7 @@ and process1_logic (ttenv : ttenv) (t : logtactic located) (tc : tcenv1) =
     | Psimplify ri      -> process_simplify ri
     | Pchange pf        -> process_change pf
     | Ppose (x, o, p)   -> process_pose x o p
+    | Ptest_match x     -> EcTestMatch.process_match x
 
     | _ -> assert false
   in

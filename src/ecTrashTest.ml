@@ -1,6 +1,7 @@
 open EcCoreFol
 open EcMatching
 open FPattern
+open EcIdent
 
 let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
   let add_name n p = Pnamed (p, n) in
@@ -22,9 +23,9 @@ let test (_tc1 : EcCoreGoal.tcenv1) : EcCoreGoal.tcenv =
          ["Test ";
           string_of_int i;
           " : there are ";
-          string_of_int (M.cardinal map);
+          string_of_int (Mid.cardinal map);
           " names : ";
-          String.concat " and " (List.map EcIdent.tostring (List.map fst (M.bindings map)))
+          String.concat " and " (List.map EcIdent.tostring (List.map fst (Mid.bindings map)))
          ] in
     String.concat "" err in
 

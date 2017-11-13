@@ -2458,6 +2458,9 @@ logtactic:
 | POSE o=rwocc? x=ident CEQ p=form_h %prec prec_below_IMPL
    { Ppose (x, o, p) }
 
+| REWRITE LTSTARGT  a=qident
+  { Ptest_match a }
+
 eager_info:
 | h=ident
     { LE_done h }
