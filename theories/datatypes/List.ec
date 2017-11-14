@@ -1518,6 +1518,21 @@ proof.
   by move=> x' y' s_x' s_y'; apply/inj_f; rewrite ?(s_x', s_y').
 qed.
 
+lemma in_inj_map ['a 'b] (f : 'a -> 'b) p :
+     (forall x y, p x => p y => f x = f y => x = y)
+  => forall s1 s2, all p s1 => all p s2 => map f s1 = map f s2 => s1 = s2.
+proof.
+move=> inj_f; elim=> [|x1 s1 ih] [|x2 s2] //=.
+case=> [p1 ps1] [p2 ps2] [eqf eqm].
+by rewrite (inj_f x1 x2) //=; apply/ih.
+qed.
+
+lemma inj_map ['a 'b] (f : 'a -> 'b) :
+  injective f => injective (map f).
+proof.
+by move=> inj_f s1 s2; apply/(@in_inj_map _ predT); try apply/all_predT.
+qed.
+
 (* -------------------------------------------------------------------- *)
 (*                         Partial mapping                              *)
 (* -------------------------------------------------------------------- *)
