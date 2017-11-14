@@ -12,9 +12,13 @@ require import AllCore Ring StdRing StdOrder List.
 pragma -oldip.
 
 (* -------------------------------------------------------------------- *)
-pred enumerate ['a] (C : int -> 'a option) (E : 'a -> bool) =
+op enumerate ['a] (C : int -> 'a option) (E : 'a -> bool) =
      (forall i j x, C i = Some x => C j = Some x => i = j)
   /\ (forall x, E x => exists i, 0 <= i /\ C i = Some x).
+
+(* -------------------------------------------------------------------- *)
+op cenum ['a] (p : 'a -> bool) =
+  choiceb (fun f => enumerate f p) (fun _ => None).
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt eq_enumerate ['a] E1 E2 (C : int -> 'a option) :
@@ -29,31 +33,53 @@ op countable ['a] (E : 'a -> bool) =
 abbrev countableT ['a] = countable predT<:'a>.
 
 (* -------------------------------------------------------------------- *)
-lemma nosmt inj_countable ['a] (f : 'a -> int) (p : 'a -> bool) :
-     (forall x y, p x => p y => f x = f y => x = y)
-  => countable p.
+op int2nat (i : int) : int =
+  if 0 <= i then 2 * i else -2 * i + 1.
+
+lemma inj_int2nat : injective int2nat.
 proof.
-move=> inj_pf; pose P i x := p x /\ f x = i.
-pose C i := Some (choiceb (P i) witness).
-exists C => x px @/C; exists (f x); congr.
-have: exists y, P (f x) y by exists x.
-by case/(choicebP (P (f x)) witness)=> h; apply/inj_pf.
+move=> x y @/int2nat; case: (0 <= y); case: (0 <= x) => hx hy.
++ by apply: mulfI.
++ by move/(congr1 odd); rewrite oddS oddN !oddM odd2.
++ by move/(congr1 odd); rewrite oddS oddN !oddM odd2.
++ by move/addIr; rewrite -!mulNr &(mulfI) oppr_eq0.
 qed.
 
-(* -------------------------------------------------------------------- *)
-lemma nosmt inj_cond_countable ['a 'b] (f : 'a -> 'b) pb pa :
-     countable<:'b> pb
-  => (forall x y, pa x => pa y => f x = f y => x = y)
-  => (forall x, pa x => pb (f x))
-  => countable<:'a> pa.
-proof. admitted.
+lemma ge0_int2nat x : 0 <= int2nat x by smt().
 
 (* -------------------------------------------------------------------- *)
-lemma nosmt inj_condL_countable ['a 'b] (f : 'a -> 'b) p :
-     countableT<:'b>
-  => (forall x y, p x => p y => f x = f y => x = y)
-  => countable<:'a> p.
-proof. by apply/inj_cond_countable. qed.
+lemma cnt_int : countableT<:int>.
+proof. by exists (fun i => Some i) => i _; exists i. qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt countableP ['a] (E : 'a -> bool) :
+  (exists f, enumerate f E) <=> countable E.
+proof.
+split; case=> C => [[h1 h2]|h].
++ by exists C => x /h2 [i] [_ <-]; exists i.
+pose P i x := exists j, i = int2nat j /\ C j = Some x.
+pose Q i x := P i x /\ i = minz (transpose P x).
+pose R i x := odflt false (omap (Q i) x).
+pose f i   := choiceb (R i) None.
+have eqR: forall i x1 x2, R i x1 => R i x2 => x1 = x2.
++ move=> i [|x1] [|x2] @/R //= [+ _] [+ _] -[j1 [-> h1]] [j2 [+ h2]].
+  by move/inj_int2nat=> <<-; move: h1 h2 => ->.
+have fQ: forall k x, f k = Some x => Q k x.
++ move=> k x; case: (exists x0, R k x0); last first.
+  - by rewrite negb_exists /= => /choiceb_dfl @/f ->.
+  move/(choicebP _ None); rewrite -/(f _) /= => + fkE.
+  by rewrite fkE /R.
+exists f; split=> [i j x fiE fjE|x /h {h} [i hi]].
++ by move/fQ: fjE; move/fQ: fiE => [h1 ->] [h2 ->].
+exists (minz (transpose P x)); rewrite ge0_argmin /=.
+have hP: P (minz (transpose P x)) x.
++ apply/(@argminP idfun (transpose P x) (int2nat i)) => @/idfun /=.
+  * by apply/ge0_int2nat. * by exists i.
+have hR: R (minz (transpose P x)) (Some x) by done.
+have h: exists x', R (minz (transpose P x)) x' by exists (Some x).
+have /= {h} := choicebP _ None h; rewrite -/(f _) => h.
+by move: h hR; apply/eqR.
+qed.
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt countable_inj ['a] (p : 'a -> bool) :
@@ -67,19 +93,33 @@ by rewrite -h => ->.
 qed.
 
 (* -------------------------------------------------------------------- *)
-op int2nat (i : int) : int =
-  if 0 <= i then 2 * i else -2 * i + 1.
-
-lemma inj_int2nat : injective int2nat.
+lemma nosmt inj_cond_countable ['a 'b] (f : 'a -> 'b) pb pa :
+     countable<:'b> pb
+  => (forall x y, pa x => pa y => f x = f y => x = y)
+  => (forall x, pa x => pb (f x))
+  => countable<:'a> pa.
 proof.
-move=> x y @/int2nat; case: (0 <= y); case: (0 <= x) => hx hy.
-+ by apply: mulfI.
-+ by move/(congr1 odd); rewrite oddS oddN !oddM odd2.
-+ by move/(congr1 odd); rewrite oddS oddN !oddM odd2.
-+ by move/addIr; rewrite -!mulNr &(mulfI) oppr_eq0.
+case/countable_inj=> [C hC] inj_fp okf.
+pose P i x := pa x /\ C (f x) = i.
+exists (fun i => Some (choiceb (P i) witness)) => /=.
+move=> x pax; have h: exists i, P (C (f x)) i by exists x.
+exists (C (f x)); case/(choicebP (P (C (f x))) witness): h.
+move=> hpa; have h1 := okf _ pax; have h2 := okf _ hpa.
+by move/(hC _ _ h2 h1)/(inj_fp _ _ hpa pax).
 qed.
 
-lemma ge0_inj2nat x : 0 <= int2nat x by smt().
+(* -------------------------------------------------------------------- *)
+lemma nosmt inj_condL_countable ['a 'b] (f : 'a -> 'b) p :
+     countableT<:'b>
+  => (forall x y, p x => p y => f x = f y => x = y)
+  => countable<:'a> p.
+proof. by apply/inj_cond_countable. qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt inj_countable ['a] (f : 'a -> int) (p : 'a -> bool) :
+     (forall x y, p x => p y => f x = f y => x = y)
+  => countable p.
+proof. by apply/inj_condL_countable/cnt_int. qed.
 
 (* -------------------------------------------------------------------- *)
 theory IntPair.
@@ -120,7 +160,7 @@ theory IntPair.
   proof.
   case=> [x1 y1] [x2 y2] @/encode /=; rewrite andabP.
   rewrite -(inj_eq _ inj_int2nat x1) -(inj_eq _ inj_int2nat y1).
-  by apply/FTA23; apply/ge0_inj2nat.
+  by apply/FTA23; apply/ge0_int2nat.
   qed.
 
   lemma countable : countableT<:int * int>.
@@ -216,15 +256,3 @@ proof.
 move=> h; pose f x := odflt [] (omap (fun y => [<:'a> y]) x).
 by apply(@inj_condL_countable f) => [|[|x] [|y]] //; apply/cnt_list.
 qed.
-
-(* -------------------------------------------------------------------- *)
-op cunion (C1 C2 : int -> 'a option) : (int -> 'a option).
-
-(* -------------------------------------------------------------------- *)
-axiom cunion_enum (C1 C2 : int -> 'a option) E1 E2 :
-  enumerate C1 E1 => enumerate C2 E2 =>
-    enumerate (cunion C1 C2) (predU E1 E2).
-
-(* -------------------------------------------------------------------- *)
-op cunions (Cs : (int -> 'a option) list) =
-  foldr cunion (fun x => None) Cs.

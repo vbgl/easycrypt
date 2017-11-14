@@ -304,13 +304,6 @@ lemma nosmt sumD s1 s2 : summable s1 => summable s2 =>
 proof.
 move=> cv1 cv2; pose s := fun x => s1 x + s2 x.
 have cvs: summable s by move=> @/s; apply/summableD.
-have /sum_to_enum[J1 cJ1] := cv1; have /sum_to_enum[J2 cj2] := cv2.
-have /sum_to_enum[Js cJs] := cvs; pose J := cunions [Js; J1; J2].
-rewrite (@sumE s J) -1:(@sumE s1 J) -1:(@sumE s2 J) //.
-+ admit.
-+ admit.
-+ admit.
-rewrite -limD.
 admitted.
 
 (* -------------------------------------------------------------------- *)
