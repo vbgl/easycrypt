@@ -17,7 +17,7 @@ pred enumerate ['a] (C : int -> 'a option) (E : 'a -> bool) =
   /\ (forall x, E x => exists i, 0 <= i /\ C i = Some x).
 
 (* -------------------------------------------------------------------- *)
-lemma eq_enumerate ['a] E1 E2 (C : int -> 'a option) :
+lemma nosmt eq_enumerate ['a] E1 E2 (C : int -> 'a option) :
   (forall x, E1 x = E2 x) => enumerate C E1 => enumerate C E2.
 proof. by move/fun_ext=> ->. qed.
 
@@ -25,6 +25,37 @@ proof. by move/fun_ext=> ->. qed.
 op countable ['a] (E : 'a -> bool) =
   exists (C : int -> 'a option),
     forall x, E x => exists i, C i = Some x.
+
+(* -------------------------------------------------------------------- *)
+lemma L (n1 p1 n2 p2 : int) :
+     0 <= n1 => 0 <= p1
+  => 0 <= n2 => 0 <= p2
+  => exp 2 n1 * exp 3 p1 = exp 2 n2 * exp 3 p2
+  => n1 = n2 /\ p1 = p2.
+proof.
+move=> ge0_n1 ge0_p1 ge0_n2 ge0_p2; case: (n1 = n2) => /= [<-|neq_n].
+(* FIXME: move/ieexprIn fails *)
++ have h/h{h} := mulfI (exp 2 n1) _; 1: by rewrite expf_eq0 //.
+  by have h := ieexprIn 3 _ _ p1 p2 _ _ => //; apply/ltzW.
+pose x1 := exp 3 p1; pose x2 := exp 3 p2.
+have {ge0_p1 ge0_p2} [o1 o2] : odd x1 /\ odd x2 by rewrite !oddX // odd3.
+(* FIXME: wlog *)
+(* FIXME: display of pose is not well indented *)
+pose P n1 n2 x1 x2 :=
+     0 <= n1 => 0 <= n2 => n1 <> n2 => odd x1 => odd x2
+  => exp 2 n1 * x1 <> exp 2 n2 * x2.
+move: x1 x2 ge0_n1 ge0_n2 neq_n o1 o2.
+move=> {p1 p2} x1 x2; rewrite -/(P n1 n2 x1 x2).
+have: (forall n1 n2 x1 x2, (n1 <= n2)%Int => P n1 n2 x1 x2) => P n1 n2 x1 x2.
++ move=> ih; case: (lez_total n1 n2); first by move/ih; apply.
+  by move=> h @/P *; rewrite eq_sym &(ih) 1?eq_sym.
+apply=> {n1 n2 x1 x2} n1 n2 x1 x2 le_n ge0_n1 ge0_n2 neq_n o1 o2.
+have lt_n: n1 < n2 by rewrite ltr_neqAle le_n.
+rewrite (_ : n2 = n1 + (n2 - n1)) 1:#ring exprD ?subr_ge0 //.
+apply/negP; rewrite -mulrA; have h/h := mulfI (exp 2 n1) _.
++ by rewrite expf_eq0.
+by move/(congr1 odd); rewrite oddM poddX ?subr_gt0 // odd2 !(o1, o2).
+qed.
 
 (* -------------------------------------------------------------------- *)
 lemma L (n1 p1 n2 p2 : int) :
@@ -55,6 +86,18 @@ rewrite (_ : n2 = n1 + (n2 - n1)) 1:#ring exprD ?subr_ge0 1?ltrW //.
 apply/negP; rewrite -mulrA; have h/h := mulfI (exp 2 n1) _.
 + by rewrite expf_eq0.
 by move/(congr1 odd); rewrite oddM oddX ?subr_gt0 // odd2 !(o1, o2).
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt inj_countable ['a] (f : 'a -> int) (p : 'a -> bool) :
+     (forall x y, p x => p y => f x = f y => x = y)
+  => countable p.
+proof.
+move=> inj_pf; pose P i x := p x /\ f x = i.
+pose C i := Some (choiceb (P i) witness).
+exists C => x px @/C; exists (f x); congr.
+have: exists y, P (f x) y by exists x.
+by case/(choicebP (P (f x)) witness)=> h; apply/inj_pf.
 qed.
 
 (* -------------------------------------------------------------------- *)
