@@ -135,18 +135,10 @@ theory IntPair.
     by have h := ieexprIn 3 _ _ p1 p2 _ _ => //; apply/ltzW.
   pose x1 := exp 3 p1; pose x2 := exp 3 p2.
   have {ge0_p1 ge0_p2} [o1 o2] : odd x1 /\ odd x2 by rewrite !oddX // odd3.
-  (* FIXME: wlog *)
-  (* FIXME: display of pose is not well indented *)
-  pose P n1 n2 x1 x2 :=
-       0 <= n1 => 0 <= n2 => n1 <> n2 => odd x1 => odd x2
-    => exp 2 n1 * x1 <> exp 2 n2 * x2.
-  move: x1 x2 ge0_n1 ge0_n2 neq_n o1 o2.
-  move=> {p1 p2} x1 x2; rewrite -/(P n1 n2 x1 x2).
-  have: (forall n1 n2 x1 x2, (n1 <= n2)%Int => P n1 n2 x1 x2) => P n1 n2 x1 x2.
-  + move=> ih; case: (lez_total n1 n2); first by move/ih; apply.
+  wlog: n1 n2 ge0_n1 ge0_n2 neq_n x1 x2 o1 o2 / (n1 <= n2)%Int.
+  + move=> ih; case: (lez_total n1 n2); first by apply: ih.
     by move=> h @/P *; rewrite eq_sym &(ih) 1?eq_sym.
-  apply=> {n1 n2 x1 x2} n1 n2 x1 x2 le_n ge0_n1 ge0_n2 neq_n o1 o2.
-  have lt_n: n1 < n2 by rewrite ltr_neqAle le_n.
+  move=> le_n; have lt_n: n1 < n2 by rewrite ltr_neqAle le_n.
   rewrite (_ : n2 = n1 + (n2 - n1)) 1:#ring exprD ?subr_ge0 //.
   apply/negP; rewrite -mulrA; have h/h := mulfI (exp 2 n1) _.
   + by rewrite expf_eq0.
