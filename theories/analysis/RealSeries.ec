@@ -10,6 +10,7 @@ require import Bool AllCore List.
 require import StdRing StdOrder StdBigop Discrete RealLub RealSeq.
 (*---*) import IterOp Bigreal Bigreal.BRA IntOrder RField RealOrder.
 
+pragma -oldip.
 pragma +implicits.
 
 (* -------------------------------------------------------------------- *)
@@ -156,28 +157,32 @@ lemma nosmt sum_Nsbl (s : 'a -> real) : !summable s => sum s = 0%r.
 proof. by move=> @/sum ->. qed.
 
 (* -------------------------------------------------------------------- *)
-lemma nosmt sumE (s : 'a -> real) :
-  forall (J : int -> 'a option),
-       enumerate J (support s)
+lemma summable_cnv s :
+  forall (J : int -> 'a option) (p : 'a -> bool),
+       enumerate J p
+    => support s <= p
     => summable s
-    => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
+    => RealSeq.convergeto (fun n => big predT s (pmap J (range 0 n))) (sum s).
 proof. admitted.
 
 (* -------------------------------------------------------------------- *)
 lemma sumEw (s : 'a -> real) :
   forall (J : int -> 'a option) (p : 'a -> bool),
        enumerate J p
-    => p <= support s
+    => support s <= p
     => summable s
     => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
-proof. admitted.
+proof.
+by move=> J p enm le sm; have /lim_cnvto <- := summable_cnv _ _ _ enm le sm.
+qed.
 
 (* -------------------------------------------------------------------- *)
-(*
-lemma sum_cnvto (s : 'a -> real) :
+lemma nosmt sumE (s : 'a -> real) :
   forall (J : int -> 'a option),
-  enumerate J (support S)
-*)
+       enumerate J (support s)
+    => summable s
+    => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
+proof. by move=> J /(@sumEw s J (support s)); apply. qed.
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt sum_to_enum (s : 'a -> real) : summable s =>
@@ -304,7 +309,15 @@ lemma nosmt sumD s1 s2 : summable s1 => summable s2 =>
 proof.
 move=> cv1 cv2; pose s := fun x => s1 x + s2 x.
 have cvs: summable s by move=> @/s; apply/summableD.
-admitted.
+pose E x := support s x \/ support s1 x \/ support s2 x.
+have cntE: countable E by do! apply/countableU; apply sbl_countable.
+pose J := cenum E; have enmJ: enumerate J E by apply/enum_cenum.
+have h1: support s1 <= E by move=> x @/E ->.
+have h2: support s2 <= E by move=> x @/E ->.
+rewrite !(@sumEw _ J E) //; first by move=> x @/E ->.
+rewrite -limD 1..2:&(summable_cnv _ enmJ) ~-1://.
+by apply/(@lim_eq 0)=> n ge0_n /=; rewrite big_split.
+qed.
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt sumZ (s : 'a -> real) c : sum (fun x => c * s x) = c * sum s.

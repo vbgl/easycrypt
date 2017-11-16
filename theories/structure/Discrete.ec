@@ -248,3 +248,36 @@ proof.
 move=> h; pose f x := odflt [] (omap (fun y => [<:'a> y]) x).
 by apply(@inj_condL_countable f) => [|[|x] [|y]] //; apply/cnt_list.
 qed.
+
+(* -------------------------------------------------------------------- *)
+hint exact : cnt_unit cnt_bool cnt_int.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt countable_le (E1 E2 : 'a -> bool) :
+  countable E1 => E2 <= E1 => countable E2.
+proof.
+by case=> C hC le; exists C => x /le /hC [i <-]; exists i.
+qed.
+
+lemma nosmt countableIL (E1 E2 : 'a -> bool) :
+  countable E1 => countable (predI E1 E2).
+proof. by move=> h; apply/(@countable_le E1) => // x @/predI. qed.
+
+lemma nosmt countableIR (E1 E2 : 'a -> bool) :
+  countable E2 => countable (predI E1 E2).
+proof. by move=> h; apply/(@countable_le E2) => // x @/predI. qed.
+
+lemma nosmt countableU (E1 E2 : 'a -> bool) :
+  countable E1 => countable E2 => countable (predU E1 E2).
+proof.
+move=> /countable_inj[f1 h1] /countable_inj[f2 h2].
+pose f x := if E1 x then (0, f1 x) else (1, f2 x).
+apply/(@inj_condL_countable f); first by apply/cnt_prod.
+move=> x y @/predU @/f; case: (E1 x) => /= [E1x|].
++ by case: (E1 y) => //= E1y; apply/h1.
++ by case: (E1 y) => //= _ _ E2x E2y; apply/h2.
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt enum_cenum E : countable<:'a> E => enumerate (cenum E) E.
+proof. by move=> /countableP /(@choicebP _); apply. qed.
