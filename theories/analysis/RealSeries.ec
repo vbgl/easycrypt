@@ -157,13 +157,24 @@ lemma nosmt sum_Nsbl (s : 'a -> real) : !summable s => sum s = 0%r.
 proof. by move=> @/sum ->. qed.
 
 (* -------------------------------------------------------------------- *)
-lemma summable_cnv s :
+lemma summable_cnvto s :
   forall (J : int -> 'a option) (p : 'a -> bool),
        enumerate J p
     => support s <= p
     => summable s
     => RealSeq.convergeto (fun n => big predT s (pmap J (range 0 n))) (sum s).
 proof. admitted.
+
+(* -------------------------------------------------------------------- *)
+lemma summable_cnv s :
+  forall (J : int -> 'a option) (p : 'a -> bool),
+       enumerate J p
+    => support s <= p
+    => summable s
+    => RealSeq.converge (fun n => big predT s (pmap J (range 0 n))).
+proof.
+by move=> J P enm sm sbl; have /cnvP := summable_cnvto _ _ _ enm sm sbl.
+qed.
 
 (* -------------------------------------------------------------------- *)
 lemma sumEw (s : 'a -> real) :
@@ -173,7 +184,7 @@ lemma sumEw (s : 'a -> real) :
     => summable s
     => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
 proof.
-by move=> J p enm le sm; have /lim_cnvto <- := summable_cnv _ _ _ enm le sm.
+by move=> J p enm le sm; have /lim_cnvto <- := summable_cnvto _ _ _ enm le sm.
 qed.
 
 (* -------------------------------------------------------------------- *)
