@@ -6,8 +6,8 @@
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
-require import Bool AllCore List.
-require import StdRing StdOrder StdBigop Discrete RealLub RealSeq.
+require import Bool AllCore List Finite Discrete.
+require import StdRing StdOrder StdBigop RealLub RealSeq.
 (*---*) import IterOp Bigreal Bigreal.BRA IntOrder RField RealOrder.
 
 pragma -oldip.
@@ -28,8 +28,43 @@ op summable (s : 'a -> real) =
   exists M, forall J,
     uniq J => big predT (fun i => `|s i|) J <= M.
 
-axiom sbl_countable (s : 'a -> real) :
+(* -------------------------------------------------------------------- *)
+lemma sbl_countable (s : 'a -> real) :
   summable s => countable (fun i => s i <> 0%r).
+proof.
+pose E i := fun x => if i <= 0 then false else 1%r / i%r <= `|s x|.
+case=> M sbl_s; have: 0%r <= M.
++ apply/(@ler_trans `|s witness|); 1: by apply/normr_ge0.
+  by have := sbl_s [witness] _ => //; rewrite big_seq1.
+rewrite ler_eqVlt => -[<<-|gt0_M]; 1: apply: countable0_eq.
++ apply/fun_ext=> x; apply/negbTE => /=; have := sbl_s [x] _ => //.
+  by rewrite big_seq1 /= normr_le0.
+have fin_E: forall i, countable (E i); 1: (move=> i; apply/cnt_finite).
++ move=> @/E; case: (i <= 0) => [_|/ltzNge gt0_i]; 1: by apply/finite0.
+  apply/negbNE/negP; pose n := i * (intp M + 1); have ge0_n: 0 <= n.
+  - rewrite &(IntOrder.ler_trans i) 1:ltrW // ler_pmulr //.
+    by rewrite ler_addr &(leup_intp) ltrW.
+  case/(@NfiniteP n _ ge0_n) => J [[szJ uqJ] memJ].
+  have := sbl_s _ uqJ; pose S := big _ _ _; move=> leSM.
+  suff: M < S by apply: (ler_lt_trans _ leSM).
+  apply/(@ltr_le_trans (big predT (fun _ => 1%r / i%r) J)); last first.
+  - by rewrite /S !big_seq; apply/ler_sum=> x /= Px; apply/memJ.
+  rewrite sumr_const intmulr count_predT mulrAC /=.
+  apply/(ltr_le_trans (n%r / i%r)); last first.
+  rewrite ler_pmul2r ?invr_gt0 1..2:(lt_fromint, le_fromint) //.
+  by rewrite /n fromintM mulrAC divff /= ?gt_intp eq_fromint gtr_eqF.
+have Efu: forall x, s x <> 0%r => exists i, E i x.
++ move=> x nz_sx; case: (1%r <= `|s x|) => [|/ltrNge gt1_sx].
+  - by move=> h; exists 1.
+  exists (intp (inv `|s x|) + 1) => @/E; rewrite -if_neg.
+  rewrite -ltrNge ltzS leup_intp 1:invr_ge0 1:normr_ge0 //=.
+  apply/(@ler_pdivr_mulr (intp (inv (`|s x|)) + 1)%r _ 1%r).
+  - by rewrite lt_fromint ltzS leup_intp invr_ge0 normr_ge0.
+  apply/ltrW/(@ler_lt_trans (`|s x| / `|s x|)).
+  - by rewrite divff ?normr0P.
+  by rewrite ltr_pmul2l ?normr_gt0 // gt_intp.
+by apply/(@countable_le (fun x => exists i, E i x)); 1: apply/cnt_Uw.
+qed.
 
 (* -------------------------------------------------------------------- *)
 op support ['a] (s : 'a -> real) = fun x => s x <> 0%r.

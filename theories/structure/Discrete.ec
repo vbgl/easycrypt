@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
-require import AllCore Ring StdRing StdOrder List.
+require import AllCore Ring StdRing StdOrder List Finite.
 (*---*) import IntID IntOrder.
 
 pragma -oldip.
@@ -201,6 +201,20 @@ theory IntList.
 end IntList.
 
 (* -------------------------------------------------------------------- *)
+lemma countable0 ['a] : countable pred0<:'a>.
+proof. by exists (fun _ => None). qed.
+
+lemma countable0_eq ['a] p : p = pred0<:'a> => countable p.
+proof. by move=> ->; apply/countable0. qed.
+
+(* -------------------------------------------------------------------- *)
+lemma cnt_finite ['a] (p : 'a -> bool) : is_finite p => countable p.
+proof.
+case=> s [uq_s hp]; exists (fun i => Some (nth witness s i)).
+by move=> x /hp x_in_s; exists (index x s); rewrite /= nth_index.
+qed.
+
+(* -------------------------------------------------------------------- *)
 lemma cnt_unit p : countable<:unit> p.
 proof. by apply/(@inj_countable (fun _ => 0)). qed.
 
@@ -259,14 +273,17 @@ proof.
 by case=> C hC le; exists C => x /le /hC [i <-]; exists i.
 qed.
 
+(* -------------------------------------------------------------------- *)
 lemma nosmt countableIL (E1 E2 : 'a -> bool) :
   countable E1 => countable (predI E1 E2).
 proof. by move=> h; apply/(@countable_le E1) => // x @/predI. qed.
 
+(* -------------------------------------------------------------------- *)
 lemma nosmt countableIR (E1 E2 : 'a -> bool) :
   countable E2 => countable (predI E1 E2).
 proof. by move=> h; apply/(@countable_le E2) => // x @/predI. qed.
 
+(* -------------------------------------------------------------------- *)
 lemma nosmt countableU (E1 E2 : 'a -> bool) :
   countable E1 => countable E2 => countable (predU E1 E2).
 proof.
@@ -276,6 +293,23 @@ apply/(@inj_condL_countable f); first by apply/cnt_prod.
 move=> x y @/predU @/f; case: (E1 x) => /= [E1x|].
 + by case: (E1 y) => //= E1y; apply/h1.
 + by case: (E1 y) => //= _ _ E2x E2y; apply/h2.
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma nosmt cnt_Uw ['a] (f : int -> 'a -> bool) :
+     (forall i, countable (f i))
+  => countable (fun x => exists i, f i x).
+proof.
+pose P i (C : _ -> int) := forall x y, f i x => f i y => C x = C y => x = y.
+move=> cnt_fi; have: exists (C : int -> 'a -> int), forall i, P i (C i).
++ exists (fun i => choiceb (P i) witness) => i /=.
+  apply/(@choicebP (P i)); move/countable_inj: (cnt_fi i).
+  by case=> fi hfi; exists fi.
+case=> C hC; pose F x := let k = choiceb (fun i => f i x) 0 in (k, C k x).
+apply/(@inj_condL_countable F); 1: by apply/cnt_prod.
+move=> /= x y [ix fix] [iy fiy] [^h] - <-; apply/hC.
++ by apply/(@choicebP (transpose f x)); exists ix.
++ by rewrite h; apply/(@choicebP (transpose f y)); exists iy.
 qed.
 
 (* -------------------------------------------------------------------- *)
