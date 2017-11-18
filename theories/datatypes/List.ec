@@ -1578,6 +1578,16 @@ case=> y [ys eq_f]; suff <<-//: x = y.
 by apply: (@inj_f x y v); rewrite ?ys //= -eq_f.
 qed.
 
+lemma pmapP ['a, 'b] (f : 'a -> 'b option) s y :
+  y \in pmap f s <=> exists (x : 'a), (x \in s) /\ Some y = f x.
+proof.
+rewrite pmap_map; split => [|/mapP].
++ case/mapP=> z; rewrite mem_filter /predC1 => />.
+  by case: z => // z _ /mapP; apply.
++ case/mapP=> x [xs fxE]; apply/mapP; exists (Some y).
+  by rewrite mem_filter /predC1 /=; apply/mapP; exists x.
+qed.
+
 (* -------------------------------------------------------------------- *)
 (*                          Index sequence                              *)
 (* -------------------------------------------------------------------- *)
