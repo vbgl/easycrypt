@@ -10,6 +10,7 @@ require import AllCore Bool Ring StdRing StdOrder StdBigop List.
 (*---*) import IterOp Bigreal.BRA IntID RField IntOrder RealOrder.
 
 pragma +implicits.
+pragma -oldip.
 
 (* -------------------------------------------------------------------- *)
 op convergeto (s : int -> real) (x : real) =
@@ -195,7 +196,7 @@ by apply/(@bounded_cnvto l2).
 qed.
 
 (* -------------------------------------------------------------------- *)
-lemma le_cnvto_form s1 s2 l1 l2:
+lemma le_cnvto_from s1 s2 l1 l2:
      (exists N, forall n, (N <= n)%Int => (s1 n <= s2 n)%Real)
   => convergeto s1 l1 => convergeto s2 l2 => l1 <= l2.
 proof.
@@ -210,6 +211,32 @@ rewrite ltr_norml => -[+ _] @/F; rewrite ltr_subr_addl /F.
 move/ltr_le_trans/(_ _ le0_s12); rewrite -(@mulr1 (l1-l2)) /e.
 rewrite -mulrBr pmulr_llt0 1:subr_gt0 1:invr_lt1 //.
 by rewrite subr_lt0 ltrNge (ltrW lt_l21).
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma cnvto_lub_bmono_from (s : int -> real) M N :
+     (forall n p, (N <= n <= p)%Int => s n <= s p)
+  => (forall n, N <= n => s n <= M)
+  => convergeto s (lub (fun x => exists n, N <= n /\ s n = x)).
+proof.
+move=> mono_s bd_s; pose E x := exists n, N <= n /\ s n = x.
+have: has_lub E; first (split; first by exists (s N) N).
++ by exists M => x [n [leNn <-]]; apply/bd_s.
+move=> ^/lub_upper_bound h1 /lub_adherent h2.
+move=> e gt0_e; case/(_ _ gt0_e): h2 => _ [[K] [leKn <<-]] h2.
+exists K => n leNn; rewrite distrC ger0_norm ?subr_ge0.
++ by apply/h1; exists n => /=; apply/(@lez_trans K).
+by rewrite ltr_subl_addr -ltr_subl_addl; apply/(ltr_le_trans _ h2)/mono_s.
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma cnv_bmono_from (s : int -> real) M N :
+     (forall n p, (N <= n <= p)%Int => s n <= s p)
+  => (forall n, N <= n => s n <= M)
+  => converge s.
+proof.
+move=> h1 h2; exists (lub (fun x => exists n, N <= n /\ s n = x)).
+by apply/(@cnvto_lub_bmono_from _ M N).
 qed.
 
 (* -------------------------------------------------------------------- *)

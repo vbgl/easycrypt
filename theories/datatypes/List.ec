@@ -1563,6 +1563,21 @@ rewrite pmap_map filter_map -!map_comp.
 by rewrite -(@eq_filter predT) ?filter_predT.
 qed.
 
+lemma pmap_inj_in_uniq (f : 'a -> 'b option) (s : 'a list) :
+      (forall (x y : 'a) v, x \in s => y \in s =>
+         f x = Some v => f y = Some v => x = y)
+   => uniq s => uniq (pmap f s).
+proof.
+elim: s => //= x s ih inj_f [xs uqs]; case _: (f x) => /= [|v] E.
+- by rewrite ih // => x' y' v' x's y's; apply/inj_f; right.
+rewrite ih //; 1: by move => x' y' v' x's y's; apply/inj_f; right.
+rewrite /oget /= pmap_map; apply/negP => /mapP.
+case=> -[|v']; rewrite mem_filter // => -[[_ vs] @/oget /=].
+apply/negP=> <<-; move: vs; rewrite -E => /mapP.
+case=> y [ys eq_f]; suff <<-//: x = y.
+by apply: (@inj_f x y v); rewrite ?ys //= -eq_f.
+qed.
+
 (* -------------------------------------------------------------------- *)
 (*                          Index sequence                              *)
 (* -------------------------------------------------------------------- *)

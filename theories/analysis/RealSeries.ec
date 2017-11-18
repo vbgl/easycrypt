@@ -8,7 +8,8 @@
 (* -------------------------------------------------------------------- *)
 require import Bool AllCore List Finite Discrete.
 require import StdRing StdOrder StdBigop RealLub RealSeq.
-(*---*) import IterOp Bigreal Bigreal.BRA IntOrder RField RealOrder.
+(*---*) import IterOp Bigint Bigreal Bigreal.BRA.
+(*---*) import Ring.IntID IntOrder RField RealOrder.
 
 pragma -oldip.
 pragma +implicits.
@@ -176,6 +177,15 @@ by apply(ler_trans F)=> // @/F; apply/ler_sum=> a _; apply/abs_neg_ler.
 qed.
 
 (* -------------------------------------------------------------------- *)
+lemma summable_has_lub (s : 'a -> real) :
+  summable s => has_lub (fun M =>
+    exists J, uniq J /\ M = big predT (fun x => `|s x|) J).
+proof.
+case=> M hM; split; first by exists 0%r []; rewrite big_nil.
+by exists M => x [J [uqJ ->]]; apply/hM.
+qed.
+
+(* -------------------------------------------------------------------- *)
 op psum (s : 'a -> real) =
   lub (fun M => exists J, uniq J /\ M = big predT (fun x => `|s x|) J).
 
@@ -190,6 +200,50 @@ proof. by move=> @/sum ->. qed.
 (* -------------------------------------------------------------------- *)
 lemma nosmt sum_Nsbl (s : 'a -> real) : !summable s => sum s = 0%r.
 proof. by move=> @/sum ->. qed.
+
+(* -------------------------------------------------------------------- *)
+lemma summable_pos_cnvto s :
+  forall (J : int -> 'a option) (p : 'a -> bool),
+       enumerate J p
+    => support s <= p
+    => summable s
+    => RealSeq.convergeto
+         (fun n => big predT (fun x => `|s x|) (pmap J (range 0 n)))
+         (psum s).
+proof.
+move=> J p enm sm sbl; pose u n := big predT _ (pmap J (range 0 n)).
+have uqJ: forall n, uniq (pmap J (range 0 n)).
++ move=> n; rewrite pmap_inj_in_uniq ?range_uniq //.
+  by move=> x y v _ _; case: enm => + _; apply.
+have mono_u: forall n1 n2, (0 <= n1 <= n2)%Int => u n1 <= u n2.
++ move=> n1 n2 len; rewrite /u (@range_cat n1 _ n2); 1..2: by case: len.
+  by rewrite pmap_cat big_cat ler_addl sumr_ge0 => x /= _; apply/normr_ge0.
+case: (sbl) => M sblM; have := cnvto_lub_bmono_from _ M 0 mono_u _.
++ by move=> n ge0_n; apply/sblM/uqJ.
+pose l := lub _; suff ->//: l = psum s; rewrite eqr_le; split.
++ apply/ler_lub => /=; first last.
+  * by apply/summable_has_lub.
+  * by exists 0%r 0 => /= @/u; rewrite range_geq.
+  move=> x [n [ge0_n <-]]; exists (u n) => /=.
+  by exists (pmap J (range 0 n)); rewrite uqJ.
+move=> _; apply/ler_lub => /=; first last.
++ split; first by exists 0%r 0; rewrite /u range_geq.
+  by exists M => x [n [ge0_n <-]]; apply/sblM/uqJ.
++ by exists 0%r [].
+have: exists f, forall x,
+  0 <= f x /\ (s x <> 0%r => J (f x) = Some x).
++ pose P x i := 0 <= i /\ J i = Some x.
+  exists (fun x => choiceb (P x) 0) => x /=; split.
+  * case: (exists i, P x i); first by case/(@choicebP (P x) 0).
+    by rewrite negb_exists /= => /@choiceb_dfl ->.
+  move=> nz_sx; have: exists i, P x i.
+  + case: enm => _ /(_ x _); first by apply/sm.
+    by case=> i [ge0_i @/P <-]; exists i.
+  by move/(@choicebP _ 0) => /= [_ <-].
+case=> f fE x [K [uqK ->]]; pose N := 1 + BIA.big predT f K.
+exists (u N); split; first exists N => /=.
++ by rewrite addr_ge0 // Bigint.sumr_ge0 => y _; case: (fE y).
+admitted.
 
 (* -------------------------------------------------------------------- *)
 lemma summable_cnvto s :
