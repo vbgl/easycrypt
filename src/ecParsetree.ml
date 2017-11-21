@@ -804,7 +804,8 @@ type logtactic =
   | Psubst      of pformula list
   | Psimplify   of preduction
   | Pchange     of pformula
-  | Ppose       of (psymbol * rwocc * pformula)
+  | Ppose       of (psymbol * ptybinding list * rwocc * pformula)
+  | Pwlog       of (psymbol list * pformula)
 
 (* -------------------------------------------------------------------- *)
 and ptactic_core_r =

@@ -532,6 +532,7 @@
 %token WHILE
 %token WHY3
 %token WITH
+%token WLOG
 %token WP
 %token ZETA
 %token <string> NOP LOP1 ROP1 LOP2 ROP2 LOP3 ROP3 LOP4 ROP4
@@ -594,6 +595,7 @@ _lident:
 | ABORT    { "abort"    }
 | ASYNC    { "async"    }
 | MULT     { "mult"     }
+| WLOG     { "wlog"     }
 
 | x=RING  { match x with `Eq -> "ringeq"  | `Raw -> "ring"  }
 | x=FIELD { match x with `Eq -> "fieldeq" | `Raw -> "field" }
@@ -2490,8 +2492,11 @@ logtactic:
 | ior_(CUT, HAVE) ip=loc(intro_pattern)* CEQ fp=pcutdef
    { Pcutdef (ip, fp) }
 
-| POSE o=rwocc? x=ident CEQ p=form_h %prec prec_below_IMPL
-   { Ppose (x, o, p) }
+| POSE o=rwocc? x=ident xs=ptybindings? CEQ p=form_h %prec prec_below_IMPL
+   { Ppose (x, odfl [] xs, o, p) }
+
+| WLOG COLON ids=loc(ipcore_name)* SLASH f=form
+   { Pwlog (ids, f) }
 
 eager_info:
 | h=ident

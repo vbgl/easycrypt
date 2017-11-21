@@ -1512,14 +1512,18 @@ let process_move ?doeq views pr (tc : tcenv1) =
     tc
 
 (* -------------------------------------------------------------------- *)
-let process_pose xsym o p (tc : tcenv1) =
-  let (hyps, concl) = FApi.tc1_flat tc in
+let process_pose xsym bds o p (tc : tcenv1) =
+  let (env, hyps, concl) = FApi.tc1_eflat tc in
   let o = norm_rwocc o in
 
   let (ptenv, p) =
-    let (ps, ue), p = TTC.tc1_process_pattern tc p in
-    let ev = MEV.of_idents (Mid.keys ps) `Form in
-      (ptenv !!tc hyps (ue, ev), p)
+    let ps  = ref Mid.empty in
+    let ue  = TTC.unienv_of_hyps hyps in
+    let (senv, bds) = EcTyping.trans_binding env ue bds in
+    let p = EcTyping.trans_pattern senv (ps, ue) p in
+    let ev = MEV.of_idents (Mid.keys !ps) `Form in
+    (ptenv !!tc hyps (ue, ev),
+     f_lambda (List.map (snd_map gtty) bds) p)
   in
 
   let dopat =
@@ -1850,3 +1854,26 @@ let process_congr tc =
       EcLowGoal.t_reflex tc
 
   | _, _ -> tacuerror "not a congruence"
+
+(* -------------------------------------------------------------------- *)
+let process_wlog ids wlog tc =
+  let hyps, _ = FApi.tc1_flat tc in
+
+  let toid s =
+    if not (LDecl.has_name (unloc s) hyps) then
+      tc_lookup_error !!tc ~loc:s.pl_loc `Local ([], unloc s);
+    fst (LDecl.by_name (unloc s) hyps) in
+
+  let ids = List.map toid ids in
+
+  let gen =
+    let wlog = TTC.tc1_process_formula tc wlog in
+    let tc   = t_rotate `Left 1 (EcLowGoal.t_cut wlog tc) in
+    let tc   = t_first (t_generalize_hyps ~clear:`Yes ids) tc in
+    FApi.tc_goal tc
+  in
+
+  t_rotate `Left 1
+    (t_first
+       (t_seq (t_clears ids) (t_intros_i ids))
+       (t_cut gen tc))

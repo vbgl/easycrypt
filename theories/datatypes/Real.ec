@@ -43,4 +43,3 @@ axiom powr0 (x : real) :
 
 axiom powrS (x : real) (n : int) :
   0 <= n => x^(n+1) = x^n * x.
-

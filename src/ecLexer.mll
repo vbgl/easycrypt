@@ -97,6 +97,7 @@
     "suff"        , SUFF       ;        (* KW: tactic *)
     "elim"        , ELIM       ;        (* KW: tactic *)
     "clear"       , CLEAR      ;        (* KW: tactic *)
+    "wlog"        , WLOG       ;        (* KW: tactic *)
 
     (* Auto tactics *)
     "apply"       , APPLY      ;        (* KW: tactic *)

@@ -6,10 +6,12 @@
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
-require import Bool AllCore List.
-require import StdRing StdOrder StdBigop Discrete RealLub RealSeq.
-(*---*) import IterOp Bigreal Bigreal.BRA IntOrder RField RealOrder.
+require import Bool AllCore List Finite Discrete.
+require import StdRing StdOrder StdBigop RealLub RealSeq.
+(*---*) import IterOp Bigint Bigreal Bigreal.BRA.
+(*---*) import Ring.IntID IntOrder RField RealOrder.
 
+pragma -oldip.
 pragma +implicits.
 
 (* -------------------------------------------------------------------- *)
@@ -27,8 +29,43 @@ op summable (s : 'a -> real) =
   exists M, forall J,
     uniq J => big predT (fun i => `|s i|) J <= M.
 
-axiom sbl_countable (s : 'a -> real) :
+(* -------------------------------------------------------------------- *)
+lemma sbl_countable (s : 'a -> real) :
   summable s => countable (fun i => s i <> 0%r).
+proof.
+pose E i := fun x => if i <= 0 then false else 1%r / i%r <= `|s x|.
+case=> M sbl_s; have: 0%r <= M.
++ apply/(@ler_trans `|s witness|); 1: by apply/normr_ge0.
+  by have := sbl_s [witness] _ => //; rewrite big_seq1.
+rewrite ler_eqVlt => -[<<-|gt0_M]; 1: apply: countable0_eq.
++ apply/fun_ext=> x; apply/negbTE => /=; have := sbl_s [x] _ => //.
+  by rewrite big_seq1 /= normr_le0.
+have fin_E: forall i, countable (E i); 1: (move=> i; apply/cnt_finite).
++ move=> @/E; case: (i <= 0) => [_|/ltzNge gt0_i]; 1: by apply/finite0.
+  apply/negbNE/negP; pose n := i * (intp M + 1); have ge0_n: 0 <= n.
+  - rewrite &(IntOrder.ler_trans i) 1:ltrW // ler_pmulr //.
+    by rewrite ler_addr &(leup_intp) ltrW.
+  case/(@NfiniteP n _ ge0_n) => J [[szJ uqJ] memJ].
+  have := sbl_s _ uqJ; pose S := big _ _ _; move=> leSM.
+  suff: M < S by apply: (ler_lt_trans _ leSM).
+  apply/(@ltr_le_trans (big predT (fun _ => 1%r / i%r) J)); last first.
+  - by rewrite /S !big_seq; apply/ler_sum=> x /= Px; apply/memJ.
+  rewrite sumr_const intmulr count_predT mulrAC /=.
+  apply/(ltr_le_trans (n%r / i%r)); last first.
+  rewrite ler_pmul2r ?invr_gt0 1..2:(lt_fromint, le_fromint) //.
+  by rewrite /n fromintM mulrAC divff /= ?gt_intp eq_fromint gtr_eqF.
+have Efu: forall x, s x <> 0%r => exists i, E i x.
++ move=> x nz_sx; case: (1%r <= `|s x|) => [|/ltrNge gt1_sx].
+  - by move=> h; exists 1.
+  exists (intp (inv `|s x|) + 1) => @/E; rewrite -if_neg.
+  rewrite -ltrNge ltzS leup_intp 1:invr_ge0 1:normr_ge0 //=.
+  apply/(@ler_pdivr_mulr (intp (inv (`|s x|)) + 1)%r _ 1%r).
+  - by rewrite lt_fromint ltzS leup_intp invr_ge0 normr_ge0.
+  apply/ltrW/(@ler_lt_trans (`|s x| / `|s x|)).
+  - by rewrite divff ?normr0P.
+  by rewrite ltr_pmul2l ?normr_gt0 // gt_intp.
+by apply/(@countable_le (fun x => exists i, E i x)); 1: apply/cnt_Uw.
+qed.
 
 (* -------------------------------------------------------------------- *)
 op support ['a] (s : 'a -> real) = fun x => s x <> 0%r.
@@ -82,6 +119,15 @@ qed.
 (* -------------------------------------------------------------------- *)
 op pos (s : 'a -> real) = fun i => if s i < 0%r then 0%r else `|s i|.
 op neg (s : 'a -> real) = fun i => if 0%r < s i then 0%r else `|s i|.
+
+lemma nosmt pos_neg_id (s : 'a -> real) x: s x = pos s x - neg s x.
+proof.
+rewrite /pos /neg; case: (s x = 0%r) => [->//=|].
+rewrite ltrNge ler_eqVlt (@eq_sym 0%r) => ^ + -> /=.
+rewrite eqr_le andabP negb_and -!ltrNge => -[^h ->/=|].
++ by rewrite gtr0_norm.
++ by move/ltrW => ^h /lerNgt -> /=; rewrite ler0_norm.
+qed.
 
 lemma nosmt posN (s : 'a -> real) x: pos (fun x => -s x) x = neg s x.
 proof. by rewrite /pos /neg /= normrN oppr_lt0. qed.
@@ -140,6 +186,15 @@ by apply(ler_trans F)=> // @/F; apply/ler_sum=> a _; apply/abs_neg_ler.
 qed.
 
 (* -------------------------------------------------------------------- *)
+lemma summable_has_lub (s : 'a -> real) :
+  summable s => has_lub (fun M =>
+    exists J, uniq J /\ M = big predT (fun x => `|s x|) J).
+proof.
+case=> M hM; split; first by exists 0%r []; rewrite big_nil.
+by exists M => x [J [uqJ ->]]; apply/hM.
+qed.
+
+(* -------------------------------------------------------------------- *)
 op psum (s : 'a -> real) =
   lub (fun M => exists J, uniq J /\ M = big predT (fun x => `|s x|) J).
 
@@ -156,28 +211,127 @@ lemma nosmt sum_Nsbl (s : 'a -> real) : !summable s => sum s = 0%r.
 proof. by move=> @/sum ->. qed.
 
 (* -------------------------------------------------------------------- *)
-lemma nosmt sumE (s : 'a -> real) :
-  forall (J : int -> 'a option),
-       enumerate J (support s)
+lemma summable_pos_cnvto s :
+  forall (J : int -> 'a option) (p : 'a -> bool),
+       enumerate J p
+    => support s <= p
     => summable s
-    => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
-proof. admitted.
+    => RealSeq.convergeto
+         (fun n => big predT (fun x => `|s x|) (pmap J (range 0 n)))
+         (psum s).
+proof.
+move=> J p enm sm sbl; pose u n := big predT _ (pmap J (range 0 n)).
+have uqJ: forall n, uniq (pmap J (range 0 n)).
++ move=> n; rewrite pmap_inj_in_uniq ?range_uniq //.
+  by move=> x y v _ _; case: enm => + _; apply.
+have mono_u: forall n1 n2, (0 <= n1 <= n2)%Int => u n1 <= u n2.
++ move=> n1 n2 len; rewrite /u (@range_cat n1 _ n2); 1..2: by case: len.
+  by rewrite pmap_cat big_cat ler_addl sumr_ge0 => x /= _; apply/normr_ge0.
+case: (sbl) => M sblM; have := cnvto_lub_bmono_from _ M 0 mono_u _.
++ by move=> n ge0_n; apply/sblM/uqJ.
+pose l := lub _; suff ->//: l = psum s; rewrite eqr_le; split.
++ apply/ler_lub => /=; first last.
+  * by apply/summable_has_lub.
+  * by exists 0%r 0 => /= @/u; rewrite range_geq.
+  move=> x [n [ge0_n <-]]; exists (u n) => /=.
+  by exists (pmap J (range 0 n)); rewrite uqJ.
+move=> _; apply/ler_lub => /=; first last.
++ split; first by exists 0%r 0; rewrite /u range_geq.
+  by exists M => x [n [ge0_n <-]]; apply/sblM/uqJ.
++ by exists 0%r [].
+have: exists f, forall x,
+  0 <= f x /\ (s x <> 0%r => J (f x) = Some x).
++ pose P x i := 0 <= i /\ J i = Some x.
+  exists (fun x => choiceb (P x) 0) => x /=; split.
+  * case: (exists i, P x i); first by case/(@choicebP (P x) 0).
+    by rewrite negb_exists /= => /@choiceb_dfl ->.
+  move=> nz_sx; have: exists i, P x i.
+  * case: enm => _ /(_ x _); first by apply/sm.
+    by case=> i [ge0_i @/P <-]; exists i.
+  by move/(@choicebP _ 0) => /= [_ <-].
+case=> f fE x [K [uqK ->]]; pose N := 1 + BIA.big predT f K.
+exists (u N); split; first exists N => /=.
++ by rewrite addr_ge0 // Bigint.sumr_ge0 => y _; case: (fE y).
+rewrite /u (@bigID _ _ (support s)) addrC big1 /=.
++ by move=> i [_ @/predC @/support] /= ->; rewrite normr0.
+have ->: predI predT (support s) = support s by apply/fun_ext.
+rewrite -big_filter; pose P x := ! x \in (filter (support s) K).
+pose F1 := filter _ _; pose F2 := filter P (pmap J (range 0 N)).
+have: perm_eq (F1 ++ F2) (pmap J (range 0 N)).
++ apply/uniq_perm_eq; try apply/uqJ.
+  * apply/cat_uniq; rewrite !filter_uniq //= ?uqJ.
+    apply/negP=> /hasP[y]; rewrite !mem_filter.
+    by case=> />; rewrite /P mem_filter => ->.
+  move=> y; rewrite mem_cat; case: (y \in F2) => /=.
+  * by rewrite mem_filter.
+  move=> yF2; split.
+  * rewrite mem_filter => -[sy yK]; case: (fE y).
+    move=> ge0_fy /(_ sy) Jfy; apply/pmapP.
+    exists (f y); rewrite Jfy /= mem_range ge0_fy /= /N.
+    rewrite addrC ltzS (@BIA.bigD1 _ _ y) // ler_addl.
+    by apply/Bigint.sumr_ge0=> z _; case: (fE z).
+  * rewrite pmap_map => /mapP[v]; rewrite !mem_filter /predC1.
+    case=> />; case _: v yF2 => @/oget //= v' ->>.
+    rewrite mem_filter /P negb_and /= mem_filter => -[->//|].
+    move=> h1 h2; suff //: false; move: h2 h1 => /= h.
+    rewrite pmap_map; apply/mapP; exists (Some v').
+    by rewrite mem_filter.
+move/eq_big_perm=> <-; rewrite big_cat ler_addl.
+by apply/sumr_ge0=> y /= _; apply/normr_ge0.
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma summable_cnvto s :
+  forall (J : int -> 'a option) (p : 'a -> bool),
+       enumerate J p
+    => support s <= p
+    => summable s
+    => RealSeq.convergeto (fun n => big predT s (pmap J (range 0 n))) (sum s).
+proof.
+move=> J p enm sm sbl; rewrite /sum sbl /=.
+pose G f n := big predT f (pmap J (range 0 n)).
+rewrite -/(G s); have ->: G s = fun n =>
+  G (fun x => `|pos s x|) n - G (fun x => `|neg s x|) n.
++ apply/fun_ext=> i @/G @/f; rewrite sumrB; apply/eq_bigr.
+  by move=> x _ /=; rewrite !ger0_norm ?(pos_ge0, neg_ge0) pos_neg_id.
+apply/cnvtoB; apply/(@summable_pos_cnvto _ _ p) => //.
++ move=> x @/support @/pos; case: (s x < 0%r) => //.
+  by move=> _; rewrite normr0P &(sm).
++ by apply/summable_pos.
++ move=> x @/support @/neg; case: (0%r < s x) => //.
+  by move=> _; rewrite normr0P &(sm).
++ by apply/summable_neg.
+qed.
+
+(* -------------------------------------------------------------------- *)
+lemma summable_cnv s :
+  forall (J : int -> 'a option) (p : 'a -> bool),
+       enumerate J p
+    => support s <= p
+    => summable s
+    => RealSeq.converge (fun n => big predT s (pmap J (range 0 n))).
+proof.
+by move=> J P enm sm sbl; have /cnvP := summable_cnvto _ _ _ enm sm sbl.
+qed.
 
 (* -------------------------------------------------------------------- *)
 lemma sumEw (s : 'a -> real) :
   forall (J : int -> 'a option) (p : 'a -> bool),
        enumerate J p
-    => p <= support s
+    => support s <= p
     => summable s
     => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
-proof. admitted.
+proof.
+by move=> J p enm le sm; have /lim_cnvto <- := summable_cnvto _ _ _ enm le sm.
+qed.
 
 (* -------------------------------------------------------------------- *)
-(*
-lemma sum_cnvto (s : 'a -> real) :
+lemma nosmt sumE (s : 'a -> real) :
   forall (J : int -> 'a option),
-  enumerate J (support S)
-*)
+       enumerate J (support s)
+    => summable s
+    => sum s = lim (fun n => big predT s (pmap J (range 0 n))).
+proof. by move=> J /(@sumEw s J (support s)); apply. qed.
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt sum_to_enum (s : 'a -> real) : summable s =>
@@ -304,14 +458,15 @@ lemma nosmt sumD s1 s2 : summable s1 => summable s2 =>
 proof.
 move=> cv1 cv2; pose s := fun x => s1 x + s2 x.
 have cvs: summable s by move=> @/s; apply/summableD.
-have /sum_to_enum[J1 cJ1] := cv1; have /sum_to_enum[J2 cj2] := cv2.
-have /sum_to_enum[Js cJs] := cvs; pose J := cunions [Js; J1; J2].
-rewrite (@sumE s J) -1:(@sumE s1 J) -1:(@sumE s2 J) //.
-+ admit.
-+ admit.
-+ admit.
-rewrite -limD.
-admitted.
+pose E x := support s x \/ support s1 x \/ support s2 x.
+have cntE: countable E by do! apply/countableU; apply sbl_countable.
+pose J := cenum E; have enmJ: enumerate J E by apply/enum_cenum.
+have h1: support s1 <= E by move=> x @/E ->.
+have h2: support s2 <= E by move=> x @/E ->.
+rewrite !(@sumEw _ J E) //; first by move=> x @/E ->.
+rewrite -limD 1..2:&(summable_cnv _ enmJ) ~-1://.
+by apply/(@lim_eq 0)=> n ge0_n /=; rewrite big_split.
+qed.
 
 (* -------------------------------------------------------------------- *)
 lemma nosmt sumZ (s : 'a -> real) c : sum (fun x => c * s x) = c * sum s.
