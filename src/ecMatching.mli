@@ -16,7 +16,8 @@ open EcFol
 open EcUnify
 open EcEnv
 open EcGenRegexp
-open EcPath
+open EcFMatching
+open FPattern
 
 (* -------------------------------------------------------------------- *)
 module Zipper : sig
@@ -185,114 +186,19 @@ val can_concretize : mevmap -> EcUnify.unienv -> bool
 (* -------------------------------------------------------------------------- *)
 type regexp_instr = regexp1_instr gen_regexp
 
+
 and regexp1_instr =
-  | RAssign
-  | RSample
-  | RCall
-  | RIf        of regexp_instr * regexp_instr
-  | RWhile     of regexp_instr
+  | RAssign    of pattern * pattern
+  | RSample    of pattern * pattern
+  | RCall      of pattern * pattern * pattern
+  | RIf        of pattern * regexp_instr * regexp_instr
+  | RWhile     of pattern * regexp_instr
+
 
 module RegexpStmt : sig
   type regexp  = regexp_instr
   type subject = instr list
   type matches = subject Mstr.t
 
-  val search : regexp -> subject -> matches option
-end
-
-
-(* ---------------------------------------------------------------------- *)
-
-exception CannotUnify
-exception NoNext
-exception NoMatches
-
-
-(* ---------------------------------------------------------------------- *)
-
-module FPattern : sig
-
-  type name = EcIdent.t
-
-  type pattern =
-    | Panything
-    | Pnamed    of pattern * name
-    | Psub      of pattern
-    | Por       of pattern list
-
-    | Pobject   of object_matches
-
-    | Pif     of pattern * pattern * pattern
-    | Papp    of pattern * pattern list
-    | Ptuple  of pattern list
-    | Pproj   of pattern * int
-    | Pmatch  of pattern * pattern list
-    | Pquant  of quantif * bindings * pattern
-    (* | Plet    of lpattern * pattern * pattern *)
-    | Ppvar   of pattern * pattern
-    | Pglob   of pattern * pattern
-    (* | FhoareF of hoareF (\* $hr / $hr *\) *)
-    (* | FhoareS of hoareS *)
-    (* | FbdHoareF of bdHoareF (\* $hr / $hr *\) *)
-    (* | FbdHoareS of bdHoareS *)
-    (* | FequivF of equivF (\* $left,$right / $left,$right *\) *)
-    (* | FequivS of equivS *)
-    (* | FeagerF of eagerF *)
-    | Ppr             of pattern * pattern * pattern * pattern
-
-    | Pprog_var       of prog_var
-
-    | Pxpath          of xpath
-    (* mpath patterns *)
-    (*                   mpath_top, mpath  list *)
-    | Pmpath          of pattern * pattern list
-
-
-   and object_matches =
-    | Oform      of form
-    | Omem       of EcMemory.memory
-    (* | Ompath     of mpath *)
-    | Ompath_top of mpath_top
-
-  type t_matches = object_matches * Sid.t
-
-  type matches = t_matches Mid.t
-
-  type to_match = t_matches * pattern
-
-  type pat_continuation =
-    | ZTop
-    | Znamed     of t_matches * name * pat_continuation
-    (* Zor (cont, e_list, ne) :
-       - cont   : the continuation if the matching is correct
-       - e_list : if not, the sorted list of next engines to try matching with
-       - ne     : if no match at all, then take the nengine to go up
-     *)
-    | Zor        of pat_continuation * engine list * nengine
-    (* Zand (before, after, cont) :
-       - before : list of couples (form, pattern) that has already been checked
-       - after  : list of couples (form, pattern) to check in the following
-       - cont   : continuation if all the matches succeed
-     *)
-    | Zand       of to_match list * to_match list * pat_continuation
-
-    | Zbinds     of pat_continuation * Sid.t
-
-  and engine = {
-      e_head         : t_matches;
-      e_continuation : pat_continuation;
-      e_pattern      : pattern;
-      e_map          : matches;
-    }
-
-  and nengine = {
-      ne_continuation : pat_continuation;
-      ne_map          : matches;
-      ne_binds        : Sid.t;
-    }
-
-  (* val get_matches   :  engine -> matches *)
-  (* val get_n_matches : nengine -> matches *)
-  val search          : form -> pattern -> matches option
-  val pattern_of_form : bindings -> form -> pattern
+  val search : regexp -> subject -> LDecl.hyps -> (tmatch Mid.t * matches) option
 end

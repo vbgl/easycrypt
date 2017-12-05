@@ -534,7 +534,6 @@
 %token <string> NOP LOP1 ROP1 LOP2 ROP2 LOP3 ROP3 LOP4 ROP4
 %token LTCOLON DASHLT GT LT GE LE LTSTARGT LTLTSTARGT LTSTARGTGT
 
-%token TEST
 
 %nonassoc prec_below_comma
 %nonassoc COMMA ELSE
@@ -2712,8 +2711,6 @@ phltactic:
     { Pbd_equiv (s, pr, po) }
 
 | AUTO { Pauto }
-
-| TEST { Ptest }
 
 bdhoare_split:
 | b1=sform b2=sform b3=sform?

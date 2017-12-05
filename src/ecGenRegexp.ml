@@ -1,6 +1,7 @@
 (* -------------------------------------------------------------------- *)
 open EcUtils
 open EcMaps
+open EcEnv
 
 (* -------------------------------------------------------------------- *)
 type anchor =
@@ -30,7 +31,7 @@ module type IRegexpBase = sig
 
   type regexp = regexp1 gen_regexp
 
-  val mkengine : subject -> engine
+  val mkengine : subject -> LDecl.hyps -> engine
   val at_start : engine -> bool
   val at_end   : engine -> bool
   val eat      : engine -> engine
@@ -47,7 +48,7 @@ module Regexp(B : IRegexpBase) : sig
   type subject = B.subject
   type matches = subject Mstr.t
 
-  val search : regexp -> subject -> matches option
+  val search : regexp -> subject -> LDecl.hyps -> (B.engine * matches) option
 end = struct
   type regexp = B.regexp
 
@@ -58,8 +59,8 @@ end = struct
   type pos     = B.pos
 
   (* ------------------------------------------------------------------ *)
-  let mkengine (s : subject) =
-    { e_sub = B.mkengine s; e_grp = Mstr.empty; }
+  let mkengine (s : subject) (h : LDecl.hyps) =
+    { e_sub = B.mkengine s h; e_grp = Mstr.empty; }
 
   (* ------------------------------------------------------------------ *)
   let eat (e : engine) =
@@ -231,9 +232,10 @@ end = struct
     (fst (apply_on_mr (fun e -> search e r) mr)).e_grp
 
   (* ------------------------------------------------------------------ *)
-  let search (re : regexp) (subject : subject) =
-    let mr = next_mr (mkengine subject) in
-    try  Some (fst (apply_on_mr (fun e -> search e re) mr)).e_grp
+  let search (re : regexp) (subject : subject) (h : LDecl.hyps) =
+    let mr = next_mr (mkengine subject h) in
+    try  let e = fst (apply_on_mr (fun e -> search e re) mr) in
+         Some (e.e_sub, e.e_grp)
     with NoMatch -> None
 end
 
@@ -253,7 +255,7 @@ module StringBaseRegexp
   type regexp = regexp1 gen_regexp
 
   (* ------------------------------------------------------------------ *)
-  let mkengine (s : string) =
+  let mkengine (s : string) _ =
     { e_sbj = s; e_pos = 0; }
 
   (* ------------------------------------------------------------------ *)

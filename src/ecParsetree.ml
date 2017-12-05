@@ -576,7 +576,6 @@ type phltactic =
   | Ptrans_stmt    of trans_info
   | Psymmetry
   | Pbdhoare_split of bdh_split
-  | Ptest
 
     (* Eager *)
   | Peager_seq       of (eager_info * int pair * pformula)

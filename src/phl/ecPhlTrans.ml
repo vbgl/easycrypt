@@ -97,9 +97,9 @@ let process_replace_stmt s p c p1 q1 p2 q2 tc =
   let mt = snd (match oget s with `Left -> es.es_ml | `Right -> es.es_mr) in
   (* Translation of the stmt *)
   let regexpstmt = trans_block p in
-  let map = match RegexpStmt.search regexpstmt ct.s_node with
+  let map = match RegexpStmt.search regexpstmt ct.s_node hyps with
     | None -> Mstr.empty
-    | Some m -> m in
+    | Some (_,m) -> m in
   let p1, q1 =
     let hyps = LDecl.push_all [es.es_ml; (mright, mt)] hyps in
     TTC.pf_process_form !!tc hyps tbool p1,
