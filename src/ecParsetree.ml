@@ -577,6 +577,8 @@ type phltactic =
   | Psymmetry
   | Pbdhoare_split of bdh_split
 
+  | Pinstance
+
     (* Eager *)
   | Peager_seq       of (eager_info * int pair * pformula)
   | Peager_if

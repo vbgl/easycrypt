@@ -2689,6 +2689,9 @@ phltactic:
 | REPLACE rk=repl_kind h1=repl_hyp h2=repl_hyp
     { Ptrans_stmt (rk, fst h1, snd h1, fst h2, snd h2) }
 
+| INSTANCE
+  { Pinstance }
+
 | TRANSITIVITY tk=trans_kind h1=trans_hyp h2=trans_hyp
     { Ptrans_stmt (tk, fst h1, snd h1, fst h2, snd h2) }
 

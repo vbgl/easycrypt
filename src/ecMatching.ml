@@ -1013,7 +1013,7 @@ module RegexpBaseInstr = struct
            let map = match FPattern.search_eng e with
              | None -> raise NoMatch
              | Some e -> e.ne_map in
-           { eng with e_map = map }, []
+           eat { eng with e_map = map }, []
 
        | Scall (Some x,f,args), RCall (p1,p2,pargs)  ->
           let fx1 = match x with
@@ -1039,7 +1039,7 @@ module RegexpBaseInstr = struct
           let map = match FPattern.search_eng e with
             | None -> raise NoMatch
             | Some e -> e.ne_map in
-          { eng with e_map = map }, []
+          eat { eng with e_map = map }, []
 
        | Sif (e, st, sf), RIf (pcond, stn, sfn) -> begin
            let fcond = form_of_expr mhr e in
