@@ -150,68 +150,124 @@ let stmt_to_pattern (s1 : stmt) =
   (* let s = (Anchor Start)::s @ [Anchor End] in *)
   names, Seq s
 
-let abstract_locals args adv s =
-  let rec instr_abstract_local (i : int) (arg : expr) (instr : instr) = match instr.i_node with
+
+let replace_pvar_in_expr (pv1 : prog_var) (e2 : expr) (e : expr) =
+  let rec aux e =
+    match e.e_node with
+    | Eint _
+      | Elocal _
+      | Eop _ -> e
+    | Equant (q,b,e) -> e_quantif q b (aux e)
+    | Eapp (e1,le) -> e_app (aux e1) (List.map aux le) e.e_ty
+    | Elet (lp,e1,e2) -> e_let lp (aux e1) (aux e2)
+    | Etuple tuple -> e_tuple (List.map aux tuple)
+    | Eif (e1,e2,e3) -> e_if (aux e1) (aux e2) (aux e3)
+    | Ematch (e1,el,ty) -> e_match (aux e1) (List.map aux el) ty
+    | Eproj (e1,j) -> e_proj (aux e1) j e.e_ty
+    | Evar pv -> if pv_equal pv1 pv then e2 else e
+  in aux e
+
+
+let replace_expr_in_expr (e1 : expr) (e2 : expr) (e : expr) (h : LDecl.hyps) =
+  match e1.e_node with
+  | Evar pv -> replace_pvar_in_expr pv e2 e
+  | _ ->
+     let f1 = form_of_expr mhr e1 in
+     let rec aux e =
+       let f = form_of_expr mhr e in
+       if (EcReduction.is_conv h f1 f) then e2
+       else
+         match e.e_node with
+         | Eint _
+           | Elocal _
+           | Evar _ | Eop _ -> e
+         | Equant (q,b,e) -> e_quantif q b (aux e)
+         | Eapp (e1,le) -> e_app (aux e1) (List.map aux le) e.e_ty
+         | Elet (lp,e1,e2) -> e_let lp (aux e1) (aux e2)
+         | Etuple tuple -> e_tuple (List.map aux tuple)
+         | Eif (e1,e2,e3) -> e_if (aux e1) (aux e2) (aux e3)
+         | Ematch (e1,el,ty) -> e_match (aux e1) (List.map aux el) ty
+         | Eproj (e1,j) -> e_proj (aux e1) j e.e_ty
+     in aux e
+
+
+
+let replace_pvar_in_lvalue (pv1 : prog_var) (pv2 : prog_var) (lv : lvalue) =
+  match lv with
+  | LvVar (pv,ty) when pv_equal pv1 pv -> LvVar (pv2,ty)
+  | LvVar _ -> lv
+  | LvTuple tuple ->
+     LvTuple (List.map (fun (x,t) -> if pv_equal x pv1 then (pv2,t) else (x,t)) tuple)
+  | LvMap ((a,b),pv,e,t) ->
+     let pv = if pv_equal pv1 pv then pv2 else pv in
+     let e = replace_pvar_in_expr pv1 (e_var pv2 t) e in
+     LvMap ((a,b),pv,e,t)
+
+
+(* (\* -------------------------------------------------------------------- *\) *)
+(* let lv_subst m lv f = *)
+(*   match lv with *)
+(*   | LvVar _ -> lv,m,f *)
+(*   | LvTuple _ -> lv,m,f *)
+(*   | LvMap((p,tys),pv,e,ty) -> *)
+(*     let set = f_op p tys (toarrow [ty; e.e_ty; f.f_ty] ty) in *)
+(*     let f   = f_app set [f_pvar pv ty m; form_of_expr m e; f] ty in *)
+(*     LvVar(pv,ty), m, f *)
+
+let harmonize_lv_e ((lv,e) : lvalue * expr) = match lv with
+  | LvMap ((p,tys),pv,e',ty) ->
+     let set = e_op p tys (toarrow [ty;e'.e_ty;e.e_ty] ty) in
+     let e = e_app set [e_var pv ty; e'; e] ty in
+     (LvVar (pv,ty),e)
+  | _ -> (lv,e)
+
+
+let rec replace_expr_in_lv_e (e1 : expr) (e2 : expr) ((lv,e) : lvalue * expr) (h : LDecl.hyps) =
+  match e1.e_node, e2.e_node,lv with
+  | Evar pv1, Evar pv2,_ ->
+     let lv = replace_pvar_in_lvalue pv1 pv2 lv in
+     let e = replace_pvar_in_expr pv1 e2 e in
+     (lv,e)
+
+  | _,_,LvMap _ ->
+     replace_expr_in_lv_e e1 e2 (harmonize_lv_e (lv,e)) h
+  | _,_,_ ->
+     let e = replace_expr_in_expr e1 e2 e h in
+     (lv,e)
+
+
+let abstract_locals args adv (s : instr list) h =
+
+  let rec instr_abstract_local (e1 : expr) (e2 : expr) (instr : instr) =
+    match instr.i_node with
     | Sasgn (lv,e) ->
-       let lv = lv_abstract_local i arg lv in
-       let e = expr_abstract_local i arg e in
-       i_asgn (lv,e)
+       i_asgn (replace_expr_in_lv_e e1 e2 (lv,e) h)
     | Srnd (lv,e) ->
-       let lv = lv_abstract_local i arg lv in
-       let e = expr_abstract_local i arg e in
-       i_rnd (lv,e)
-    | Scall (xopt,xp,args) ->
-       let xopt = omap (lv_abstract_local i arg) xopt in
-       let args = List.map (expr_abstract_local i arg) args in
-       i_call (xopt,xp,args)
+       i_rnd (replace_expr_in_lv_e e1 e2 (lv,e) h)
+    | Scall (optlv,xp,args) ->
+       i_call (optlv,xp,List.map (fun x -> replace_expr_in_expr e1 e2 x h) args)
     | Sif (e,s1,s2) ->
-       let e = expr_abstract_local i arg e in
-       let s1 = stmt_abstract_local s1 i arg in
-       let s2 = stmt_abstract_local s2 i arg in
-       i_if (e,s1,s2)
+       let e = replace_expr_in_expr e1 e2 e h in
+       let s1 = stmt_abstract_local e1 e2 s1.s_node in
+       let s2 = stmt_abstract_local e1 e2 s2.s_node in
+       i_if (e,stmt s1,stmt s2)
     | Swhile (e,s) ->
-       let e = expr_abstract_local i arg e in
-       let s = stmt_abstract_local s i arg in
-       i_while (e,s)
+       let e = replace_expr_in_expr e1 e2 e h in
+       let s = stmt_abstract_local e1 e2 s.s_node in
+       i_while (e,stmt s)
     | _ -> raise (Invalid_argument "assert or abstract in instr_abstract_local")
 
-  and expr_abstract_local i arg e =
-    if e_equal e arg then
-      e_proj (e_var (pv_arg adv) e.e_ty) i e.e_ty
-    else
-      let aux = expr_abstract_local i arg in
-      match e.e_node with
-      | Eint _
-      | Elocal _
-      | Evar _ | Eop _ -> e
-      | Equant (q,b,e) -> e_quantif q b (aux e)
-      | Eapp (e1,le) -> e_app (aux e1) (List.map aux le) e.e_ty
-      | Elet (lp,e1,e2) -> e_let lp (aux e1) (aux e2)
-      | Etuple tuple -> e_tuple (List.map aux tuple)
-      | Eif (e1,e2,e3) -> e_if (aux e1) (aux e2) (aux e3)
-      | Ematch (e1,el,ty) -> e_match (aux e1) (List.map aux el) ty
-      | Eproj (e1,j) -> e_proj (aux e1) j e.e_ty
-
-  and lv_abstract_local _ arg lv = match lv with
-    | LvVar (pv1,ty) ->
-       let lv = match arg.e_node with
-         | Evar pv2 when pv_equal pv1 pv2 ->
-            LvVar (pv_arg adv,ty)
-         | _ -> lv
-       in lv
-
-    | LvTuple _ -> lv
-
-    | LvMap _ -> lv
-
-
-  and stmt_abstract_local (s : stmt) (i : int) (arg : expr) =
-    stmt (List.map (instr_abstract_local i arg) s.s_node)
-
-  and stmt_abstract_args args s =
-    List.fold_lefti stmt_abstract_local s args
-
-  in stmt_abstract_args args s
+  and stmt_abstract_local e1 e2 (s : instr list) : instr list =
+    List.map (instr_abstract_local e1 e2) s
+  in
+  match args with
+  | [] -> s
+  | [arg] ->
+     stmt_abstract_local arg (e_var (pv_arg adv) arg.e_ty) s
+  | _ ->
+     let arg i e = e_proj (e_var (pv_arg adv) e.e_ty) i (e_ty (e_tuple args)) in
+     List.fold_lefti (fun s i e ->
+         stmt_abstract_local e (arg i e) s) s args
 
 
 
@@ -226,7 +282,7 @@ let find_instance (s1 : stmt) (s2 : stmt) (hyps : LDecl.hyps) =
        | Args (e,adv) -> e,adv in
      let adv,args = List.fold_left aux (xpath (mpath (`Local (EcIdent.create "A")) []) (psymbol "A"),[])  var_names in
      let minstrs =
-       Mstr.map (fun s -> (abstract_locals args adv (stmt s)).s_node) minstrs in
+       Mstr.map (fun s -> abstract_locals args adv s hyps) minstrs in
 
      names,mvars,minstrs
 
