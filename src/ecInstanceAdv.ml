@@ -150,8 +150,7 @@ let stmt_to_pattern (s1 : stmt) =
   (* let s = (Anchor Start)::s @ [Anchor End] in *)
   names, Seq s
 
-
-let replace_pvar_in_expr (pv1 : prog_var) (e2 : expr) (e : expr) =
+let replace_pvar_by_pvar_in_expr pv1 pv2 e =
   let rec aux e =
     match e.e_node with
     | Eint _
@@ -164,8 +163,29 @@ let replace_pvar_in_expr (pv1 : prog_var) (e2 : expr) (e : expr) =
     | Eif (e1,e2,e3) -> e_if (aux e1) (aux e2) (aux e3)
     | Ematch (e1,el,ty) -> e_match (aux e1) (List.map aux el) ty
     | Eproj (e1,j) -> e_proj (aux e1) j e.e_ty
-    | Evar pv -> if pv_equal pv1 pv then e2 else e
+    | Evar pv -> if pv_equal pv1 pv then e_var pv2 e.e_ty else e
   in aux e
+
+
+
+let replace_pvar_in_expr (pv1 : prog_var) (e2 : expr) (e : expr) =
+  match e2.e_node with
+  | Evar pv2 -> replace_pvar_by_pvar_in_expr pv1 pv2 e
+  | _ ->
+     let rec aux e =
+       match e.e_node with
+       | Eint _
+         | Elocal _
+         | Eop _ -> e
+       | Equant (q,b,e) -> e_quantif q b (aux e)
+       | Eapp (e1,le) -> e_app (aux e1) (List.map aux le) e.e_ty
+       | Elet (lp,e1,e2) -> e_let lp (aux e1) (aux e2)
+       | Etuple tuple -> e_tuple (List.map aux tuple)
+       | Eif (e1,e2,e3) -> e_if (aux e1) (aux e2) (aux e3)
+       | Ematch (e1,el,ty) -> e_match (aux e1) (List.map aux el) ty
+       | Eproj (e1,j) -> e_proj (aux e1) j e.e_ty
+       | Evar pv -> if pv_equal pv1 pv then e2 else e
+     in aux e
 
 
 let replace_expr_in_expr (e1 : expr) (e2 : expr) (e : expr) (h : LDecl.hyps) =
@@ -236,56 +256,101 @@ let rec replace_expr_in_lv_e (e1 : expr) (e2 : expr) ((lv,e) : lvalue * expr) (h
      (lv,e)
 
 
-let abstract_locals args adv (s : instr list) h =
+let rec instr_abstract_local (e1 : expr) (e2 : expr) h (instr : instr) =
+  match instr.i_node with
+  | Sasgn (lv,e) ->
+     i_asgn (replace_expr_in_lv_e e1 e2 (lv,e) h)
+  | Srnd (lv,e) ->
+     i_rnd (replace_expr_in_lv_e e1 e2 (lv,e) h)
+  | Scall (optlv,xp,args) ->
+     i_call (optlv,xp,List.map (fun x -> replace_expr_in_expr e1 e2 x h) args)
+  | Sif (e,s1,s2) ->
+     let e = replace_expr_in_expr e1 e2 e h in
+     let s1 = stmt_abstract_local e1 e2 h s1.s_node in
+     let s2 = stmt_abstract_local e1 e2 h s2.s_node in
+     i_if (e,stmt s1,stmt s2)
+  | Swhile (e,s) ->
+     let e = replace_expr_in_expr e1 e2 e h in
+     let s = stmt_abstract_local e1 e2 h s.s_node in
+     i_while (e,stmt s)
+  | _ -> raise (Invalid_argument "assert or abstract in instr_abstract_local")
 
-  let rec instr_abstract_local (e1 : expr) (e2 : expr) (instr : instr) =
-    match instr.i_node with
-    | Sasgn (lv,e) ->
-       i_asgn (replace_expr_in_lv_e e1 e2 (lv,e) h)
-    | Srnd (lv,e) ->
-       i_rnd (replace_expr_in_lv_e e1 e2 (lv,e) h)
-    | Scall (optlv,xp,args) ->
-       i_call (optlv,xp,List.map (fun x -> replace_expr_in_expr e1 e2 x h) args)
-    | Sif (e,s1,s2) ->
-       let e = replace_expr_in_expr e1 e2 e h in
-       let s1 = stmt_abstract_local e1 e2 s1.s_node in
-       let s2 = stmt_abstract_local e1 e2 s2.s_node in
-       i_if (e,stmt s1,stmt s2)
-    | Swhile (e,s) ->
-       let e = replace_expr_in_expr e1 e2 e h in
-       let s = stmt_abstract_local e1 e2 s.s_node in
-       i_while (e,stmt s)
-    | _ -> raise (Invalid_argument "assert or abstract in instr_abstract_local")
+and stmt_abstract_local e1 e2 h (s : instr list) : instr list =
+  List.map (instr_abstract_local e1 e2 h) s
 
-  and stmt_abstract_local e1 e2 (s : instr list) : instr list =
-    List.map (instr_abstract_local e1 e2) s
-  in
+
+let abstract_args args adv (s : instr list) h =
   match args with
   | [] -> s
   | [arg] ->
-     stmt_abstract_local arg (e_var (pv_arg adv) arg.e_ty) s
+     stmt_abstract_local arg (e_var (pv_arg adv) arg.e_ty) h s
   | _ ->
      let arg i e = e_proj (e_var (pv_arg adv) e.e_ty) i (e_ty (e_tuple args)) in
      List.fold_lefti (fun s i e ->
-         stmt_abstract_local e (arg i e) s) s args
+         stmt_abstract_local e (arg i e) h s) s args
+
+let rec instr_abstract_pv pv1 pv2 i =
+  match i.i_node with
+  | Sasgn (lv,e) ->
+     let lv = replace_pvar_in_lvalue pv1 pv2 lv in
+     let e = replace_pvar_by_pvar_in_expr pv1 pv2 e in
+     i_asgn (lv,e)
+  | Srnd (lv,e) ->
+     let lv = replace_pvar_in_lvalue pv1 pv2 lv in
+     let e = replace_pvar_by_pvar_in_expr pv1 pv2 e in
+     i_rnd (lv,e)
+  | Scall (optlv,xp,args) ->
+     let optlv = omap (replace_pvar_in_lvalue pv1 pv2) optlv in
+     i_call (optlv,xp,List.map (replace_pvar_by_pvar_in_expr pv1 pv2) args)
+  | Sif (e,s1,s2) ->
+     let e = replace_pvar_by_pvar_in_expr pv1 pv2 e in
+     let s1 = stmt_abstract_pv pv1 pv2 s1.s_node in
+     let s2 = stmt_abstract_pv pv1 pv2 s2.s_node in
+     i_if (e,stmt s1,stmt s2)
+  | Swhile (e,s) ->
+     let e = replace_pvar_by_pvar_in_expr pv1 pv2 e in
+     let s = stmt_abstract_pv pv1 pv2 s.s_node in
+     i_while (e,stmt s)
+  | _ -> raise (Invalid_argument "assert or abstract in instr_abstract_pv")
+
+and stmt_abstract_pv pv1 pv2 =
+  List.map (instr_abstract_pv pv1 pv2)
+
+let stmt_abstract_pv_form x y s = match y with
+  | (Oform f,binds) when Mid.is_empty binds -> begin
+      match f.f_node with
+      | Fpvar (pv,_) -> stmt_abstract_pv pv x s
+      | _ -> raise (Invalid_argument "stmt_abstract_pv_form : meta-name matched with a non-prog_var")
+    end
+  | (Oform _,_) -> raise (Invalid_argument "stmt_abstract_pv_form : binds not empty")
+  | _ -> raise (Invalid_argument "stmt_abstract_pv_form : not a formula")
 
 
+let rec get_args adv = function
+  | [] -> []
+  | [arg] -> [arg,(pv_arg adv).pv_name]
+  | args -> List.map (fun x -> x,(pv_arg adv).pv_name) args
 
 let find_instance (s1 : stmt) (s2 : stmt) (hyps : LDecl.hyps) =
   let names, pattern = stmt_to_pattern s1 in
   match RegexpStmt.search pattern s2.s_node hyps with
   | None -> raise (Invalid_argument "No matches")
   | Some (mvars,minstrs) ->
-     let var_names = M.values names in
-     let aux acc = function
-       | Ident _id -> acc
-       | Args (e,adv) -> e,adv in
-     let adv,args = List.fold_left aux (xpath (mpath (`Local (EcIdent.create "A")) []) (psymbol "A"),[])  var_names in
+     let var_names = M.bindings names in
+     let aux (acc1,acc2) = function
+       | pv,Ident id -> (acc1,(pv,id)::acc2)
+       | _,Args (e,adv) -> ((e,adv),acc2) in
+     let (adv,args),var_names =
+       List.fold_left aux ((xpath (mpath (`Local (EcIdent.create "A")) []) (psymbol "A"),[]),[]) var_names in
+     let var_binds = List.map (fun (p,id) -> (pv p PVloc,Mid.find id mvars)) var_names in
      let minstrs =
-       Mstr.map (fun s -> abstract_locals args adv s hyps) minstrs in
-
-     names,mvars,minstrs
-
+       Mstr.map (fun s ->
+           List.fold_left (fun s (x,y) -> stmt_abstract_pv_form x y s) s var_binds)
+                minstrs in
+     let minstrs =
+       Mstr.map (fun s -> abstract_args args adv s hyps) minstrs in
+     let args = get_args adv args in
+     names,mvars,minstrs,args
 
 
 let try_instance (tc1 : tcenv1) : tcenv =
@@ -299,7 +364,7 @@ let try_instance (tc1 : tcenv1) : tcenv =
         | FequivS s -> s.es_sl, s.es_sr
         | _ -> raise (Invalid_argument "Not an equivalence between statements in try_instance.") in
       let h = FApi.tc1_hyps tc1 in
-      let names,mvars,minstrs = find_instance s1 s2 h in
+      let names,mvars,minstrs,args = find_instance s1 s2 h in
 
       let print_stmt x =  Format.fprintf fmt "%a\n" (EcPrinting.pp_stmt ppe) x in
       let print_instrs n i =
@@ -329,6 +394,11 @@ let try_instance (tc1 : tcenv1) : tcenv =
            List.iter (Format.fprintf fmt "\"%a\"\n" (EcPrinting.pp_form ppe)) (List.map (form_of_expr mhr) arg)
       in
 
+      let print_args (arg,pv) =
+        let _ = Format.fprintf fmt "Argument \"%a\" is set as " (EcPrinting.pp_funname ppe) pv in
+        Format.fprintf fmt "%a\n" (EcPrinting.pp_form ppe) (form_of_expr mhr arg)
+      in
+
       let _ =
         Format.fprintf fmt "%a :\n" (EcPrinting.pp_local ppe) (EcIdent.create "Local variables") in
       let _ = M.iter print_names names in
@@ -338,6 +408,7 @@ let try_instance (tc1 : tcenv1) : tcenv =
       let _ =
         Format.fprintf fmt "%a :\n" (EcPrinting.pp_local ppe) (EcIdent.create "Adversary's body") in
       let _ = Mstr.iter print_instrs minstrs in
+      let _ = List.iter print_args args in
       ()
     with
     | Invalid_argument s ->
