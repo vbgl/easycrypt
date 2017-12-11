@@ -177,6 +177,217 @@ module FPattern = struct
     { e with e_head = f; e_pattern = Psub p }
 
 
+  let p_app_simpl p subst =
+    let rec aux = function
+      | Panything -> Panything
+      | Pnamed (p,id2) -> begin
+          match Mid.find_opt id2 subst with
+          | None -> Pnamed (aux p,id2)
+          | Some (Ptype (p,ty1),GTty ty2) when ty_equal ty2 ty1 -> Ptype (p,ty1)
+          | Some (Ptype _, GTty _) -> assert false
+          | Some (p,GTty ty) -> Ptype (p,ty)
+          | Some (p,GTmem _) | Some (p, GTmodty _) -> p
+        end
+      | Psub p -> Psub (aux p)
+      | Por l -> Por (List.map aux l)
+      | Ptype (p,ty) -> Ptype (aux p,ty)
+      | Pobject o -> Pobject o (* FIXME *)
+      | Pif (p1,p2,p3) -> Pif (aux p1,
+                               aux p2,
+                               aux p3)
+      | Papp (op,args) -> Papp (aux op, List.map aux args)
+      | Ptuple l -> Ptuple (List.map aux l)
+      | Pproj (p,i) -> Pproj (aux p,i)
+      | Pmatch (op,l) -> Pmatch (aux op, List.map aux l)
+      | Pquant (q,bds,p) when Mid.set_disjoint subst (Mid.of_list bds) ->
+         Pquant (q,bds,aux p)
+      | Pquant _ ->
+         raise (Invalid_argument
+                  "in p_app_simpl : invalid argument name, it has been found in a sub quantif.")
+      | Ppvar (p1,p2) -> Ppvar (aux p1,aux p2)
+      | Pglob (p1,p2) -> Pglob (aux p1,aux p2)
+      | Ppr (p1,p2,p3,p4) -> Ppr (aux p1, aux p2, aux p3, aux p4)
+      | Pprog_var pv -> Pprog_var pv (* FIXME : when the id is about a module name *)
+      | Pxpath xp -> Pxpath xp
+      | Pmpath (p1,p2) -> Pmpath (aux p1, List.map aux p2)
+    in aux p
+
+  let olist f l =
+    let rec aux acc there_is_Some = function
+      | [] -> if there_is_Some then Some (List.rev acc) else None
+      | x::rest when there_is_Some -> aux ((odfl x (f x))::acc) there_is_Some rest
+      | x::rest -> match f x with
+                   | None -> aux (x::acc) false rest
+                   | Some x -> aux (x::acc) true rest in
+    aux [] false l
+
+  let replace_id id subst =
+    match Mid.find_opt id subst with
+    | None -> None
+    | Some (Ptype (p,ty1),GTty ty2) when ty_equal ty2 ty1 -> Some (Ptype (p,ty1))
+    | Some (Ptype _, GTty _) -> assert false
+    | Some (_,GTty _) -> None
+    | Some (p,GTmem _) | Some (p, GTmodty _) -> Some p
+
+  let p_app_simpl_opt p subst =
+    let rec aux = function
+      | Panything -> None
+      | Pnamed (_,id2) -> replace_id id2 subst
+      | Psub p -> omap (fun x -> Psub x) (aux p)
+      | Por l -> omap (fun x -> Por x) (olist aux l)
+      | Ptype (p,ty) -> omap (fun p -> Ptype (p,ty)) (aux p)
+      | Pobject o -> Some (Pobject o) (* FIXME *)
+      | Pif (p1,p2,p3) ->
+         let p = match olist aux [p1;p2;p3] with
+           | None -> None
+           | Some ([p1;p2;p3]) -> Some (Pif (p1,p2,p3))
+           | _ -> assert false in
+         p
+      | Papp (op,args) ->
+         let p = match olist aux (op::args) with
+           | None -> None
+           | Some (op::args) -> Some (Papp (op,args))
+           | _ -> assert false
+         in p
+      | Ptuple l -> omap (fun x -> Ptuple x) (olist aux l)
+      | Pproj (p,i) -> omap (fun x -> Pproj (x,i)) (aux p)
+      | Pmatch (op,l) ->
+         let p = match olist aux (op::l) with
+           | None -> None
+           | Some (op::args) -> Some (Pmatch (op,args))
+           | _ -> assert false
+         in p
+      | Pquant (q,bds,p) when Mid.set_disjoint subst (Mid.of_list bds) ->
+         omap (fun x -> Pquant (q,bds,x)) (aux p)
+      | Pquant _ ->
+         raise (Invalid_argument
+                  "in p_app_simpl : invalid argument name, it has been found in a sub quantif.")
+      | Ppvar (p1,p2) ->
+         let p = match aux p1 with
+           | None -> None
+           | Some p1 -> match aux p2 with
+                        | None -> None
+                        | Some p2 -> Some (Ppvar (p1,p2)) in p
+      | Pglob (p1,p2) ->
+         let p = match aux p1 with
+           | None -> None
+           | Some p1 ->
+              match aux p2 with
+              | None -> None
+              | Some p2 -> Some (Pglob (p1,p2)) in p
+      | Ppr (p1,p2,p3,p4) ->
+         let p = match olist aux [p1;p2;p3;p4] with
+           | None -> None
+           | Some [p1;p2;p3;p4] -> Some (Ppr (p1,p2,p3,p4))
+           | _ -> assert false in p
+      | Pprog_var _ -> None (* FIXME : when the id is about a module name *)
+      | Pxpath _ -> None
+      | Pmpath (op,args) ->
+         let p = match olist aux (op::args) with
+           | None -> None
+           | Some (op::args) -> Some (Pmpath (op,args))
+           | _ -> assert false
+         in p
+    in aux p
+
+
+  let obeta_reduce = function
+    | Papp (Pquant (Llambda, binds, p), pargs) ->
+       let (bs1,bs2), (pargs1,pargs2) = List.prefix2 binds pargs in
+       let p = match pargs2 with
+         | [] -> p
+         | _ -> Papp (p, pargs2) in
+       let p = match bs2 with
+         | [] -> p
+         | _ -> Pquant (Llambda, bs2, p) in
+       let subst = Mid.empty in
+       let subst =
+         try List.fold_left2 (fun a (b,t) c -> Mid.add_new Not_found b (c,t) a) subst bs1 pargs1
+         with
+         | Not_found -> raise (Invalid_argument "beta_reduce : two bindings has got the same name.")
+       in
+       p_app_simpl_opt p subst
+    | _ -> None
+
+
+  let beta_reduce = function
+    | Papp (Pquant (Llambda, binds, p), pargs) ->
+       let (bs1,bs2), (pargs1,pargs2) = List.prefix2 binds pargs in
+       let p = match pargs2 with
+         | [] -> p
+         | _ -> Papp (p, pargs2) in
+       let p = match bs2 with
+         | [] -> p
+         | _ -> Pquant (Llambda, bs2, p) in
+       let subst = Mid.empty in
+       let subst =
+         try List.fold_left2 (fun a (b,t) c -> Mid.add_new Not_found b (c,t) a) subst bs1 pargs1
+         with
+         | Not_found -> raise (Invalid_argument "beta_reduce : two bindings has got the same name.")
+       in
+       p_app_simpl p subst
+    | p -> p
+
+
+  let subst_name n1 n2 p =
+    let rec aux = function
+      | Panything -> Panything
+      | Pnamed (p,n) when id_equal n1 n -> Pnamed (p,n2)
+      | Pnamed (p,n) -> Pnamed (aux p, n)
+      | Psub p -> Psub (aux p)
+      | Por pl -> Por (List.map aux pl)
+      | Ptype (p,ty) -> Ptype (aux p, ty)
+      | Pif (p2,p3,p4) -> Pif (aux p2,aux p3,aux p4)
+      | Papp (p2,pl) -> Papp (aux p2,List.map aux pl)
+      | Ptuple pl -> Ptuple (List.map aux pl)
+      | Pproj (p2,i) -> Pproj (aux p2,i)
+      | Pmatch (p2,pl) -> Pmatch (aux p2,List.map aux pl)
+      | Pquant (q,bs,p2) -> Pquant (q,bs,aux p2)
+      | Ppvar (p2,p3) -> Ppvar (aux p2,aux p3)
+      | Pglob (p2,p3) -> Pglob (aux p2,aux p3)
+      | Ppr (p2,p3,p4,p5) -> Ppr (aux p2,
+                                  aux p3,
+                                  aux p4,
+                                  aux p5)
+      | Pprog_var pv -> Pprog_var pv (* FIXME *)
+      | Pxpath xp -> Pxpath xp  (* FIXME *)
+      | Pmpath (p2,pl) -> Pmpath (aux p2, List.map aux pl)
+      | Pobject (Omem mem) ->
+         if id_equal n1 mem then Pobject (Omem n2) else Pobject (Omem n1)
+      | Pobject (Ompath_top _) as p -> p
+      | Pobject (Oform f) as p2 ->
+         if not(Mid.mem n1 f.f_fv) then p2
+         else match f.f_node with
+              |  Flocal id ->
+                  if id_equal id n1 then Pobject (Oform (f_local n2 f.f_ty)) else p2
+              | Fquant (quant,bs,f') ->
+                 if Mid.mem n1 f'.f_fv then Pquant (quant,bs,aux (Pobject (Oform f')))
+                 else p2
+              | Fif (f1,f2,f3) ->
+                 Pif (aux (Pobject (Oform f1)),
+                      aux (Pobject (Oform f2)),
+                      aux (Pobject (Oform f3)))
+              | Fmatch _ | Flet _-> Pobject (Oform f) (* FIXME *)
+              | Fint _ -> Pobject (Oform f)
+              | Fpvar (pvar,mem) ->
+                 if id_equal mem n1 then Ppvar (Pprog_var pvar, Pobject (Omem n2))
+                 else p2
+              | Fglob (mpath,mem) ->
+                 if id_equal mem n1 then
+                   Pglob (aux_mpath mpath, Pobject (Omem n2))
+                 else p2
+              | Fop _ -> Pobject (Oform f) (* FIXME *)
+              | Fapp (f1,fargs) ->
+                 Papp (aux (Pobject (Oform f1)),
+                       List.map (fun f -> aux (Pobject (Oform f))) fargs)
+              | Ftuple t ->
+                 Ptuple (List.map (fun f -> aux (Pobject (Oform f))) t)
+              | Fproj (f1,i) -> Pproj (aux (Pobject (Oform f1)),i)
+              | _ -> (* FIXME *) p2
+      and aux_mpath mp =
+        Pmpath (Pobject (Ompath_top mp.m_top), List.map aux_mpath mp.m_args)
+    in aux p
+
   let rec substitution n1 p1 p2 = match p2 with
     | Panything -> Panything
     | Pnamed (_,n2) when id_equal n1 n2 -> p1
@@ -335,22 +546,48 @@ module FPattern = struct
        (* FIXME : higher order *)
        begin match f_node f with
        | Fapp (fop,fargs) ->
-          let pl,fl = List.length pargs, List.length fargs in
-          if fl < pl
-          then next NoMatch e (* process_higer_order e *)
-          else
-            let fargs1,fargs2 = List.split_at (fl - pl) fargs in
-            let fop' = f_app fop fargs1 (EcTypes.toarrow (List.map f_ty fargs2) (f_ty fop)) in
-            let to_match_args = List.combine (List.map (fun x -> Oform x, binds)fargs2) pargs in
-            let l = ((Oform fop', binds), pop)::to_match_args in
-            let p,h,l = match List.rev l with
-              | [] -> assert false
-              | (o,p)::l -> p,o,l in
-            process { e with
-                      e_pattern = p;
-                      e_head = h;
-                      e_continuation = Zand ([],l,e.e_continuation);
-                    }
+          let oe =
+            let (fargs1,fargs2),(pargs1,pargs2) = List.prefix2 fargs pargs in
+            match fargs2,pargs2 with
+            | _::_,_::_ -> assert false
+            | _, [] ->
+               let fop' = f_app fop fargs1 (EcTypes.toarrow (List.map f_ty fargs2) (f_ty fop)) in
+               let to_match_args = List.combine (List.map (fun x -> Oform x, binds)fargs2) pargs in
+               let pop = match pargs1 with
+                 | [] -> pop
+                 | _ -> Papp (pop, pargs1) in
+               let l = ((Oform fop', binds), pop)::to_match_args in
+               let p,h,l = match List.rev l with
+                 | [] -> assert false
+                 | (o,p)::l -> p,o,l in
+               let e_continuation = e.e_continuation in
+               let e_continuation = Zand ([],l,e_continuation) in
+               let e_list =
+                 let rp = obeta_reduce p in
+                 let l1 =
+                   match rp with
+                   | None -> []
+                   | Some e_pattern ->
+                      [{ e with e_pattern }] in
+                 let rf = f_betared f in
+                 let l2 = match fop.f_node with
+                   | Fquant (Llambda,_,_) ->
+                      [{ e with e_head = (Oform rf, binds) }]
+                   | _ -> [] in
+                 l1@l2 in
+               let e_continuation = match e_list with
+                 | [] -> e_continuation
+                 | _ -> Zor (e_continuation,e_list,e_next e) in
+                Some (fun () ->
+                    process { e with
+                              e_pattern = p;
+                              e_head = h;
+                              e_continuation; })
+            | [], _::_ ->
+               let opt = obeta_reduce (Papp (pop,pargs)) in
+               omap (fun p () -> process { e with e_pattern = p }) opt
+            in
+            (odfl (fun () -> next NoMatch e) oe) ()
        | _ -> next NoMatch e (* process_higer_order e *)
        end
 
@@ -682,7 +919,6 @@ module FPattern = struct
     | Ftuple t -> f_tuple (List.map (rewrite_term map) t)
     | Fproj (f1,i) -> f_proj (rewrite_term map f1) i f.f_ty
     | _ -> (* FIXME *) f
-
 
 
 end
