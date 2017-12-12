@@ -1951,6 +1951,7 @@ module Mod = struct
     let env = enter (`Module params) name env in
       bind_locals params env
 
+
   let add_mod_binding bd env =
     let do1 env (x,gty) =
       match gty with
@@ -1958,6 +1959,133 @@ module Mod = struct
       | _ -> env
     in
       List.fold_left do1 env bd
+
+
+(* ------------------------------------------------------------------------ *)
+  module Mxpath =
+    Map.Make(struct type t = xpath
+                    let compare = x_compare end)
+
+  module Mmpath =
+    Map.Make(struct type t = mpath
+                    let compare = m_compare end)
+
+  module Mpv =
+    Map.Make(struct type t = prog_var
+                    let compare = pv_compare end)
+
+  type subst_in_module = {
+      sub_name  : symbol option;
+      sub_xpath : xpath Mxpath.t;
+      sub_mpath : mpath Mmpath.t;
+      sub_local : EcIdent.ident Mid.t;
+      sub_prog_var : prog_var Mpv.t;
+      sub_glob_var : symbol EcMaps.Mstr.t;
+      sub_proc_name : symbol EcMaps.Mstr.t;
+    }
+
+  let rec subst_mi (s : subst_in_module) (mi : module_item) =
+    match mi with
+    | MI_Module   me -> MI_Module (subst_me s me)
+    | MI_Variable v  -> MI_Variable (subst_v s v)
+    | MI_Function f  -> MI_Function (subst_f s f)
+
+  and subst_me (s : subst_in_module) (me : module_expr) =
+    let me_body =
+          match me.me_body with
+          | ME_Alias (i,mp) ->
+             ME_Alias (i,odfl mp (Mmpath.find_opt mp s.sub_mpath))
+          | ME_Structure ms ->
+             ME_Structure
+               { ms with
+                 ms_body = List.map (subst_mi s) ms.ms_body }
+          | ME_Decl _ as b -> b (* FIXME *) in
+    let me_comps = List.map (subst_mi s) me.me_comps in
+    let me_sig = me.me_sig in
+      { me with me_body; me_comps; me_sig;
+        me_name = odfl me.me_name s.sub_name;
+      }
+
+  and subst_v s v =
+    match EcMaps.Mstr.find_opt v.v_name s.sub_glob_var with
+    | None -> v
+    | Some v_name -> { v with v_name }
+
+  and subst_f s f =
+    let f = match EcMaps.Mstr.find_opt f.f_name s.sub_proc_name with
+      | None -> f
+      | Some f_name -> { f with f_name } in
+    (* FIXME : funsig *)
+    let f_def = match f.f_def with
+      | FBdef f_def ->
+         let f_locals = List.map (subst_v s) f_def.f_locals in
+         let f_body = stmt (List.map (subst_i s) f_def.f_body.s_node) in
+         let f_ret = omap (subst_e s) f_def.f_ret in
+         let f_uses = f_def.f_uses (* FIXME *) in
+         FBdef { f_locals;f_body;f_ret;f_uses }
+      | FBalias xp ->
+         FBalias (odfl xp (Mxpath.find_opt xp s.sub_xpath))
+      | FBabs _oracle_info -> f.f_def (* FIXME *)
+    in
+    let f = { f with f_def } in
+    f
+
+  and subst_i s i : instr = match i.i_node with
+    | Sasgn (lv,e) -> i_asgn (subst_lv s lv, subst_e s e)
+    | Srnd  (lv,e) -> i_rnd (subst_lv s lv, subst_e s e)
+    | Scall (lvopt,proc,elist) ->
+       let lvopt = omap (subst_lv s) lvopt in
+       let proc = odfl proc (Mxpath.find_opt proc s.sub_xpath) in
+       let elist = List.map (subst_e s) elist in
+       i_call (lvopt,proc,elist)
+    | Sif (e,s1,s2) ->
+       let s1 = stmt (List.map (subst_i s) s1.s_node) in
+       let s2 = stmt (List.map (subst_i s) s2.s_node) in
+       i_if ((subst_e s e), s1, s2)
+    | Swhile (e,s1) ->
+       let s1 = stmt (List.map (subst_i s) s1.s_node) in
+       i_while ((subst_e s e), s1)
+    | Sassert e -> i_assert (subst_e s e)
+    | Sabstract _ -> i
+
+  and subst_e s e =
+    let aux f find x m = odfl e (omap f (find x m)) in
+    match e.e_node with
+    | Eint _ -> e
+    | Elocal id ->
+       aux (fun x -> e_local x e.e_ty) Mid.find_opt id s.sub_local
+    | Evar pv ->
+       aux (fun x -> e_var x e.e_ty) Mpv.find_opt pv s.sub_prog_var
+    | Eop _ -> e (* FIXME : we may want to substitute an operator *)
+    | Eapp (op, args) ->
+       e_app (subst_e s op) (List.map (subst_e s) args) e.e_ty
+    | Equant (q,bs,e1) ->
+       e_quantif q bs (subst_e s e1)
+    | Elet (x,e1,e2) ->
+       e_let x (subst_e s e1) (subst_e s e2)
+    | Etuple tuple ->
+       e_tuple (List.map (subst_e s) tuple)
+    | Eif (e1,e2,e3) ->
+       e_if (subst_e s e1) (subst_e s e2) (subst_e s e3)
+    | Ematch (e1,args,ty) ->
+       e_match (subst_e s e1) (List.map (subst_e s) args) ty
+    | Eproj (e1,i) ->
+       e_proj (subst_e s e1) i e.e_ty
+
+  and subst_lv s lv = match lv with
+    | LvVar (pv,ty) ->
+       LvVar (odfl pv (Mpv.find_opt pv s.sub_prog_var),ty)
+    | LvTuple tuple ->
+       LvTuple (List.map (fun (pv,ty) -> odfl pv (Mpv.find_opt pv s.sub_prog_var),ty) tuple)
+    | LvMap ((op,lty),pv,e,ty) ->
+       LvMap ((op,lty),odfl pv (Mpv.find_opt pv s.sub_prog_var), subst_e s e, ty)
+
+  (* let subst (s : subst_in_module) (m : mpath) (e : env) =
+   *   let me = *)
+
+
+
+
 end
 
 (* -------------------------------------------------------------------- *)
