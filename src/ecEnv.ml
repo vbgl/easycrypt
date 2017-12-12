@@ -2007,9 +2007,9 @@ module Mod = struct
       }
 
   and subst_v s v =
-    match EcMaps.Mstr.find_opt v.v_name s.sub_glob_var with
-    | None -> v
-    | Some v_name -> { v with v_name }
+    { v with
+      v_name = odfl v.v_name
+                 (EcMaps.Mstr.find_opt v.v_name s.sub_glob_var) }
 
   and subst_f s f =
     let f = match EcMaps.Mstr.find_opt f.f_name s.sub_proc_name with
@@ -2080,11 +2080,48 @@ module Mod = struct
     | LvMap ((op,lty),pv,e,ty) ->
        LvMap ((op,lty),odfl pv (Mpv.find_opt pv s.sub_prog_var), subst_e s e, ty)
 
-  (* let subst (s : subst_in_module) (m : mpath) (e : env) =
-   *   let me = *)
+
+  let change_me_in_env (m : mpath) (e : env) f =
+    odfl e (omap f (by_mpath_opt m e))
 
 
+  let subst (s : subst_in_module) (m : mpath) (e : env) =
+    change_me_in_env m e (fun me ->
+        let me = subst_me s me in bind (me.me_name) me e)
 
+(* EcModules *)
+
+  let me_add_item (me : module_expr) (i : module_item) =
+    (* FIXME : should we verify if the module item is "correct" ? *)
+    let me_comps = i::me.me_comps in
+    let me_body = ME_Structure { ms_body = me.me_comps } in
+    { me with me_body; me_comps }
+
+
+  let me_add_proc
+        (me : module_expr)
+        (name : symbol)
+        (s : stmt)
+        (locals : variable list)
+        (args : (symbol * ty) list)
+        (ret : expr option * ty)
+        (uses : uses)
+    =
+    let f_sig = { fs_name   = name;
+                  fs_arg    = ttuple (List.map snd args);
+                  fs_anames = None;
+                  fs_ret    = snd ret;
+                }
+    in
+    let f_def =
+      FBdef { f_locals = locals;
+              f_body   = s;
+              f_ret    = fst ret;
+              f_uses   = uses;
+        }
+    in
+    let (f : function_) = { f_name = name; f_sig; f_def; } in
+    me_add_item me (MI_Function f)
 
 end
 
