@@ -12,7 +12,6 @@ open EcMaps
 open EcEnv
 open EcCoreGoal
 
-
 module M = Map.Make(struct
   type t = xpath
   let compare = x_compare
@@ -25,14 +24,21 @@ let quantif_of_equantif = function
 
 type name =
   | Ident of ident
-  | Args  of xpath * expr list
+  | Args  of expr list
 
-type names = name M.t
+type names = {
+    n_vars : ident M.t;
+    n_args : expr list M.t;
+  }
 
-let get_name pv names = match M.find_opt pv.pv_name names with
-  | None -> EcIdent.create (String.concat " " ["prog_var";":";EcPath.tostring pv.pv_name.x_sub])
-  | Some (Ident name) -> name
-  | Some _ -> raise (Invalid_argument "wrong name that collide with adversary's call's arguments")
+let get_name pv names = match M.find_opt pv.pv_name names.n_vars with
+  | None -> EcIdent.create (EcPath.tostring pv.pv_name.x_sub)
+  | Some name -> name
+
+let add xp n m = match n with
+  | Ident id -> { m with n_vars = M.add xp id m.n_vars }
+  | Args  le -> { m with n_args = M.add xp le m.n_args }
+
 
 let rec lvalue_to_pattern (names : names) (lv : lvalue) = match lv with
   | LvVar (pv,ty) ->
@@ -40,7 +46,7 @@ let rec lvalue_to_pattern (names : names) (lv : lvalue) = match lv with
        | PVglob -> Pobject (Oform (f_pvar pv ty mhr)), names
        | PVloc  ->
           let name = get_name pv names in
-          Pnamed (Panything, name), (M.add pv.pv_name (Ident name) names)
+          Pnamed (Panything, name), (add pv.pv_name (Ident name) names)
      in names, p
 
   | LvTuple tuple ->
@@ -56,7 +62,7 @@ let rec expr_to_pattern (names : names) (e : expr) = match e.e_node with
   | Elocal id -> names, Pobject (Oform (f_local id e.e_ty))
   | Evar pv   ->
      let name = get_name pv names in
-     (M.add pv.pv_name (Ident name) names), Pnamed (Panything, name)
+     (add pv.pv_name (Ident name) names), Pnamed (Panything, name)
 
   | Eop (op,lty) -> names, Pobject (Oform (f_op op lty e.e_ty))
 
@@ -121,9 +127,9 @@ let stmt_to_pattern (s1 : stmt) =
     | Scall (xopt, xp, e) ->
        let names, p =
          match xp.x_top.m_top with
-         | `Local id -> (* FIXME : add the treatment of module arguments *)
-            (M.add xp (Args (xp,e)) names), Named (Repeat (Any, (None, None), `Greedy),
-                          String.concat " " [EcIdent.tostring id;"body"])
+         | `Local _ -> (* FIXME : add the treatment of module arguments *)
+            (add xp (Args e) names), Named (Repeat (Any, (None, None), `Greedy),
+                                            x_tostring xp)
          | `Concrete _ ->
             let names, p1 = match xopt with
               | None -> names, Panything
@@ -145,7 +151,7 @@ let stmt_to_pattern (s1 : stmt) =
 
     | _ -> raise (Invalid_argument "assert of abstract value in statement when processed in stmt_to_pattern")
   in
-  let names = M.empty in
+  let names = { n_vars = M.empty ; n_args = M.empty } in
   let names, s = List.map_fold aux_instr names s1.s_node in
   (* let s = (Anchor Start)::s @ [Anchor End] in *)
   names, Seq s
@@ -256,7 +262,7 @@ let rec replace_expr_in_lv_e (e1 : expr) (e2 : expr) ((lv,e) : lvalue * expr) (h
      (lv,e)
 
 
-let rec instr_abstract_local (e1 : expr) (e2 : expr) h (instr : instr) =
+let rec replace_expr_by_expr_in_instr (e1 : expr) (e2 : expr) h (instr : instr) =
   match instr.i_node with
   | Sasgn (lv,e) ->
      i_asgn (replace_expr_in_lv_e e1 e2 (lv,e) h)
@@ -266,28 +272,28 @@ let rec instr_abstract_local (e1 : expr) (e2 : expr) h (instr : instr) =
      i_call (optlv,xp,List.map (fun x -> replace_expr_in_expr e1 e2 x h) args)
   | Sif (e,s1,s2) ->
      let e = replace_expr_in_expr e1 e2 e h in
-     let s1 = stmt_abstract_local e1 e2 h s1.s_node in
-     let s2 = stmt_abstract_local e1 e2 h s2.s_node in
+     let s1 = replace_expr_by_expr_in_stmt e1 e2 h s1.s_node in
+     let s2 = replace_expr_by_expr_in_stmt e1 e2 h s2.s_node in
      i_if (e,stmt s1,stmt s2)
   | Swhile (e,s) ->
      let e = replace_expr_in_expr e1 e2 e h in
-     let s = stmt_abstract_local e1 e2 h s.s_node in
+     let s = replace_expr_by_expr_in_stmt e1 e2 h s.s_node in
      i_while (e,stmt s)
   | _ -> raise (Invalid_argument "assert or abstract in instr_abstract_local")
 
-and stmt_abstract_local e1 e2 h (s : instr list) : instr list =
-  List.map (instr_abstract_local e1 e2 h) s
+and replace_expr_by_expr_in_stmt e1 e2 h (s : instr list) : instr list =
+  List.map (replace_expr_by_expr_in_instr e1 e2 h) s
 
 
 let abstract_args args adv (s : instr list) h =
   match args with
   | [] -> s
   | [arg] ->
-     stmt_abstract_local arg (e_var (pv_arg adv) arg.e_ty) h s
+     replace_expr_by_expr_in_stmt arg (e_var (pv_arg adv) arg.e_ty) h s
   | _ ->
      let arg i e = e_proj (e_var (pv_arg adv) e.e_ty) i (e_ty (e_tuple args)) in
      List.fold_lefti (fun s i e ->
-         stmt_abstract_local e (arg i e) h s) s args
+         replace_expr_by_expr_in_stmt e (arg i e) h s) s args
 
 let rec instr_abstract_pv pv1 pv2 i =
   match i.i_node with
@@ -331,41 +337,158 @@ let rec get_args adv = function
   | [arg] -> [arg,(pv_arg adv).pv_name]
   | args -> List.map (fun x -> x,(pv_arg adv).pv_name) args
 
-let find_instance (s1 : stmt) (s2 : stmt) (hyps : LDecl.hyps) =
-  let names, pattern = stmt_to_pattern s1 in
-  match RegexpStmt.search pattern s2.s_node hyps with
-  | None -> raise (Invalid_argument "No matches")
-  | Some (mvars,minstrs) ->
-     let var_names = M.bindings names in
-     let aux (acc1,acc2) = function
-       | pv,Ident id -> (acc1,(pv,id)::acc2)
-       | _,Args (e,adv) -> ((e,adv),acc2) in
-     let (adv,args),var_names =
-       List.fold_left aux ((xpath (mpath (`Local (EcIdent.create "A")) []) (psymbol "A"),[]),[]) var_names in
-     let var_binds = List.map (fun (p,id) -> (pv p PVloc,Mid.find id mvars)) var_names in
-     let minstrs =
-       Mstr.map (fun s ->
-           List.fold_left (fun s (x,y) -> stmt_abstract_pv_form x y s) s var_binds)
-                minstrs in
-     let minstrs =
-       Mstr.map (fun s -> abstract_args args adv s hyps) minstrs in
-     let args = get_args adv args in
-     names,mvars,minstrs,args
+(* let find_instance (s1 : stmt) (s2 : stmt) (hyps : LDecl.hyps) =
+ *   let names, pattern = stmt_to_pattern s1 in
+ *   match RegexpStmt.search pattern s2.s_node hyps with
+ *   | None -> raise (Invalid_argument "No matches")
+ *   | Some (mvars,minstrs) ->
+ *      let var_names = M.bindings names.n_vars in
+ *      let adv,args = match M.bindings names.n_args with
+ *        | [] -> raise (Invalid_argument "No adversary call.")
+ *        | (adv,args)::_ -> adv,args in
+ *      let var_binds = List.map (fun (p,id) -> (pv p PVloc,Mid.find id mvars)) var_names in
+ *      let minstrs =
+ *        Mstr.map (fun s ->
+ *            List.fold_left (fun s (x,y) -> stmt_abstract_pv_form x y s) s var_binds)
+ *                 minstrs in
+ *      let minstrs =
+ *        Mstr.map (fun s -> abstract_args args adv s hyps) minstrs in
+ *      let args = get_args adv args in
+ *      names,mvars,minstrs,args *)
+
+let abstract_locals_in_instr (xp_from : xpath) (xp_to : xpath) (i : instr) =
+  let rec aux_instr i =
+    match i.i_node with
+    | Sasgn (lv,e) ->
+       let lv = aux_lvalue lv in
+       let e = aux_expr e in
+       i_asgn (lv,e)
+    | Srnd (lv,e) ->
+       let lv = aux_lvalue lv in
+       let e = aux_expr e in
+       i_rnd (lv,e)
+    | Scall (optlv,xp,args) ->
+       let optlv = omap aux_lvalue  optlv in
+       i_call (optlv,xp,List.map aux_expr args)
+    | Sif (e,s1,s2) ->
+       let e = aux_expr e in
+       let s1 = List.map aux_instr s1.s_node in
+       let s2 = List.map aux_instr s2.s_node in
+       i_if (e,stmt s1,stmt s2)
+    | Swhile (e,s) ->
+       let e = aux_expr e in
+       let s = List.map aux_instr s.s_node in
+       i_while (e,stmt s)
+    | _ -> raise (Invalid_argument "assert or abstract in instr_abstract_pv")
+  and aux_lvalue = function
+    | LvVar (pv,ty) -> LvVar (aux_pv pv,ty)
+    | LvTuple l -> LvTuple (List.map (fun (x,y) -> (aux_pv x,y)) l)
+    | LvMap ((op,lty),pv,e,ty) -> LvMap ((op,lty),aux_pv pv, aux_expr e,ty)
+
+  and aux_expr e = match e.e_node with
+    | Eint _ -> e
+    | Elocal _ -> e
+    | Evar pv -> e_var (aux_pv pv) e.e_ty
+    | Eop _ -> e
+    | Eapp (e1,l) -> e_app (aux_expr e1) (List.map aux_expr l) e.e_ty
+    | Equant (q,b,e1) -> e_quantif q b (aux_expr e1)
+    | Elet (lp,e1,e2) -> e_let lp (aux_expr e1) (aux_expr e2)
+    | Etuple l -> e_tuple (List.map aux_expr l)
+    | Eif (e1,e2,e3) -> e_if (aux_expr e1) (aux_expr e2) (aux_expr e3)
+    | Ematch (e1,l,ty) -> e_match (aux_expr e1) (List.map aux_expr l) ty
+    | Eproj (e1,i) -> e_proj (aux_expr e1) i e.e_ty
+
+  and aux_pv pv =
+    try
+      if not(m_equal pv.pv_name.x_top xp_from.x_top) then raise Not_found
+      else
+        let _mp = xp_to.x_top in
+        (* let path =
+         *   let rec aux acc *)
+        raise Not_found
+    with
+    | _ -> pv
+
+  in aux_instr i
+
+let rec abstract hyps (xp : xpath) (args : expr list)
+          (minstrs : instr list Mstr.t) : instr list Mstr.t =
+  let f = function
+    | None -> None
+    | Some s ->
+       let args =
+         let env = LDecl.toenv hyps in
+         let f = Fun.by_xpath xp env in
+         match f.f_sig.fs_anames with
+         | Some l when List.for_all2 (fun i j -> ty_equal i.v_type j.e_ty) l args ->
+            List.map2 (fun x e -> e_var (pv_loc xp x.v_name) e.e_ty,e) l args
+         | None ->
+            List.mapi (fun i e ->
+                e_var (pv_loc xp (String.concat "" ["x";string_of_int i]))
+                  e.e_ty,e) args
+         | _ -> raise (Invalid_argument "arguments do not have the right type.")
+       in
+       Some (List.fold_left (fun s (e2,e1) ->
+                 replace_expr_by_expr_in_stmt e1 e2 hyps s) s args)
+  in
+  Mstr.change f (x_tostring xp) minstrs
 
 
-let try_instance (tc1 : tcenv1) : tcenv =
-  let env = FApi.tc1_env tc1 in
+let try_instance (adv_name,abstract_module) tc =
+  let env,h,f = FApi.tc1_eflat tc in
   let fmt = Format.std_formatter in
   let ppe = EcPrinting.PPEnv.ofenv env in
+  let _adv_name = EcLocation.unloc adv_name in
+
+  (* get xpath from pgamepath *)
+  let xpath_abstract = EcTyping.trans_gamepath env abstract_module in
+
+  (* get xpath from goal's form *)
+  let xpath_concrete =
+    let xp_name = EcIdent.create "procedure" in
+    let p = Psub (Ppr (Panything,Pnamed (Panything, xp_name),Panything,Panything)) in
+    let map = match search f p h with
+      | None -> Mid.empty
+      | Some m -> m in
+    let xp = (* FIXME : we may want to retrieve much information *)
+      match Mid.find_opt xp_name map with
+      | Some (Oform { f_node = Fpr { pr_fun = xp } },_) -> xp
+      | _ -> raise (Invalid_argument "no Pr[_] sub-formula found.")
+    in xp
+  in
+
+
+  let _m_abstract,(_fsig_abstract,f_abstract),
+      _m_concrete,(_fsig_concrete,f_concrete), _env =
+    Fun.equivS xpath_abstract xpath_concrete env in
+
+  (* get stmt from function_ *)
+  let s_abstract = f_abstract.f_body in
+  let s_concrete = f_concrete.f_body in
+
+  (* let f_print = f_equivS m_abstract m_concrete f_true s_abstract s_concrete f_true in
+   *
+   * let _ =
+   *   Format.fprintf fmt "%a\n" (EcPrinting.pp_form ppe) f_print in *)
+
+  (* corpse of the instanciation *)
   let _ =
     try
-      let f = FApi.tc1_goal tc1 in
-      let s1,s2 = match f.f_node with
-        | FequivS s -> s.es_sl, s.es_sr
-        | _ -> raise (Invalid_argument "Not an equivalence between statements in try_instance.") in
-      let h = FApi.tc1_hyps tc1 in
-      let names,mvars,minstrs,args = find_instance s1 s2 h in
+      (* find_instance *)
+      let names, pattern = stmt_to_pattern s_abstract in
+      match RegexpStmt.search pattern s_concrete.s_node h with
+      | None -> raise (Invalid_argument "No matches")
+      | Some (mvars,minstrs) ->
+         let var_names = M.bindings names.n_vars in
+         let var_binds = List.map (fun (p,id) -> (pv p PVloc,Mid.find id mvars)) var_names in
+         let minstrs =
+           Mstr.map (fun s ->
+               List.fold_left (fun s (x,y) -> stmt_abstract_pv_form x y s) s var_binds)
+             minstrs in
+         let minstrs =
+           M.fold (abstract h) names.n_args minstrs in
 
+      (* print instance *)
       let print_stmt x =  Format.fprintf fmt "%a\n" (EcPrinting.pp_stmt ppe) x in
       let print_instrs n i =
         let _ = Format.fprintf fmt "with name \"%a\" :\n" (EcPrinting.pp_local ppe) (EcIdent.create n) in
@@ -385,34 +508,38 @@ let try_instance (tc1 : tcenv1) : tcenv =
         let _ = print_tobject o in
         () in
 
-      let print_names pv n = match n with
-        | Ident id ->
+      let print_names pv id =
+        (* match n with
+         * | Ident id -> *)
            let _ = Format.fprintf fmt "Local variable \"%a\" is " (EcPrinting.pp_funname ppe) pv in
            Format.fprintf fmt "named \"%a\".\n" (EcPrinting.pp_local ppe) id
-        | Args (_,arg) ->
-           let _ = Format.fprintf fmt "Adversary \"%a\"'s arguments are " (EcPrinting.pp_funname ppe) pv in
-           List.iter (Format.fprintf fmt "\"%a\"\n" (EcPrinting.pp_form ppe)) (List.map (form_of_expr mhr) arg)
+        (* | Args arg -> *)
       in
-
-      let print_args (arg,pv) =
-        let _ = Format.fprintf fmt "Argument \"%a\" is set as " (EcPrinting.pp_funname ppe) pv in
-        Format.fprintf fmt "%a\n" (EcPrinting.pp_form ppe) (form_of_expr mhr arg)
+      let print_nargs pv arg =
+        let _ = Format.fprintf fmt "Adversary \"%a\"'s arguments are " (EcPrinting.pp_funname ppe) pv in
+        List.iter (Format.fprintf fmt "\"%a\"\n" (EcPrinting.pp_form ppe)) (List.map (form_of_expr mhr) arg)
       in
 
       let _ =
         Format.fprintf fmt "%a :\n" (EcPrinting.pp_local ppe) (EcIdent.create "Local variables") in
-      let _ = M.iter print_names names in
+      let _ = M.iter print_names names.n_vars in
+      let _ = M.iter print_nargs names.n_args in
       let _ =
         Format.fprintf fmt "%a :\n" (EcPrinting.pp_local ppe) (EcIdent.create "Named sub-formules") in
       let _ = Mid.iter print_vars mvars in
       let _ =
         Format.fprintf fmt "%a :\n" (EcPrinting.pp_local ppe) (EcIdent.create "Adversary's body") in
       let _ = Mstr.iter print_instrs minstrs in
-      let _ = List.iter print_args args in
       ()
     with
     | Invalid_argument s ->
        Format.fprintf
          fmt "%a\n" (EcPrinting.pp_form ppe)
          (EcFol.f_local (EcIdent.create (String.concat "\n" ["there_is_no_map";s])) EcTypes.tint)
-  in (!@) tc1
+    | _ ->
+       Format.fprintf
+         fmt "%a\n" (EcPrinting.pp_form ppe)
+         (EcFol.f_local (EcIdent.create "Another error") EcTypes.tint)
+  in
+  (!@) tc
+  (* { s with sc_env = env } *)

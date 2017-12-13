@@ -199,6 +199,10 @@ module Mod : sig
   val add_mod_binding : bindings -> env -> env
 
   val add : mpath -> env -> env
+
+  val add_proc : mpath -> symbol -> stmt -> variable list ->
+                 (symbol * ty) list -> expr option * ty -> uses ->
+                 env -> env
 end
 
 (* -------------------------------------------------------------------- *)

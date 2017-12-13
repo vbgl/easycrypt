@@ -2123,6 +2123,9 @@ module Mod = struct
     let (f : function_) = { f_name = name; f_sig; f_def; } in
     me_add_item me (MI_Function f)
 
+  let add_proc mp n s l a r u e =
+    change_me_in_env mp e (fun me ->
+        let me = me_add_proc me n s l a r u in bind me.me_name me e)
 end
 
 (* -------------------------------------------------------------------- *)

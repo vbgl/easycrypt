@@ -576,8 +576,7 @@ type phltactic =
   | Ptrans_stmt    of trans_info
   | Psymmetry
   | Pbdhoare_split of bdh_split
-
-  | Pinstance
+  | Pinstance      of (psymbol * pgamepath)
 
     (* Eager *)
   | Peager_seq       of (eager_info * int pair * pformula)
@@ -1035,6 +1034,7 @@ type global_action =
   | Gpragma      of psymbol
   | Goption      of (psymbol * bool)
   | GdumpWhy3    of string
+
 
 type global = {
   gl_action : global_action located;
