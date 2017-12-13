@@ -200,9 +200,9 @@ module Mod : sig
 
   val add : mpath -> env -> env
 
-  val add_proc : mpath -> symbol -> stmt -> variable list ->
-                 (symbol * ty) list -> expr option * ty -> uses ->
-                 env -> env
+  (* val add_proc : mpath -> symbol -> stmt -> variable list ->
+   *                (symbol * ty) list -> expr option * ty -> uses ->
+   *                env -> env *)
 end
 
 (* -------------------------------------------------------------------- *)
