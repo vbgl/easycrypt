@@ -109,6 +109,71 @@ let wp_equiv_rnd_r bij tc =
   FApi.xmutate1 tc `Rnd [concl]
 
 (* -------------------------------------------------------------------- *)
+let wp_equiv_rnd_r bij tc =
+  let module E = struct exception Abort end in
+
+  let tc = wp_equiv_rnd_r bij tc in
+  let eq = tc1_as_equivS (FApi.as_tcenv1 tc) in
+
+  let c1, (c2, c3) = snd_map destr_and (destr_and eq.es_po) in
+  let c2 = EcFol.f_forall_mems [eq.es_ml; eq.es_mr] c2 in
+
+  let subtc, hd = FApi.newgoal tc c2 in
+
+  try
+    let subtc =
+      FApi.t_last
+        (fun tc1 ->
+          match
+            FApi.t_try_base
+              (FApi.t_seqs
+                 [EcLowGoal.t_intros_n 4;
+                  EcLowGoal.t_auto ["random"] 2;
+                  EcLowGoal.t_fail])
+              tc1
+          with
+          | `Failure _  -> raise E.Abort
+          | `Success tc -> tc)
+        subtc in
+
+      let m1 = EcIdent.create "&1" in
+      let m2 = EcIdent.create "&2" in
+      let h  = EcIdent.create "h" in
+
+      FApi.t_onalli (function
+        | 0 -> EcLowGoal.t_trivial ?subtc:None
+        | 1 -> fun subtc ->
+           let p  = EcPath.extend EcCoreLib.CI_Logic.p_Logic ["and3_s2"] in
+           let pt = EcProofTerm.pt_of_uglobal !!subtc (FApi.tc1_hyps subtc) p in
+
+            FApi.t_onalli (function
+              | 0 ->
+                  FApi.t_seqs
+                    [EcLowGoal.t_apply
+                      { pt_head = PTHandle hd;
+                        pt_args = [pamemory m1; pamemory m2]; };
+                     EcLowGoal.t_fail]
+
+              | 1 -> EcLowGoal.t_assumption `Alpha
+              | _ -> EcLowGoal.t_id)
+
+            (FApi.t_seqs
+              [EcLowGoal.t_intros_s (`Ident [m1; m2; h]);
+               EcLowGoal.Apply.t_apply_bwd_r
+                 ~mode:EcMatching.fmrigid ~canview:false
+                 pt]
+              subtc)
+
+        | _ -> EcLowGoal.t_id)
+
+        (FApi.t_first
+          (EcPhlConseq.t_equivS_conseq eq.es_pr (f_anda c1 c3))
+          subtc)
+
+  with E.Abort ->
+    tc
+
+(* -------------------------------------------------------------------- *)
 let t_hoare_rnd_r tc =
   let env = FApi.tc1_env tc in
   let hs = tc1_as_hoareS tc in
