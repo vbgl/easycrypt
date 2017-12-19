@@ -13,6 +13,7 @@ open EcModules
 open EcFol
 open EcPV
 
+open EcCoreLib
 open EcCoreGoal
 open EcLowGoal
 open EcLowPhlGoal
@@ -160,12 +161,18 @@ let wp_equiv_rnd_r bij tc =
     | None  , Some _ -> Some (f_andas [c1; c2; f_forall [x, xty] (f_imp ind c4)])
   in
 
+  let t_apply_prept pt tc =
+    Apply.t_apply_bwd_r (EcProofTerm.pt_of_prept tc pt) tc in
+
   match po with None -> tc | Some po ->
 
-  let m1  = EcIdent.create "&1" in
-  let m2  = EcIdent.create "&2" in
-  let h   = EcIdent.create "h" in
-  let x   = EcIdent.create "x" in
+  let m1  = EcIdent.create "_" in
+  let m2  = EcIdent.create "_" in
+  let h   = EcIdent.create "h_" in
+  let h1  = EcIdent.create "h1" in
+  let h2  = EcIdent.create "h2" in
+  let h3  = EcIdent.create "h3" in
+  let x   = EcIdent.create "xxxx_" in
   let hin = EcIdent.create "hin" in
 
   FApi.t_onalli (function
@@ -190,20 +197,57 @@ and prept_arg =  [
 
 val pt_of_prept: tcenv1 -> prept -> pt_ev
  *)
-      let pt1 = `App (`UG "andaWl", [`Hy h]) in
-      let pt2 = `App (`UG "andaWl", [`Hy h]) in
+     let andaWl = CI_Logic.mk_logic "andaWl" in
+     let andaWr = CI_Logic.mk_logic "andaWr" in
+     let proj1 pt =
+       `App (`UG andaWl, [`H_; `H_; `Sub pt]) in
 
+     let proj2 pt h =
+       `App(`App (`UG andaWr, [`H_; `H_; `Sub pt]),
+            [`Sub (`Hy h)]) in
+
+      let pt1 = proj1 (`Hy h) in
+
+      let t_c2 tc =
+        match hdc2 with
+        | None ->
+(*            let pt = proj1 (proj2 (`Hy h) h1) in
+            t_apply_prept pt tc *) t_id tc
+        | Some hd ->
+          t_apply
+            { pt_head = PTHandle hd;
+              pt_args = [pamemory m1; pamemory m2]; } tc in
+
+      let pt =
+        match hdc2 with
+        | None -> proj2 (proj2 (`Hy h) h1) h2
+        | Some _ -> proj2 (`Hy h) h1 in
+
+
+      let t_c3_c4 tc =
+        match hdc3 with
+        | None -> t_apply_prept pt tc
+        | Some hd ->
+          let fx = f_local x (gty_as_ty xty) in
+          (t_intros_i [x; hin] @! t_split @+
+            [ t_apply
+                { pt_head = PTHandle hd;
+                  pt_args = [pamemory m1; pamemory m2; paformula fx;
+                             palocal hin]; };
+             t_intros_i [h3]
+(*               t_apply_prept (`App(pt, [`F fx; `Sub (`Hy hin)])) *)
+
+
+            ]) tc
+      in
 
       let subtc =
         (  t_intros_s (`Ident [m1; m2; h])
         @! t_split
-        @+ [ t_id
-           ; t_intros_n 1 @! t_split
-             @+ [ t_id
-                ;    t_intros_n 1
-                  @! t_intros_i [x; hin]
-                  @! t_split
-                  @+ [t_id; t_intros_n 1]] ])
+        @+ [ t_apply_prept pt1
+           ; t_intros_i [h1] @! t_split
+             @+ [ t_c2
+                ; t_intros_i [h2] @! t_c3_c4 ]])
         subtc
 
       in subtc

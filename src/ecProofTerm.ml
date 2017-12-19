@@ -646,7 +646,8 @@ and apply_pterm_to_oarg ?loc ({ ptev_env = pe; ptev_pt = rawpt; } as pt) oarg =
 
   let oarg = oarg |> omap (fun arg -> arg.ptea_arg) in
 
-  match PT.destruct_product pe.pte_hy pt.ptev_ax with
+
+  match PT.destruct_product pe.pte_hy (concretize_form pe pt.ptev_ax) with
   | None   -> tc_pterm_apperror ?loc pe AE_NotFunctional
   | Some t ->
       let (newax, newarg) =
