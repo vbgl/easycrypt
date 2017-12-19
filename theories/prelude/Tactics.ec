@@ -96,11 +96,6 @@ lemma nosmt if_congr ['a] (e e' : bool) (c1 c2 c1' c2': 'a) :
 by [].
 
 (* -------------------------------------------------------------------- *)
-lemma nosmt and3_s1 b1 b2 b3 : b1 => b2 && b3 => b1 && b2 && b3.
-proof. by []. qed.
-
-lemma nosmt and3_s2 b1 b2 b3 : b2 => b1 && b3 => b1 && b2 && b3.
-proof. by []. qed.
-
-lemma nosmt and3_s3 b1 b2 b3 : b3 => b1 && b2 => b1 && b2 && b3.
-proof. by []. qed.
+lemma nosmt and3_s1 b1 b2 b3 : b1 => b2 && b3 => b1 && b2 && b3 by [].
+lemma nosmt and3_s2 b1 b2 b3 : b2 => b1 && b3 => b1 && b2 && b3 by [].
+lemma nosmt and3_s3 b1 b2 b3 : b3 => b1 && b2 => b1 && b2 && b3 by [].
