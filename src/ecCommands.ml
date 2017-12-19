@@ -489,8 +489,8 @@ and process_addrw scope (local, base, names) =
   EcScope.Auto.addrw scope ~local ~base names
 
 (* -------------------------------------------------------------------- *)
-and process_hint scope (local, base, names) =
-  EcScope.Auto.addhint scope ~local ?base names
+and process_hint scope hint =
+  EcScope.Auto.addhint scope hint
 
 (* -------------------------------------------------------------------- *)
 and process_dump_why3 scope filename =

@@ -362,7 +362,7 @@ let process_auto ?(bases = [EcEnv.Auto.dname]) ?(depth = 1) (tc : tcenv1) =
 
   let rec forall ctn tc =
     if ctn >= depth then t_fail tc else begin
-      Sp.iter
+      List.iter
         (fun p -> try raise (E.Done (for1 ctn p tc)) with E.Fail -> ())
         bases;
       t_id tc

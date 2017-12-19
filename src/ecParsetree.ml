@@ -1003,6 +1003,14 @@ type save = [ `Qed | `Admit | `Abort ]
 type theory_clear = (pqsymbol option) list
 
 (* -------------------------------------------------------------------- *)
+type phint = {
+  ht_local : bool;
+  ht_prio  : int;
+  ht_base  : psymbol option;
+  ht_names : pqsymbol list;
+}
+
+(* -------------------------------------------------------------------- *)
 type global_action =
   | Gdeclare     of pdeclare
   | Gmodule      of pmodule_def
@@ -1016,7 +1024,7 @@ type global_action =
   | Gtypeclass   of ptypeclass
   | Gtycinstance of ptycinstance
   | Gaddrw       of (bool * pqsymbol * pqsymbol list)
-  | Ghint        of (bool * psymbol option * pqsymbol list)
+  | Ghint        of phint
   | Gprint       of pprint
   | Gsearch      of pformula list
   | GthOpen      of (bool * psymbol)

@@ -2055,8 +2055,9 @@ module Section = struct
           | T.CTh_addrw (p, l) ->
               { scope with sc_env = EcEnv.BaseRw.addto p l scope.sc_env }
 
-          | T.CTh_auto (local, base, ps) ->
-              { scope with sc_env = EcEnv.Auto.add ~local ?base ps scope.sc_env }
+          | T.CTh_auto (local, level, base, ps) ->
+              { scope with sc_env =
+                  EcEnv.Auto.add ~local ~level ?base ps scope.sc_env }
         in
 
         List.fold_left bind1 scope oitems
@@ -2085,15 +2086,17 @@ module Auto = struct
     let l = List.map (fun l -> EcEnv.Ax.lookup_path (unloc l) env) l in
     { scope with sc_env = EcEnv.BaseRw.addto base l env }
 
-  let addhint scope ~local ?base names =
-    let base = omap unloc base in
+  let addhint scope hint =
+    let base = omap unloc hint.ht_base in
 
     let names = List.map
       (fun l -> EcEnv.Ax.lookup_path (unloc l) scope.sc_env)
-      names in
+      hint.ht_names in
 
     { scope with sc_env =
-        EcEnv.Auto.add ~local ?base (Sp.of_list names) scope.sc_env }
+        EcEnv.Auto.add
+          ~local:hint.ht_local ~level:hint.ht_prio ?base
+          names scope.sc_env }
 end
 
 (* -------------------------------------------------------------------- *)
@@ -2123,8 +2126,8 @@ module Cloning = struct
       R.hexport  = onenv EcEnv.Theory.export;
       R.hbaserw  = onenv EcEnv.BaseRw.add;
       R.haddrw   = onenv (curry EcEnv.BaseRw.addto);
-      R.hauto    = onenv (fun (local, base, names) ->
-                            EcEnv.Auto.add ~local ?base names);
+      R.hauto    = onenv (fun (local, level, base, names) ->
+                            EcEnv.Auto.add ~local ~level ?base names);
       R.htycl    = onenv (curry EcEnv.TypeClass.bind);
       R.hinst    = onenv (curry EcEnv.TypeClass.add_instance);
       R.hthenter = thenter;

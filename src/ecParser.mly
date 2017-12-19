@@ -3286,8 +3286,13 @@ addrw:
     { (local, p, l) }
 
 hint:
-| local=boption(LOCAL) HINT EXACT p=lident? COLON l=qident*
-    { (local, p, l) }
+| local=boption(LOCAL) HINT EXACT base=lident? COLON l=qident*
+    { { ht_local = local; ht_prio  = 0;
+        ht_base  = base ; ht_names = l; } }
+
+| local=boption(LOCAL) HINT SOLVE i=word base=lident? COLON l=qident*
+    { { ht_local = local; ht_prio  = i;
+        ht_base  = base ; ht_names = l; } }
 
 (* -------------------------------------------------------------------- *)
 (* Search pattern                                                       *)

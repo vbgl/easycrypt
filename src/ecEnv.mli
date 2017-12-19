@@ -367,10 +367,10 @@ end
 (* -------------------------------------------------------------------- *)
 module Auto : sig
   val dname  : symbol
-  val add1   : local:bool -> ?base:symbol -> path -> env -> env
-  val add    : local:bool -> ?base:symbol -> Sp.t -> env -> env
-  val get    : ?base:symbol -> env -> Sp.t
-  val getall : symbol list -> env -> Sp.t
+  val add1   : local:bool -> level:int -> ?base:symbol -> path -> env -> env
+  val add    : local:bool -> level:int -> ?base:symbol -> path list -> env -> env
+  val get    : ?base:symbol -> env -> path list
+  val getall : symbol list -> env -> path list
 end
 
 (* -------------------------------------------------------------------- *)
