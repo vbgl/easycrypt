@@ -584,16 +584,17 @@
 (* -------------------------------------------------------------------- *)
 _lident:
 | x=LIDENT { x }
+| ABORT    { "abort"    }
+| ADMITTED { "admitted" }
+| ASYNC    { "async"    }
 | DUMP     { "dump"     }
 | EXPECT   { "expect"   }
 | FIRST    { "first"    }
 | LAST     { "last"     }
 | LEFT     { "left"     }
 | RIGHT    { "right"    }
+| SOLVE    { "solve"    }
 | STRICT   { "strict"   }
-| ADMITTED { "admitted" }
-| ABORT    { "abort"    }
-| ASYNC    { "async"    }
 | WLOG     { "wlog"     }
 
 | x=RING  { match x with `Eq -> "ringeq"  | `Raw -> "ring"  }
