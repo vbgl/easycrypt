@@ -14,6 +14,7 @@ open EcFol
 open EcPV
 
 open EcCoreGoal
+open EcLowGoal
 open EcLowPhlGoal
 
 module TTC = EcProofTyping
@@ -109,69 +110,127 @@ let wp_equiv_rnd_r bij tc =
   FApi.xmutate1 tc `Rnd [concl]
 
 (* -------------------------------------------------------------------- *)
+let destr_and3 f =
+  let c1, (c2, c3) = snd_map destr_and (destr_and f) in (c1, c2, c3)
+
+(* -------------------------------------------------------------------- *)
 let wp_equiv_rnd_r bij tc =
   let module E = struct exception Abort end in
 
   let tc = wp_equiv_rnd_r bij tc in
-  let eq = tc1_as_equivS (FApi.as_tcenv1 tc) in
+  let es = tc1_as_equivS (FApi.as_tcenv1 tc) in
 
-  let c1, (c2, c3) = snd_map destr_and (destr_and eq.es_po) in
-  let c2 = EcFol.f_forall_mems [eq.es_ml; eq.es_mr] c2 in
+  let c1, c2, c3 = destr_and3 es.es_po in
+  let (x, xty, c3) = destr_forall1 c3 in
+  let ind, (c3, c4) = snd_map destr_and (destr_imp c3) in
+  let newc2 = EcFol.f_forall_mems [es.es_ml; es.es_mr] c2 in
+  let newc3 = EcFol.f_forall_mems [es.es_ml; es.es_mr]
+                (f_forall [x, xty] (f_imp ind c3)) in
 
-  let subtc, hd = FApi.newgoal tc c2 in
+  let solve n f tc =
+    let tt =
+      FApi.t_seqs
+        [EcLowGoal.t_intros_n n;
+         EcLowGoal.t_auto ["random"] 2;
+         EcLowGoal.t_fail] in
 
-  try
-    let subtc =
-      FApi.t_last
-        (fun tc1 ->
-          match
-            FApi.t_try_base
-              (FApi.t_seqs
-                 [EcLowGoal.t_intros_n 4;
-                  EcLowGoal.t_auto ["random"] 2;
-                  EcLowGoal.t_fail])
-              tc1
-          with
-          | `Failure _  -> raise E.Abort
-          | `Success tc -> tc)
-        subtc in
+    let subtc, hd = FApi.newgoal tc f in
 
-      let m1 = EcIdent.create "&1" in
-      let m2 = EcIdent.create "&2" in
-      let h  = EcIdent.create "h" in
+    try
+      let subtc =
+        FApi.t_last
+          (fun tc1 ->
+            match FApi.t_try_base tt tc1 with
+            | `Failure _  -> raise E.Abort
+            | `Success tc -> tc)
+          subtc
+      in (subtc, Some hd)
 
-      FApi.t_onalli (function
-        | 0 -> EcLowGoal.t_trivial ?subtc:None
-        | 1 -> fun subtc ->
-           let p  = EcPath.extend EcCoreLib.CI_Logic.p_Logic ["and3_s2"] in
-           let pt = EcProofTerm.pt_of_uglobal !!subtc (FApi.tc1_hyps subtc) p in
+    with E.Abort -> tc, None in
 
-            FApi.t_onalli (function
-              | 0 ->
-                  FApi.t_seqs
-                    [EcLowGoal.t_apply
-                      { pt_head = PTHandle hd;
-                        pt_args = [pamemory m1; pamemory m2]; };
-                     EcLowGoal.t_fail]
+  let subtc = tc in
+  let subtc, hdc2 = solve 4 newc2 subtc in
+  let subtc, hdc3 = solve 4 newc3 subtc in
 
-              | 1 -> EcLowGoal.t_assumption `Alpha
-              | _ -> EcLowGoal.t_id)
+  let po =
+    match hdc2, hdc3 with
+    | None  , None   -> None
+    | Some _, Some _ -> Some (f_anda c1 (f_forall [x, xty] (f_imp ind c4)))
+    | Some _, None   -> Some (f_anda c1 (f_forall [x, xty] (f_imp ind (f_anda c3 c4))))
+    | None  , Some _ -> Some (f_andas [c1; c2; f_forall [x, xty] (f_imp ind c4)])
+  in
 
-            (FApi.t_seqs
-              [EcLowGoal.t_intros_s (`Ident [m1; m2; h]);
-               EcLowGoal.Apply.t_apply_bwd_r
-                 ~mode:EcMatching.fmrigid ~canview:false
-                 pt]
-              subtc)
+  match po with None -> tc | Some po ->
 
-        | _ -> EcLowGoal.t_id)
+  let m1  = EcIdent.create "&1" in
+  let m2  = EcIdent.create "&2" in
+  let h   = EcIdent.create "h" in
+  let x   = EcIdent.create "x" in
+  let hin = EcIdent.create "hin" in
 
-        (FApi.t_first
-          (EcPhlConseq.t_equivS_conseq eq.es_pr (f_anda c1 c3))
-          subtc)
+  FApi.t_onalli (function
+    | 0 -> EcLowGoal.t_trivial ?subtc:None
+    | 1 -> fun subtc ->
 
-  with E.Abort ->
-    tc
+(*
+type prept = [
+  | `Hy   of EcIdent.t
+  | `G    of EcPath.path * ty list
+  | `UG   of EcPath.path
+  | `App  of prept * prept_arg list
+]
+
+and prept_arg =  [
+  | `F   of form
+  | `Mem of EcMemory.memory
+  | `Mod of (EcPath.mpath * EcModules.module_sig)
+  | `Sub of prept
+  | `H_
+]
+
+val pt_of_prept: tcenv1 -> prept -> pt_ev
+ *)
+      let pt1 = `App (`UG "andaWl", [`Hy h]) in
+      let pt2 = `App (`UG "andaWl", [`Hy h]) in
+
+
+      let subtc =
+        (  t_intros_s (`Ident [m1; m2; h])
+        @! t_split
+        @+ [ t_id
+           ; t_intros_n 1 @! t_split
+             @+ [ t_id
+                ;    t_intros_n 1
+                  @! t_intros_i [x; hin]
+                  @! t_split
+                  @+ [t_id; t_intros_n 1]] ])
+        subtc
+
+      in subtc
+
+
+(*
+       let p  = EcPath.extend EcCoreLib.CI_Logic.p_Logic ["and3_s2"] in
+       let pt = EcProofTerm.pt_of_uglobal !!subtc (FApi.tc1_hyps subtc) p in
+
+        FApi.t_onalli (function
+          | 0 ->
+              FApi.t_seqs
+                [EcLowGoal.t_apply
+                  { pt_head = PTHandle hd;
+                    pt_args = [pamemory m1; pamemory m2]; };
+                 EcLowGoal.t_fail]
+
+          | 1 -> EcLowGoal.t_assumption `Alpha
+          | _ -> EcLowGoal.t_id)
+ *)
+
+
+    | _ -> EcLowGoal.t_id)
+
+    (FApi.t_first
+      (EcPhlConseq.t_equivS_conseq es.es_pr po)
+      subtc)
 
 (* -------------------------------------------------------------------- *)
 let t_hoare_rnd_r tc =
