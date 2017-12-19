@@ -48,7 +48,7 @@ and process1_by (ttenv : ttenv) (t : ptactic list option) (tc : tcenv1) =
 (* -------------------------------------------------------------------- *)
 and process1_solve (_ttenv : ttenv) (i, t) (tc : tcenv1) =
   let bases = omap (fun t -> List.map unloc t) t in
-  process_solve ?bases ?deepness:i tc
+  process_solve ?bases ?depth:i tc
 
 (* -------------------------------------------------------------------- *)
 and process1_do (ttenv : ttenv) (b, n) (t : ptactic_core) (tc : tcenv1) =
