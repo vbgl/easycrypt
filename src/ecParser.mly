@@ -2861,8 +2861,8 @@ tactic_core_r:
 | BY bracket(empty) | DONE
    { Pby None }
 
-| SOLVE base=option(paren(plist1(lident, COMMA)))
-   { Psolve base }
+| SOLVE dp=word? base=option(paren(plist1(lident, COMMA)))
+   { Psolve (dp, base) }
 
 | DO r=do_repeat? t=tactic_core
    { Pdo (odfl (`All, None) r, t) }

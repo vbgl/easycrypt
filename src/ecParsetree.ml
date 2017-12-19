@@ -782,7 +782,7 @@ and ptactic_core_r =
   | Pdo         of trepeat * ptactic_core
   | Ptry        of ptactic_core
   | Pby         of (ptactics) option
-  | Psolve      of psymbol list option
+  | Psolve      of (int option * psymbol list option)
   | Por         of ptactic * ptactic
   | Pseq        of ptactics
   | Pcase       of (bool * pcaseoptions * prevertv)

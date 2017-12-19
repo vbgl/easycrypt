@@ -88,8 +88,8 @@ val process_elim        : prevert * pqsymbol option -> backward
 val process_case        : ?doeq:bool -> prevertv -> backward
 val process_exists      : ppt_arg located list -> backward
 val process_congr       : backward
-val process_auto        : ?bases:symbol list -> backward
-val process_solve       : ?bases:symbol list -> backward
+val process_auto        : ?bases:symbol list -> ?deepness:int -> backward
+val process_solve       : ?bases:symbol list -> ?deepness:int -> backward
 val process_trivial     : backward
 val process_change      : pformula -> backward
 val process_simplify    : preduction -> backward
