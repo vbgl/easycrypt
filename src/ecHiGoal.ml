@@ -352,7 +352,7 @@ let t_rewrite_prept info pt tc =
   LowRewrite.t_rewrite_r info (pt_of_prept tc pt) tc
 
 (* -------------------------------------------------------------------- *)
-let process_auto (tc : tcenv1) =
+let process_auto ?(bases = [EcEnv.Auto.dname]) (tc : tcenv1) =
   let module E = struct
       exception Done of tcenv
       exception Fail
@@ -374,10 +374,18 @@ let process_auto (tc : tcenv1) =
   try
     Sp.iter
       (fun p -> try raise (E.Done (for1 p tc)) with E.Fail -> ())
-      (EcEnv.Auto.get (FApi.tc1_env tc));
+      (EcEnv.Auto.getall bases (FApi.tc1_env tc));
     t_id tc
 
   with E.Done tc -> tc
+
+(* -------------------------------------------------------------------- *)
+let process_solve ?bases (tc : tcenv1) =
+  let tc = process_auto ?bases tc in
+
+  if not (FApi.tc_done tc) then
+    tc_error (FApi.tc_penv tc) "[solve]: cannot close goals";
+  tc
 
 (* -------------------------------------------------------------------- *)
 let process_trivial (tc : tcenv1) =

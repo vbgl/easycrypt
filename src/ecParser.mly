@@ -504,6 +504,7 @@
 %token SLASHSLASHTILDEQ
 %token SLASHSLASHSHARP
 %token SMT
+%token SOLVE
 %token SP
 %token SPLIT
 %token SPLITWHILE
@@ -2858,6 +2859,9 @@ tactic_core_r:
 
 | BY bracket(empty) | DONE
    { Pby None }
+
+| SOLVE base=option(paren(plist1(lident, COMMA)))
+   { Psolve base }
 
 | DO r=do_repeat? t=tactic_core
    { Pdo (odfl (`All, None) r, t) }

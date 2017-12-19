@@ -1343,8 +1343,10 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Auto = struct
+  let dname : symbol = ""
+
   let updatedb ?base (ps : Sp.t) (db : Sp.t Msym.t) =
-    let nbase = (odfl "" base) in
+    let nbase = (odfl dname base) in
     let ps' = Msym.find_def Sp.empty nbase db in
     Msym.add nbase (Sp.union ps ps') db
 
@@ -1357,7 +1359,11 @@ module Auto = struct
     add ~local ?base (Sp.singleton p) env
 
   let get ?base (env : env) =
-    Msym.find_def Sp.empty (odfl "" base) env.env_atbase
+    Msym.find_def Sp.empty (odfl dname base) env.env_atbase
+
+  let getall (bases : symbol list) (env : env) =
+    List.fold_left (fun ps base -> Sp.union ps (get ~base env))
+                   Sp.empty bases
 end
 
 (* -------------------------------------------------------------------- *)
