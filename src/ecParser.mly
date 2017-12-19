@@ -3280,9 +3280,9 @@ addrw:
 | local=boption(LOCAL) HINT REWRITE p=lqident COLON l=lqident*
     { (local, p, l) }
 
-addat:
-| local=boption(LOCAL) HINT EXACT COLON l=qident*
-    { (local, l) }
+hint:
+| local=boption(LOCAL) HINT EXACT p=lident? COLON l=qident*
+    { (local, p, l) }
 
 (* -------------------------------------------------------------------- *)
 (* Search pattern                                                       *)
@@ -3317,7 +3317,7 @@ global_action:
 | x=loc(realize)   { Grealize     x  }
 | gprover_info     { Gprover_info $1 }
 | addrw            { Gaddrw       $1 }
-| addat            { Gaddat       $1 }
+| hint             { Ghint        $1 }
 | x=loc(proofend)  { Gsave        x  }
 | PRINT p=print    { Gprint       p  }
 | SEARCH x=search+ { Gsearch      x  }

@@ -366,9 +366,9 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Auto : sig
-  val add1 : local:bool -> path -> env -> env
-  val add  : local:bool -> Sp.t -> env -> env
-  val get  : env -> Sp.t
+  val add1 : local:bool -> ?base:symbol -> path -> env -> env
+  val add  : local:bool -> ?base:symbol -> Sp.t -> env -> env
+  val get  : ?base:symbol -> env -> Sp.t
 end
 
 (* -------------------------------------------------------------------- *)

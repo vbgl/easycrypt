@@ -2055,8 +2055,8 @@ module Section = struct
           | T.CTh_addrw (p, l) ->
               { scope with sc_env = EcEnv.BaseRw.addto p l scope.sc_env }
 
-          | T.CTh_auto (local, ps) ->
-              { scope with sc_env = EcEnv.Auto.add ~local ps scope.sc_env }
+          | T.CTh_auto (local, base, ps) ->
+              { scope with sc_env = EcEnv.Auto.add ~local ?base ps scope.sc_env }
         in
 
         List.fold_left bind1 scope oitems
@@ -2064,34 +2064,36 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Auto = struct
-  let addrw scope (lc, x, l) =
+  let addrw scope ~local ~base l =
     let env = env scope in
 
-    if lc then
+    if local then
       hierror "rewrite hints cannot be local";
 
     let env, base =
-      match EcEnv.BaseRw.lookup_opt x.pl_desc env with
+      match EcEnv.BaseRw.lookup_opt base.pl_desc env with
       | None ->
-        let pre, base = unloc x in
+        let pre, ibase = unloc base in
         if not (List.is_empty pre) then
-          hierror ~loc:x.pl_loc
+          hierror ~loc:base.pl_loc
             "cannot create rewrite hints out of its enclosing theory";
-        let env = EcEnv.BaseRw.add base env in
-        (env, fst (EcEnv.BaseRw.lookup x.pl_desc env))
+        let env = EcEnv.BaseRw.add ibase env in
+        (env, fst (EcEnv.BaseRw.lookup base.pl_desc env))
 
       | Some (base, _) -> (env, base) in
 
     let l = List.map (fun l -> EcEnv.Ax.lookup_path (unloc l) env) l in
     { scope with sc_env = EcEnv.BaseRw.addto base l env }
 
-  let addat scope (local, base) =
-    let base = List.map
+  let addhint scope ~local ?base names =
+    let base = omap unloc base in
+
+    let names = List.map
       (fun l -> EcEnv.Ax.lookup_path (unloc l) scope.sc_env)
-      base in
+      names in
 
     { scope with sc_env =
-        EcEnv.Auto.add ~local (Sp.of_list base) scope.sc_env }
+        EcEnv.Auto.add ~local ?base (Sp.of_list names) scope.sc_env }
 end
 
 (* -------------------------------------------------------------------- *)
@@ -2121,7 +2123,8 @@ module Cloning = struct
       R.hexport  = onenv EcEnv.Theory.export;
       R.hbaserw  = onenv EcEnv.BaseRw.add;
       R.haddrw   = onenv (curry EcEnv.BaseRw.addto);
-      R.hauto    = onenv (curry (fun local -> EcEnv.Auto.add ~local));
+      R.hauto    = onenv (fun (local, base, names) ->
+                            EcEnv.Auto.add ~local ?base names);
       R.htycl    = onenv (curry EcEnv.TypeClass.bind);
       R.hinst    = onenv (curry EcEnv.TypeClass.add_instance);
       R.hthenter = thenter;

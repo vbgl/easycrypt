@@ -1015,7 +1015,7 @@ type global_action =
   | Gtypeclass   of ptypeclass
   | Gtycinstance of ptycinstance
   | Gaddrw       of (bool * pqsymbol * pqsymbol list)
-  | Gaddat       of (bool * pqsymbol list)
+  | Ghint        of (bool * psymbol option * pqsymbol list)
   | Gprint       of pprint
   | Gsearch      of pformula list
   | GthOpen      of (bool * psymbol)
