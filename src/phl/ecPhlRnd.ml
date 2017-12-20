@@ -175,57 +175,50 @@ let wp_equiv_rnd_r bij tc =
   let x   = EcIdent.create "_" in
   let hin = EcIdent.create "_" in
 
+
   FApi.t_onalli (function
     | 0 -> EcLowGoal.t_trivial ?subtc:None
-    | 1 -> fun subtc ->
+    | 1 ->
+      let open EcProofTerm.Prept in
 
      let proj1 pt =
-       `App (`UG CI_Logic.p_anda_proj_l, [`H_; `H_; `Sub pt]) in
+       uglob CI_Logic.p_anda_proj_l @ [a_; a_; asub pt] in
 
      let proj2 pt h =
-       let pt = `App (`UG CI_Logic.p_anda_proj_r, [`H_; `H_; `Sub pt]) in
-       `App (pt, [`Sub (`Hy h)]) in
+       uglob CI_Logic.p_anda_proj_r @ [a_; a_; asub pt; ahyp h] in
 
-      let pt1 = proj1 (`Hy h) in
+      let t_c1  = t_apply_prept (proj1 (hyp h)) in
 
-      let t_c2 tc =
-        match hdc2 with
-        | None ->
-            let pt = proj1 (proj2 (`Hy h) h1) in
-            t_apply_prept pt tc
+      let t_c2 =
+        let pt =
+          match hdc2 with
+          | None -> proj1 (proj2 (hyp h) h1)
+          | Some hd -> hdl hd @ [amem m1; amem m2] in
+        t_apply_prept pt in
 
-        | Some hd ->
-            t_apply_prept (`App (`HD hd, [`Mem m1; `Mem m2])) tc in
-
-      let pt =
-        match hdc2 with
-        | None   -> proj2 (proj2 (`Hy h) h1) h2
-        | Some _ -> proj2 (`Hy h) h1 in
-
-      let t_c3_c4 tc =
+      let t_c3_c4 =
+        let pt =
+          match hdc2 with
+          | None   -> proj2 (proj2 (hyp h) h1) h2
+          | Some _ -> proj2 (hyp h) h1 in
         match hdc3 with
-        | None -> t_apply_prept pt tc
+        | None -> t_apply_prept pt
         | Some hd ->
           let fx = f_local x (gty_as_ty xty) in
           (  t_intros_i [x; hin]
           @! t_split
-          @+ [ t_apply_prept (`App (`HD hd,
-                 [`Mem m1; `Mem m2; `F fx; `Sub (`Hy hin)]))
-             ;    t_intros_i [h3]
-               @! t_apply_prept (`App(pt, [`F fx; `Sub (`Hy hin)]))]
-          ) tc
+          @+ [ t_apply_prept (hdl hd @ [amem m1; amem m2; aform fx; ahyp hin])
+             ; t_intros_i [h3]
+               @! t_apply_prept (pt @ [aform fx; ahyp hin])])
       in
 
-      let subtc =
-        (  t_intros_s (`Ident [m1; m2; h])
-        @! t_split
-        @+ [ t_apply_prept pt1
-           ; t_intros_i [h1] @! t_split
-             @+ [ t_c2
-                ; t_intros_i [h2] @! t_c3_c4 ]])
-        subtc
+      (  t_intros_i [m1; m2; h]
+      @! t_split
+      @+ [ t_c1
+         ; t_intros_i [h1] @! t_split
+         @+ [ t_c2
+            ; t_intros_i [h2] @! t_c3_c4 ]])
 
-      in subtc
 
     | _ -> EcLowGoal.t_id)
 

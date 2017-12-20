@@ -839,3 +839,22 @@ let pt_of_prept tc (pt : prept) =
     | `H_     -> apply_pterm_to_hole pt_ev
 
   in build_pt pt
+
+(* -------------------------------------------------------------------- *)
+module Prept = struct
+
+  let (@) f args = `App(f,args)
+  let hyp h = `Hy h
+  let glob g tys = `G(g,tys)
+  let uglob g = `UG g
+  let hdl  h = `HD h
+
+  let aform f = `F f
+  let amem m = `Mem m
+  let amod mp s = `Mod(mp,s)
+  let asub pt = `Sub pt
+  let a_ = `H_
+  let ahyp h = asub (hyp h)
+  let ahdl h = asub (hdl h)
+
+end
