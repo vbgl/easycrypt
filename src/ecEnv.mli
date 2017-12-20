@@ -327,6 +327,8 @@ module Ty : sig
   val signature : env -> ty -> ty list * ty
 end
 
+val ty_hnorm : ty -> env -> ty
+
 (* -------------------------------------------------------------------- *)
 module Algebra : sig
   val add_ring  : ty -> EcDecl.ring  -> env -> env
@@ -364,9 +366,11 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Auto : sig
-  val add1 : local:bool -> path -> env -> env
-  val add  : local:bool -> Sp.t -> env -> env
-  val get  : env -> Sp.t
+  val dname  : symbol
+  val add1   : local:bool -> level:int -> ?base:symbol -> path -> env -> env
+  val add    : local:bool -> level:int -> ?base:symbol -> path list -> env -> env
+  val get    : ?base:symbol -> env -> path list
+  val getall : symbol list -> env -> path list
 end
 
 (* -------------------------------------------------------------------- *)

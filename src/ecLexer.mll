@@ -94,6 +94,7 @@
     "suff"        , SUFF       ;        (* KW: tactic *)
     "elim"        , ELIM       ;        (* KW: tactic *)
     "clear"       , CLEAR      ;        (* KW: tactic *)
+    "wlog"        , WLOG       ;        (* KW: tactic *)
 
     (* Auto tactics *)
     "apply"       , APPLY      ;        (* KW: tactic *)
@@ -120,8 +121,10 @@
     "by"          , BY         ;        (* KW: bytac *)
     "reflexivity" , REFLEX     ;        (* KW: bytac *)
     "done"        , DONE       ;        (* KW: bytac *)
+    "solve"       , SOLVE      ;        (* KW: bytac *)
 
     (* PHL: tactics *)
+    "replace"     , REPLACE    ;        (* KW: tactic *)
     "transitivity", TRANSITIVITY;       (* KW: tactic *)
     "symmetry"    , SYMMETRY   ;        (* KW: tactic *)
     "seq"         , SEQ        ;        (* KW: tactic *)
@@ -216,6 +219,8 @@
     ("//=" , (SLASHSLASHEQ     , true ));
     ("/>"  , (SLASHGT          , true ));
     ("|>"  , (PIPEGT           , true ));
+    ("//>" , (SLASHSLASHGT     , true ));
+    ("||>" , (PIPEPIPEGT       , true ));
     ("=>"  , (IMPL             , true ));
     ("|"   , (PIPE             , true ));
     (":="  , (CEQ              , true ));

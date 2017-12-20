@@ -485,12 +485,12 @@ and process_option (scope : EcScope.scope) (name, value) =
     EcScope.hierror "unknown option: %s" (unloc name)
 
 (* -------------------------------------------------------------------- *)
-and process_addrw scope baserw =
-  EcScope.Auto.addrw scope baserw
+and process_addrw scope (local, base, names) =
+  EcScope.Auto.addrw scope ~local ~base names
 
 (* -------------------------------------------------------------------- *)
-and process_addat scope base =
-  EcScope.Auto.addat scope base
+and process_hint scope hint =
+  EcScope.Auto.addhint scope hint
 
 (* -------------------------------------------------------------------- *)
 and process_dump_why3 scope filename =
@@ -584,7 +584,7 @@ and process (ld : Loader.loader) (scope : EcScope.scope) g =
       | Gpragma      opt  -> `State (fun scope -> process_pragma     scope  opt)
       | Goption      opt  -> `Fct   (fun scope -> process_option     scope  opt)
       | Gaddrw       hint -> `Fct   (fun scope -> process_addrw      scope hint)
-      | Gaddat       hint -> `Fct   (fun scope -> process_addat      scope hint)
+      | Ghint        hint -> `Fct   (fun scope -> process_hint       scope hint)
       | GdumpWhy3    file -> `Fct   (fun scope -> process_dump_why3  scope file)
     with
     | `Fct   f -> Some (f scope)
@@ -631,12 +631,15 @@ let initial ~checkmode ~boot =
   } in
 
   let perv    = (mk_loc _dummy EcCoreLib.i_Pervasive, Some `Export) in
-  let prelude = (mk_loc _dummy "Prelude", Some `Export) in
+  let tactics = (mk_loc _dummy "Tactics", Some `Export) in
+  let prelude = (mk_loc _dummy "Logic", Some `Export) in
   let loader  = Loader.forsys loader in
   let gstate  = EcGState.from_flags [("profile", profile)] in
   let scope   = EcScope.empty gstate in
   let scope   = process_th_require1 loader scope perv in
-  let scope   = if boot then scope else process_th_require1 loader scope prelude in
+  let scope   = if boot then scope else
+                  List.fold_left (process_th_require1 loader)
+                                 scope [tactics; prelude] in
 
   let scope = EcScope.Prover.set_wrapper scope wrapper in
   let scope = EcScope.Prover.set_default scope poptions in

@@ -192,6 +192,7 @@ module Prover : sig
     pl_iterate    : bool option;
     pl_wanted     : EcProvers.hints option;
     pl_unwanted   : EcProvers.hints option;
+    pl_selected   : bool option;
   }
 
   val empty_options : smt_options
@@ -212,8 +213,8 @@ end
 
 (* -------------------------------------------------------------------- *)
 module Auto : sig
-  val addrw : scope -> (bool * pqsymbol * pqsymbol list) -> scope
-  val addat : scope -> (bool * pqsymbol list) -> scope
+  val addrw   : scope -> local:bool -> base:pqsymbol -> pqsymbol list -> scope
+  val addhint : scope -> phint -> scope
 end
 
 (* -------------------------------------------------------------------- *)

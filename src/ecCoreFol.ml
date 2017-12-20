@@ -1198,6 +1198,18 @@ let is_pr        f = is_from_destr destr_pr        f
 let is_eq_or_iff f = (is_eq f) || (is_iff f)
 
 (* -------------------------------------------------------------------- *)
+let split_args f =
+  match f_node f with
+  | Fapp (f, args) -> (f, args)
+  | _ -> (f, [])
+
+(* -------------------------------------------------------------------- *)
+let split_fun f =
+  match f_node f with
+  | Fquant (Llambda, bds, body) -> (bds, body)
+  | _ -> ([], f)
+
+(* -------------------------------------------------------------------- *)
 let quantif_of_equantif (qt : equantif) =
   match qt with
   | `ELambda -> Llambda

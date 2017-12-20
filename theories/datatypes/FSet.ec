@@ -6,7 +6,7 @@
  * -------------------------------------------------------------------- *)
 
 (* -------------------------------------------------------------------- *)
-require import Pred Fun Int NewLogic List StdRing StdOrder.
+require import Core Int List StdRing StdOrder.
 (*---*) import IntOrder.
 
 (* -------------------------------------------------------------------- *)
@@ -59,6 +59,8 @@ op card ['a] (s : 'a fset) = size (elems s) axiomatized by cardE.
 (* -------------------------------------------------------------------- *)
 op mem ['a] (s : 'a fset) (x : 'a) = mem (elems s) x
   axiomatized by memE.
+
+abbrev (\in) (z : 'a) (s : 'a fset) = mem s z.
 
 lemma mem_oflist (s : 'a list):
   forall x, mem (oflist s) x <=> mem s x.
@@ -148,6 +150,13 @@ qed.
 (* -------------------------------------------------------------------- *)
 hint rewrite inE : in_fset0 in_fset1 in_fsetU in_fsetI in_fsetD.
 
+lemma oflist_cons ['a] (x : 'a) s : oflist (x::s) = fset1 x `|` oflist s.
+proof. by apply fsetP => z;rewrite mem_oflist !inE mem_oflist /=. qed.
+
+lemma oflist_cat ['a] (s1 s2 : 'a list) : 
+  oflist (s1 ++ s2) = oflist s1 `|` oflist s2.
+proof. by apply fsetP => z; rewrite in_fsetU !mem_oflist mem_cat. qed.
+
 (* -------------------------------------------------------------------- *)
 lemma in_fsetU1 (s : 'a fset) x:
   forall x', mem (s `|` fset1 x) x' <=> mem s x' \/ x' = x.
@@ -162,16 +171,16 @@ lemma in_fsetD1 (s : 'a fset) x:
 proof. by move=> x'; rewrite in_fsetD in_fset1. qed.
 
 (* -------------------------------------------------------------------- *)
-op pick ['a] (A : 'a fset) = head Option.witness (elems A)
+op pick ['a] (A : 'a fset) = head witness (elems A)
 axiomatized by pickE.
 
-lemma pick0: pick<:'a> fset0 = Option.witness.
+lemma pick0: pick<:'a> fset0 = witness.
 proof. by rewrite pickE elems_fset0. qed.
 
 lemma mem_pick (A : 'a fset): A <> fset0 => mem A (pick A).
 proof.
 move=> /(contra _ _ (elems_eq_fset0 A)); rewrite pickE memE.
-by move=> /(mem_head_behead Option.witness) <-.
+by move=> /(mem_head_behead witness) <-.
 qed.
 
 (* -------------------------------------------------------------------- *)

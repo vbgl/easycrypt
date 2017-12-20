@@ -8,7 +8,7 @@
 pragma +implicits.
 
 (* -------------------------------------------------------------------- *)
-require import Fun Pred Pair Int IntExtra List.
+require import AllCore List.
 require (*--*) Bigop Ring Number.
 
 import Ring.IntID.
@@ -50,6 +50,14 @@ proof. by rewrite sumrN sumrD; apply/eq_bigr=> /= x. qed.
 lemma nosmt sumr_const (P : 'a -> bool) x s:
   big P (fun i => x) s = intmul x (count P s).
 proof. by rewrite big_const intmulpE 1:count_ge0 // -ZM.AddMonoid.iteropE. qed.
+
+(* -------------------------------------------------------------------- *)
+lemma sumr_undup ['a] (P : 'a -> bool) F s :
+  big P F s = big P (fun a => intmul (F a) (count (pred1 a) s)) (undup s).
+proof.
+rewrite big_undup; apply/eq_bigr=> x _ /=.
+by rewrite intmulpE ?count_ge0 ZM.AddMonoid.iteropE.
+qed.
 end BigZModule.
 
 (* -------------------------------------------------------------------- *)
@@ -175,7 +183,7 @@ lemma nosmt prodr_ge0 (P : 'a -> bool) F s:
   => zeror <= BMul.big P F s.
 proof.
 move=> h; apply: (@BMul.big_ind (fun x => zeror <= x)) => //=.
-  by apply/mulr_ge0. by apply/ler01.
+  by apply/mulr_ge0.
 qed.
 
 lemma nosmt prodr_gt0 (P : 'a -> bool) F s:
@@ -183,7 +191,7 @@ lemma nosmt prodr_gt0 (P : 'a -> bool) F s:
   => zeror < BMul.big P F s.
 proof.
 move=> h; apply: (@BMul.big_ind (fun x => zeror < x)) => //=.
-  by apply/mulr_gt0. by apply/ltr01.
+  by apply/mulr_gt0.
 qed.
 
 lemma nosmt ler_prod (P : 'a -> bool) (F1 F2 :'a -> t) s:

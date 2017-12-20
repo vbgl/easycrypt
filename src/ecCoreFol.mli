@@ -381,6 +381,10 @@ val is_pr        : form -> bool
 val is_eq_or_iff : form -> bool
 
 (* -------------------------------------------------------------------- *)
+val split_fun  : form -> bindings * form
+val split_args : form -> form * form list
+
+(* -------------------------------------------------------------------- *)
 val form_of_expr : EcMemory.memory -> EcTypes.expr -> form
 
 (* -------------------------------------------------------------------- *)
