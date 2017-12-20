@@ -1,5 +1,5 @@
 (* -------------------------------------------------------------------- *)
-require import Option Bool Pred Fun ExtEq Finite Int IntExtra List.
+require import AllCore List.
 require (*--*) Monoid Ring Subtype Bigalg.
 
 pragma -oldip.
