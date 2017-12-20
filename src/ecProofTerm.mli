@@ -163,6 +163,7 @@ type prept = [
   | `Hy   of EcIdent.t
   | `G    of EcPath.path * ty list
   | `UG   of EcPath.path
+  | `HD   of handle
   | `App  of prept * prept_arg list
 ]
 

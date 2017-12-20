@@ -184,6 +184,14 @@ let pt_of_global_r ptenv p tys =
     ptev_ax  = ax; }
 
 (* -------------------------------------------------------------------- *)
+let pt_of_handle_r ptenv hd =
+  let g = FApi.get_pregoal_by_id hd ptenv.pte_pe in
+
+  { ptev_env = ptenv;
+    ptev_pt  = { pt_head = PTHandle hd; pt_args = []; };
+    ptev_ax  = g.g_concl; }
+
+(* -------------------------------------------------------------------- *)
 let pt_of_uglobal pf hyps p =
   let ptenv   = ptenv_of_penv hyps pf in
   let env     = LDecl.toenv hyps in
@@ -800,6 +808,7 @@ type prept = [
   | `Hy   of EcIdent.t
   | `G    of EcPath.path * ty list
   | `UG   of EcPath.path
+  | `HD   of handle
   | `App  of prept * prept_arg list
 ]
 
@@ -812,13 +821,14 @@ and prept_arg =  [
 ]
 
 (* -------------------------------------------------------------------- *)
-let pt_of_prept tc pt =
+let pt_of_prept tc (pt : prept) =
   let ptenv = ptenv_of_penv (FApi.tc1_hyps tc) !!tc in
 
   let rec build_pt = function
     | `Hy  id         -> pt_of_hyp_r ptenv id
     | `G   (p, tys)   -> pt_of_global_r ptenv p tys
     | `UG  p          -> pt_of_global_r ptenv p []
+    | `HD  hd         -> pt_of_handle_r ptenv hd
     | `App (pt, args) -> List.fold_left app_pt_ev (build_pt pt) args
 
   and app_pt_ev pt_ev = function

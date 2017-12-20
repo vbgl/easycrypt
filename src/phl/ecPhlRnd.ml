@@ -195,9 +195,7 @@ let wp_equiv_rnd_r bij tc =
             t_apply_prept pt tc
 
         | Some hd ->
-            t_apply
-              { pt_head = PTHandle hd;
-                pt_args = [pamemory m1; pamemory m2]; } tc in
+            t_apply_prept (`App (`HD hd, [`Mem m1; `Mem m2])) tc in
 
       let pt =
         match hdc2 with
@@ -211,9 +209,8 @@ let wp_equiv_rnd_r bij tc =
           let fx = f_local x (gty_as_ty xty) in
           (  t_intros_i [x; hin]
           @! t_split
-          @+ [ t_apply
-                { pt_head = PTHandle hd;
-                  pt_args = [pamemory m1; pamemory m2; paformula fx; palocal hin]; }
+          @+ [ t_apply_prept (`App (`HD hd,
+                 [`Mem m1; `Mem m2; `F fx; `Sub (`Hy hin)]))
              ;    t_intros_i [h3]
                @! t_apply_prept (`App(pt, [`F fx; `Sub (`Hy hin)]))]
           ) tc
