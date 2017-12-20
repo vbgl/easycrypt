@@ -101,6 +101,16 @@ let ptenv_of_penv (hyps : LDecl.hyps) (pe : proofenv) =
     pte_ev = ref EcMatching.MEV.empty; }
 
 (* -------------------------------------------------------------------- *)
+let rec get_head_symbol (pt : pt_env) (f : form) =
+  match f_node f with
+  | Flocal x -> begin
+      match MEV.get x `Form !(pt.pte_ev) with
+      | Some (`Set (`Form f)) -> get_head_symbol pt f
+      | _ -> f
+    end
+  | _ -> f
+
+(* -------------------------------------------------------------------- *)
 let can_concretize (pt : pt_env) =
   EcMatching.can_concretize !(pt.pte_ev) pt.pte_ue
 
@@ -562,7 +572,7 @@ and trans_pterm_arg_mem pe ?name { pl_desc = arg; pl_loc = loc; } =
 and process_pterm_arg
     ?implicits ({ ptev_env = pe } as pt) ({ pl_loc = loc; } as arg)
 =
-  match PT.destruct_product pe.pte_hy (concretize_form pe pt.ptev_ax) with
+  match PT.destruct_product pe.pte_hy (get_head_symbol pe pt.ptev_ax) with
   | None -> tc_pterm_apperror ~loc pe AE_NotFunctional
 
   | Some (`Imp (f, _)) -> begin
@@ -664,7 +674,7 @@ and apply_pterm_to_oarg ?loc ({ ptev_env = pe; ptev_pt = rawpt; } as pt) oarg =
   let oarg = oarg |> omap (fun arg -> arg.ptea_arg) in
 
 
-  match PT.destruct_product pe.pte_hy (concretize_form pe pt.ptev_ax) with
+  match PT.destruct_product pe.pte_hy (get_head_symbol pe pt.ptev_ax) with
   | None   -> tc_pterm_apperror ?loc pe AE_NotFunctional
   | Some t ->
       let (newax, newarg) =
