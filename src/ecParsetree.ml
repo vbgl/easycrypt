@@ -52,6 +52,7 @@ type pty_r =
   | PTfun    of pty * pty
   | PTglob   of pmsymbol located
   | PTrec    of precord
+
 and pty = pty_r located
 
 and precord = (psymbol * pty) list

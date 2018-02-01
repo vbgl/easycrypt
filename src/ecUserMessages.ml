@@ -104,7 +104,7 @@ end = struct
     | MAE_AccesSubModFunctor ->
         msg "cannot access a sub-module of a partially applied functor"
 
-  let pp_tyerror env1 fmt error =
+  let rec pp_tyerror env1 fmt error =
     let env   = EcPrinting.PPEnv.ofenv env1 in
     let msg x = Format.fprintf fmt x in
     let pp_type fmt ty = EcPrinting.pp_type env fmt ty in
@@ -332,6 +332,15 @@ end = struct
     | UnknownScope sc ->
         msg "unknown scope: `%a'" pp_qsymbol sc
 
+    | RecordTypeError (RCE_DuplicatedField name) ->
+        msg "duplicated field: `%s'" name
+
+    | RecordTypeError (RCE_InvalidFieldType (name, ee)) ->
+        msg "invalid field type: `%s`: %a'" name (pp_tyerror env1) ee
+
+    | RecordTypeError RCE_Empty ->
+        msg "this record type is empty"
+
   let pp_restr_error env fmt (w, e) =
     let ppe = EcPrinting.PPEnv.ofenv env in
     let pp_v fmt xp = EcPrinting.pp_pv ppe fmt (pv_glob xp) in
@@ -384,21 +393,8 @@ end = struct
   open EcHiInductive
   open TypingError
 
-  let pp_rcerror env fmt error =
-    let msg x = Format.fprintf fmt x in
-
-    match error with
-    | RCE_TypeError ee ->
-        pp_tyerror env fmt ee
-
-    | RCE_DuplicatedField name ->
-        msg "duplicated field: `%s'" name
-
-    | RCE_InvalidFieldType (name, ee) ->
-        msg "invalid field type: `%s`: %a'" name (pp_tyerror env) ee
-
-    | RCE_Empty ->
-        msg "this record type is empty"
+  let pp_rcerror env fmt (RCE error) =
+    pp_tyerror env fmt error
 
   let pp_dterror env fmt error =
     let msg x = Format.fprintf fmt x in

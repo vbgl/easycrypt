@@ -18,11 +18,7 @@ module TT = EcTyping
 module EI = EcInductive
 
 (* -------------------------------------------------------------------- *)
-type rcerror =
-| RCE_TypeError        of TT.tyerror
-| RCE_DuplicatedField  of symbol
-| RCE_InvalidFieldType of symbol * TT.tyerror
-| RCE_Empty
+type rcerror = RCE of TT.tyerror
 
 type dterror =
 | DTE_TypeError       of TT.tyerror
@@ -32,7 +28,7 @@ type dterror =
 | DTE_Empty
 
 type fxerror =
-| FXE_TypeError of EcTyping.tyerror
+| FXE_TypeError of TT.tyerror
 | FXE_EmptyMatch
 | FXE_MatchParamsMixed
 | FXE_MatchParamsDup
@@ -50,7 +46,7 @@ exception DtError of EcLocation.t * EcEnv.env * dterror
 exception FxError of EcLocation.t * EcEnv.env * fxerror
 
 (* -------------------------------------------------------------------- *)
-let rcerror loc env e = raise (RcError (loc, env, e))
+let rcerror loc env e = raise (RcError (loc, env, RCE (TT.RecordTypeError e)))
 let dterror loc env e = raise (DtError (loc, env, e))
 let fxerror loc env e = raise (FxError (loc, env, e))
 
@@ -62,27 +58,11 @@ let trans_record (env : EcEnv.env) (name : ptydname) (rc : precord) =
   let ue    = TT.transtyvars env (loc, Some tyvars) in
   let tpath = EcPath.pqname (EcEnv.root env) (unloc name) in
 
-  (* Check for duplicated field names *)
-  Msym.odup unloc (List.map fst rc) |> oiter (fun (x, y) ->
-    rcerror y.pl_loc env (RCE_DuplicatedField x.pl_desc));
-
-  (* Check for emptyness *)
-  if List.is_empty rc then
-    rcerror loc env RCE_Empty;
-
-  (* Type-check field types *)
-  let fields =
-    let for1 (fname, fty) =
-      try
-        let fty = TT.transty TT.tp_tydecl env ue fty in
-        (unloc fname, fty)
-      with TT.TyError (loc, _, ee) ->
-        rcerror loc env (RCE_InvalidFieldType (unloc fname, ee))
-    in rc |> List.map for1
-  in
-
   (* Create record *)
   let tparams = EcUnify.UniEnv.tparams ue in
+
+  (* Type-check fields *)
+  let fields = TT.trans_tyrec TT.tp_tydecl env ue (mk_loc loc rc) in
 
   { EI.rc_path = tpath; EI.rc_tparams = tparams; EI.rc_fields = fields; }
 

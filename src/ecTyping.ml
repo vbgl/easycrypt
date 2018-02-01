@@ -65,7 +65,12 @@ type funapp_error =
 type mem_error =
 | MAE_IsConcrete
 
-type tyerror =
+type rcerror =
+| RCE_DuplicatedField  of symbol
+| RCE_InvalidFieldType of symbol * tyerror
+| RCE_Empty
+
+and tyerror =
 | UniVarNotAllowed
 | FreeTypeVariables
 | TypeVarNotAllowed
@@ -110,6 +115,7 @@ type tyerror =
 | PatternNotAllowed
 | MemNotAllowed
 | UnknownScope           of qsymbol
+| RecordTypeError        of rcerror
 
 exception TyError of EcLocation.t * EcEnv.env * tyerror
 
@@ -786,13 +792,43 @@ let rec transty (tp : typolicy) (env : EcEnv.env) ue ty =
       let tyargs = transtys tp env ue tyargs in
       tconstr p tyargs
     end
+
   | PTglob gp ->
-    let m,_ = trans_msymbol env gp in
-    tglob m
+      let m,_ = trans_msymbol env gp in tglob m
+
+  | PTrec rc ->
+      let fields = trans_tyrec tp env ue (mk_loc (loc ty) rc) in
+      trec (Msym.of_list fields)
 
 and transtys tp (env : EcEnv.env) ue tys =
   List.map (transty tp env ue) tys
 
+and trans_tyrec (tp : typolicy) (env : EcEnv.env) ue (rc : precord located) =
+  let { pl_loc = loc; pl_desc = rc } = rc in
+
+  let rcerror loc env ee = tyerror loc env (RecordTypeError ee) in
+
+  (* Check for duplicated field names *)
+  Msym.odup unloc (List.map fst rc) |> oiter (fun (x, y) ->
+    rcerror y.pl_loc env (RCE_DuplicatedField x.pl_desc));
+
+  (* Check for emptyness *)
+  if List.is_empty rc then
+    rcerror loc env RCE_Empty;
+
+  (* Type-check field types *)
+  let fields =
+    let for1 (fname, fty) =
+      try
+        let fty = transty tp env ue fty in
+        (unloc fname, fty)
+      with TyError (loc, _, ee) ->
+        rcerror loc env (RCE_InvalidFieldType (unloc fname, ee))
+    in rc |> List.map for1
+
+  in fields
+
+(* -------------------------------------------------------------------- *)
 let transty_for_decl env ty =
   let ue = UE.create (Some []) in
     transty tp_nothing env ue ty

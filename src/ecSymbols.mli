@@ -16,6 +16,7 @@ type msymbol = (symbol * msymbol list) list
 (* -------------------------------------------------------------------- *)
 val sym_equal   : symbol -> symbol -> bool
 val sym_compare : symbol -> symbol -> int
+val sym_hash    : symbol -> int
 
 (* -------------------------------------------------------------------- *)
 module Msym : Map.S with type key = symbol

@@ -13,11 +13,7 @@ open EcInductive
 open EcEnv
 
 (* -------------------------------------------------------------------- *)
-type rcerror =
-| RCE_TypeError        of EcTyping.tyerror
-| RCE_DuplicatedField  of symbol
-| RCE_InvalidFieldType of symbol * EcTyping.tyerror
-| RCE_Empty
+type rcerror = RCE of EcTyping.tyerror
 
 type dterror =
 | DTE_TypeError       of EcTyping.tyerror
@@ -45,7 +41,6 @@ exception DtError of EcLocation.t * EcEnv.env * dterror
 exception FxError of EcLocation.t * EcEnv.env * fxerror
 
 (* -------------------------------------------------------------------- *)
-val rcerror : EcLocation.t -> EcEnv.env -> rcerror -> 'a
 val dterror : EcLocation.t -> EcEnv.env -> dterror -> 'a
 val fxerror : EcLocation.t -> EcEnv.env -> fxerror -> 'a
 

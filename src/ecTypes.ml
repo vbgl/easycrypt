@@ -7,6 +7,7 @@
 
 (* -------------------------------------------------------------------- *)
 open EcUtils
+open EcSymbols
 open EcIdent
 open EcPath
 open EcUid
@@ -27,6 +28,7 @@ and ty_node =
   | Ttuple  of ty list
   | Tconstr of EcPath.path * ty list
   | Tfun    of ty * ty
+  | Trec    of ty Msym.t
 
 type dom = ty list
 
@@ -56,6 +58,9 @@ module Hsty = Why3.Hashcons.Make (struct
     | Tfun (d1, c1), Tfun (d2, c2)->
         ty_equal d1 d2 && ty_equal c1 c2
 
+    | Trec fds1, Trec fds2 ->
+        Msym.equal ty_equal fds1 fds2
+
     | _, _ -> false
 
   let hash ty =
@@ -66,6 +71,11 @@ module Hsty = Why3.Hashcons.Make (struct
     | Ttuple  tl       -> Why3.Hashcons.combine_list ty_hash 0 tl
     | Tconstr (p, tl)  -> Why3.Hashcons.combine_list ty_hash p.p_tag tl
     | Tfun    (t1, t2) -> Why3.Hashcons.combine (ty_hash t1) (ty_hash t2)
+
+    | Trec fds ->
+        let hash_field (x, ty) =
+          Why3.Hashcons.combine (sym_hash x) (ty_hash ty)
+        in Why3.Hashcons.combine_list hash_field 0 (Msym.bindings fds)
 
   let fv ty =
     let union ex =
@@ -78,6 +88,7 @@ module Hsty = Why3.Hashcons.Make (struct
     | Ttuple  tys      -> union (fun a -> a.ty_fv) tys
     | Tconstr (_, tys) -> union (fun a -> a.ty_fv) tys
     | Tfun    (t1, t2) -> union (fun a -> a.ty_fv) [t1; t2]
+    | Trec    fds      -> union (fun a -> a.ty_fv) (Msym.values fds)
 
   let tag n ty = { ty with ty_tag = n; ty_fv = fv ty.ty_node; }
 end)
@@ -122,6 +133,7 @@ let tvar id      = mk_ty (Tvar id)
 let tconstr p lt = mk_ty (Tconstr (p, lt))
 let tfun t1 t2   = mk_ty (Tfun (t1, t2))
 let tglob m      = mk_ty (Tglob m)
+let trec fds     = mk_ty (Trec fds)
 
 (* -------------------------------------------------------------------- *)
 let tunit      = tconstr EcCoreLib.CI_Unit .p_unit  []

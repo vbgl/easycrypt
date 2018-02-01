@@ -56,7 +56,12 @@ type funapp_error =
 type mem_error =
 | MAE_IsConcrete
 
-type tyerror =
+type rcerror =
+| RCE_DuplicatedField  of symbol
+| RCE_InvalidFieldType of symbol * tyerror
+| RCE_Empty
+
+and tyerror =
 | UniVarNotAllowed
 | FreeTypeVariables
 | TypeVarNotAllowed
@@ -101,6 +106,7 @@ type tyerror =
 | PatternNotAllowed
 | MemNotAllowed
 | UnknownScope           of qsymbol
+| RecordTypeError        of rcerror
 
 exception TymodCnvFailure of tymod_cnv_failure
 exception TyError of EcLocation.t * env * tyerror
@@ -127,6 +133,10 @@ val transtys :
     typolicy -> env -> EcUnify.unienv -> pty list -> ty list
 
 val transtvi : env -> EcUnify.unienv -> ptyannot -> EcUnify.tvar_inst
+
+(* -------------------------------------------------------------------- *)
+val trans_tyrec :
+  typolicy -> env -> EcUnify.unienv -> precord located -> (symbol * ty) list
 
 (* -------------------------------------------------------------------- *)
 val trans_binding : env -> EcUnify.unienv -> ptybindings ->

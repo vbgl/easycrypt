@@ -12,6 +12,7 @@ type msymbol = (symbol * msymbol list) list
 
 let sym_equal   : symbol -> symbol -> bool = (=)
 let sym_compare : symbol -> symbol -> int  = Pervasives.compare
+let sym_hash    : symbol -> int = Hashtbl.hash
 
 (* -------------------------------------------------------------------- *)
 module SymCmp = struct
