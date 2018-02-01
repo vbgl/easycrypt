@@ -125,7 +125,10 @@ let rec dump_ty ty =
         (String.concat ", " (List.map dump_ty tys))
 
   | Tfun (t1, t2) ->
-      Printf.sprintf "(%s) -> (%s)" (dump_ty t1) (dump_ty t2)
+     Printf.sprintf "(%s) -> (%s)" (dump_ty t1) (dump_ty t2)
+
+  | Trec fds ->
+      Printf.sprintf "{< %s >}" (String.concat "; " (List.map dump_ty (Msym.values fds)))
 
 (* -------------------------------------------------------------------- *)
 let tuni uid     = mk_ty (Tunivar uid)
@@ -178,6 +181,9 @@ module TySmart = struct
 
   let tfun (ty, (t1, t2)) (t1', t2') =
     if t1 == t1' && t2 == t2' then ty else tfun t1' t2'
+
+  let trec (ty, fds) fds' =
+    if fds'== fds then ty else trec fds'
 end
 
 (* -------------------------------------------------------------------- *)
@@ -193,7 +199,11 @@ let ty_map f t =
         TySmart.tconstr (t, (p, lty)) (p, lty')
 
   | Tfun (t1, t2) ->
-      TySmart.tfun (t, (t1, t2)) (f t1, f t2)
+     TySmart.tfun (t, (t1, t2)) (f t1, f t2)
+
+  | Trec fds ->
+     let fds' = Msym.map f fds in
+     TySmart.trec (t,fds) fds'
 
 let ty_fold f s ty =
   match ty.ty_node with
@@ -201,6 +211,7 @@ let ty_fold f s ty =
   | Ttuple lty -> List.fold_left f s lty
   | Tconstr(_, lty) -> List.fold_left f s lty
   | Tfun(t1,t2) -> f (f s t1) t2
+  | Trec fds -> Msym.fold_left (fun x _ y -> f x y) s fds
 
 let ty_sub_exists f t =
   match t.ty_node with
@@ -208,6 +219,7 @@ let ty_sub_exists f t =
   | Ttuple lty -> List.exists f lty
   | Tconstr (_, lty) -> List.exists f lty
   | Tfun (t1, t2) -> f t1 || f t2
+  | Trec fds -> Msym.exists (fun _ -> f) fds
 
 let ty_iter f t =
   match t.ty_node with
@@ -215,6 +227,7 @@ let ty_iter f t =
   | Ttuple lty -> List.iter f lty
   | Tconstr (_, lty) -> List.iter f lty
   | Tfun (t1,t2) -> f t1; f t2
+  | Trec fds -> Msym.iter (fun _ -> f) fds
 
 exception FoundUnivar
 
@@ -231,12 +244,13 @@ let symbol_of_ty (ty : ty) =
   | Tvar    _      -> "x"
   | Ttuple  _      -> "x"
   | Tfun    _      -> "f"
+  | Trec _         -> "r" (* ??? *)
   | Tconstr (p, _) ->
       let x = EcPath.basename p in
       let rec doit i =
         if   i >= String.length x
         then "x"
-        else match Char.lowercase x.[i] with
+        else match Char.lowercase_ascii x.[i] with
              | 'a' .. 'z' -> String.make 1 x.[i]
              | _ -> doit (i+1)
       in
@@ -279,6 +293,8 @@ let rec ty_subst s =
       | Ttuple lty    -> TySmart.ttuple (ty, lty) (List.Smart.map aux lty)
       | Tfun (t1, t2) -> TySmart.tfun (ty, (t1, t2)) (aux t1, aux t2)
 
+      | Trec fds      -> TySmart.trec (ty,fds) (Msym.map aux fds)
+
       | Tconstr(p, lty) -> begin
         match Mp.find_opt p s.ts_def with
         | None ->
@@ -292,7 +308,9 @@ let rec ty_subst s =
               with Failure _ -> assert false
             in
               ty_subst { ty_subst_id with ts_v = Mid.find_opt^~ s; } body
-      end)
+        end)
+
+
 
 (* -------------------------------------------------------------------- *)
 module Tuni = struct

@@ -114,6 +114,7 @@ let trans_datatype (env : EcEnv.env) (name : ptydname) (dt : pdatatype) =
 
       | Ttuple tys      -> List.exists isempty tys
       | Tfun   (t1, t2) -> List.exists isempty [t1; t2]
+      | Trec fds        -> Msym.exists (fun _ -> isempty) fds
 
       | Tconstr (p, args) ->
           isempty_dtype (args, p)

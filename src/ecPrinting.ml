@@ -712,7 +712,8 @@ let rec pp_type_r ppe outer fmt ty =
           (pp_type_r ppe (t_prio_fun, `Left )) t1
           (pp_type_r ppe (t_prio_fun, `Right)) t2
       in
-        maybe_paren_nosc outer t_prio_fun pp fmt (t1, t2)
+      maybe_paren_nosc outer t_prio_fun pp fmt (t1, t2)
+  | Trec fds -> assert false
 
 let pp_type ppe fmt ty =
   pp_type_r ppe (min_op_prec, `NonAssoc) fmt ty
