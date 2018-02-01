@@ -51,7 +51,10 @@ type pty_r =
   | PTapp    of pqsymbol * pty list
   | PTfun    of pty * pty
   | PTglob   of pmsymbol located
+  | PTrec    of precord
 and pty = pty_r located
+
+and precord = (psymbol * pty) list
 
 type ptyannot_r =
   | TVIunamed of pty list
@@ -60,9 +63,9 @@ type ptyannot_r =
 and ptyannot  = ptyannot_r  located
 
 type plpattern_r =
-  | LPSymbol of psymbol
-  | LPTuple  of osymbol list
-  | LPRecord of (pqsymbol * psymbol) list
+  | LPSymbol  of psymbol
+  | LPTuple   of osymbol list
+  | LPRecord  of (pqsymbol * psymbol) list
 
 and plpattern = plpattern_r located
 
@@ -70,19 +73,20 @@ type ptybinding  = osymbol list * pty
 and  ptybindings = ptybinding list
 
 and pexpr_r =
-  | PEint    of zint                              (* int. literal       *)
-  | PEident  of pqsymbol * ptyannot option        (* symbol             *)
-  | PEapp    of pexpr * pexpr list                (* op. application    *)
-  | PElet    of plpattern * pexpr_wty * pexpr     (* let binding        *)
-  | PEtuple  of pexpr list                        (* tuple constructor  *)
-  | PEif     of pexpr * pexpr * pexpr             (* _ ? _ : _          *)
-  | PEforall of ptybindings * pexpr               (* forall quant.      *)
-  | PEexists of ptybindings * pexpr               (* exists quant.      *)
-  | PElambda of ptybindings * pexpr               (* lambda abstraction *)
-  | PErecord of pexpr rfield list                 (* record             *)
-  | PEproj   of pexpr * pqsymbol                  (* projection         *)
-  | PEproji  of pexpr * int                       (* tuple projection   *)
-  | PEscope  of pqsymbol * pexpr                  (* scope selection    *)
+  | PEint     of zint                              (* int. literal       *)
+  | PEident   of pqsymbol * ptyannot option        (* symbol             *)
+  | PEapp     of pexpr * pexpr list                (* op. application    *)
+  | PElet     of plpattern * pexpr_wty * pexpr     (* let binding        *)
+  | PEtuple   of pexpr list                        (* tuple constructor  *)
+  | PEif      of pexpr * pexpr * pexpr             (* _ ? _ : _          *)
+  | PEforall  of ptybindings * pexpr               (* forall quant.      *)
+  | PEexists  of ptybindings * pexpr               (* exists quant.      *)
+  | PElambda  of ptybindings * pexpr               (* lambda abstraction *)
+  | PErecord  of pexpr rfield list                 (* record             *)
+  | PEDrecord of pexpr rfield list                (* dynamic record     *)
+  | PEproj    of pexpr * pqsymbol                  (* projection         *)
+  | PEproji   of pexpr * int                       (* tuple projection   *)
+  | PEscope   of pqsymbol * pexpr                  (* scope selection    *)
 
 and pexpr = pexpr_r located
 and pexpr_wty = pexpr * pty option
@@ -213,7 +217,8 @@ and ptydbody =
 
 and pdatatype = (psymbol * pty list) list
 
-and precord = (psymbol * pty) list
+and pdrecord = (psymbol * pty) list
+
 
 (* -------------------------------------------------------------------- *)
 type pmemory   = psymbol
@@ -228,25 +233,26 @@ type pformula  = pformula_r located
 
 and pformula_r =
   | PFhole
-  | PFint    of zint
-  | PFtuple  of pformula list
-  | PFident  of pqsymbol * ptyannot option
-  | PFmem    of psymbol
-  | PFside   of pformula * symbol located
-  | PFapp    of pformula * pformula list
-  | PFif     of pformula * pformula * pformula
-  | PFlet    of plpattern * (pformula * pty option) * pformula
-  | PFforall of pgtybindings * pformula
-  | PFexists of pgtybindings * pformula
-  | PFlambda of ptybindings * pformula
-  | PFrecord of pformula rfield list
-  | PFproj   of pformula * pqsymbol
-  | PFproji  of pformula * int
-  | PFglob   of pmsymbol located
-  | PFeqveq  of glob_or_var list * (pmsymbol pair) option
-  | PFeqf    of pformula list
-  | PFlsless of pgamepath
-  | PFscope  of pqsymbol * pformula
+  | PFint     of zint
+  | PFtuple   of pformula list
+  | PFident   of pqsymbol * ptyannot option
+  | PFmem     of psymbol
+  | PFside    of pformula * symbol located
+  | PFapp     of pformula * pformula list
+  | PFif      of pformula * pformula * pformula
+  | PFlet     of plpattern * (pformula * pty option) * pformula
+  | PFforall  of pgtybindings * pformula
+  | PFexists  of pgtybindings * pformula
+  | PFlambda  of ptybindings * pformula
+  | PFrecord  of pformula rfield list
+  | PFDrecord of pformula rfield list
+  | PFproj    of pformula * pqsymbol
+  | PFproji   of pformula * int
+  | PFglob    of pmsymbol located
+  | PFeqveq   of glob_or_var list * (pmsymbol pair) option
+  | PFeqf     of pformula list
+  | PFlsless  of pgamepath
+  | PFscope   of pqsymbol * pformula
 
   | PFhoareF   of pformula * pgamepath * pformula
   | PFequivF   of pformula * (pgamepath * pgamepath) * pformula

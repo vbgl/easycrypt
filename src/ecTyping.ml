@@ -1026,6 +1026,7 @@ let trans_record env ue subtt (loc, fields) =
   in
     (ctor, fields, (rtvi, reccty))
 
+
 (*-------------------------------------------------------------------- *)
 let expr_of_opselect
   (env, ue) loc ((sel, ty, subue, _) : OpSelect.gopsel) args
@@ -1175,6 +1176,8 @@ let transexp (env : EcEnv.env) mode ue e =
         let ctor = e_op ctor rtvi (toarrow (List.map snd fields) reccty) in
         let ctor = e_app ctor (List.map fst fields) reccty in
           ctor, reccty
+
+
 
     | PEproj (sube, x) -> begin
       let sube, ety = transexp env sube in

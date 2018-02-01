@@ -328,9 +328,8 @@
 %token<[`Raw|`Eq]> RING
 %token<[`Raw|`Eq]> FIELD
 
-
-%token ABORT
 %token ABBREV
+%token ABORT
 %token ABSTRACT
 %token ADMIT
 %token ADMITTED
@@ -428,6 +427,7 @@
 %token LESAMPLE
 %token LET
 %token LLARROW
+%token LOBRACE
 %token LOCAL
 %token LOGIC
 %token LONGARROW
@@ -479,6 +479,7 @@
 %token REWRITE
 %token RIGHT
 %token RND
+%token ROBRACE
 %token RPAREN
 %token RPBRACE
 %token RRARROW
@@ -497,12 +498,12 @@
 %token SLASHEQ
 %token SLASHGT
 %token SLASHSHARP
-%token SLASHSLASHGT
-%token SLASHTILDEQ
 %token SLASHSLASH
 %token SLASHSLASHEQ
-%token SLASHSLASHTILDEQ
+%token SLASHSLASHGT
 %token SLASHSLASHSHARP
+%token SLASHSLASHTILDEQ
+%token SLASHTILDEQ
 %token SMT
 %token SOLVE
 %token SP
@@ -846,6 +847,9 @@ sexpr_u:
 | r=loc(RBOOL)
    { PEident (mk_loc r.pl_loc EcCoreLib.s_dbool, None) }
 
+| LOBRACE fields=rlist1(expr_field, SEMICOLON) SEMICOLON? ROBRACE
+   { PEDrecord fields }
+
 | LPBRACE fields=rlist1(expr_field, SEMICOLON) SEMICOLON? RPBRACE
    { PErecord fields }
 
@@ -1020,6 +1024,9 @@ sform_u(P):
 | LPAREN fs=plist0(form_r(P), COMMA) RPAREN
    { PFtuple fs }
 
+| LOBRACE fields=rlist1(form_field, SEMICOLON) SEMICOLON? ROBRACE
+   { PFDrecord fields }
+
 | LPBRACE fields=rlist1(form_field, SEMICOLON) SEMICOLON? RPBRACE
    { PFrecord fields }
 
@@ -1174,12 +1181,17 @@ pgtybindings:
 (* -------------------------------------------------------------------- *)
 (* Type expressions                                                     *)
 
+%inline drecord_def:
+| LOBRACE fields=rlist1(rec_field_def, SEMICOLON) SEMICOLON? ROBRACE
+    { fields }
+
 simpl_type_exp:
 | UNDERSCORE                  { PTunivar       }
 | x=qident                    { PTnamed x      }
 | x=tident                    { PTvar x        }
 | tya=type_args x=qident      { PTapp (x, tya) }
 | GLOB m=loc(mod_qident)      { PTglob m       }
+| ty=drecord_def              { PTrec ty       }
 | LPAREN ty=type_exp RPAREN   { ty             }
 
 type_args:

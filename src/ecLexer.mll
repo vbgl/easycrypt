@@ -407,6 +407,8 @@ rule main = parse
   | "@"   { [AT        ] }
   | "{|"  { [LPBRACE   ] }
   | "|}"  { [RPBRACE   ] }
+  | "{<"  { [LOBRACE   ] }
+  | ">}"  { [ROBRACE   ] }
   | "`|"  { [TICKPIPE  ] }
   | "<$"  { [LESAMPLE  ] }
   | "<@"  { [LEAT      ] }
