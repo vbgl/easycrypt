@@ -833,9 +833,91 @@ local module DecGA (H : AH) (G : AG) (S : APKE) = {
   proc guess  = A(H,G',S').guess
 }.
 
+abstract theory TRestr.
+
+  type from, to.
+
+  module type Orcl = {
+    proc init () : unit
+    proc orcl (x:from) : to
+  }.
+
+  module type Adv (O:Orcl) = {
+    proc main () : bool { O.orcl }
+  }.
+
+  module Main(O:Orcl, A:Adv) = {
+    proc main () = {
+      var b;
+      O.init();
+      b <@ A(O).main();
+      return b;
+    }  
+  }.
+
+  module Count (O:Orcl) = {
+    var c : int
+    proc init () = {
+      c <- 0;
+      O.init();
+    } 
+
+    proc orcl (x:from) : to = {
+      var r;
+      c <- c + 1;  
+      r <@ O.orcl(x);
+      return r;
+    }
+  }.
+
+  op q : int.
+  
+  module Restr (O:Orcl) = {
+
+    proc init = Count(O).init
+
+    proc orcl (x:from) : to = {
+      var r = witness;
+      if (Count.c < q) r <@ O.orcl(x);
+      Count.c <- Count.c + 1;
+      return r;
+    }
+  }.
+
+  lemma upto_bad (O <:Orcl {Count} ) (A <: Adv{Count, O }) :
+    islossless O.orcl =>   
+    (forall (O0 <: Orcl{A}), islossless O0.orcl => islossless A(O0).main) =>
+    equiv [A(Count(O)).main ~ A(Restr(O)).main : ={glob A, glob O, Count.c} /\ Count.c{1} = 0 ==> Count.c{1} <= q => ={res, Count.c}].
+  proof.
+    move=> Oll All .   
+    proc (!(Count.c <= q)) (={glob O, Count.c}) ((Count.c{1} <= q) = (Count.c{2} <= q)) => //.
+    + by move=> /#.
+    + proc.
+      wp;sp 0 1;if{2}.
+      + by call (_:true);auto.
+      by call{1} Oll;auto => /#.
+    + by move=> &m2 cm2;proc;call Oll;auto => /#.
+    by move=> &m1;proc;wp;sp;if;[call Oll|];auto => /#.
+  qed.
+
+  lemma upto &m (O <:Orcl {Count} ) (A <: Adv{Count, O }) :
+    islossless O.orcl =>   
+    (forall (O0 <: Orcl{A}), islossless O0.orcl => islossless A(O0).main) =>
+    Pr[Main(Count(O), A).main() @ &m : res /\ Count.c <= q] <=
+    Pr[Main(Restr(O), A).main() @ &m : res /\ Count.c <= q].
+  proof.
+    move=> Oll All.   
+    byequiv (_: ={glob A,glob O} ==> Count.c{1} <= q => ={res, Count.c}) => //; last by smt ().
+    proc.
+    call (upto_bad O A Oll All).
+    by inline *;call (_:true);auto => /#.
+  qed.
+
+end TRestr.
+
 op qDB : { int | 0 < qDB }  as gt0_qDB.
 op qGB : { int | 0 < qDB }  as gt0_qGB.
-
+(*
 local module RestrDecGA (H : AH) (G : AG) (S : APKE) = {
   module G' = {
     proc o(x : htag) = {
@@ -864,8 +946,9 @@ local module RestrDecGA (H : AH) (G : AG) (S : APKE) = {
   proc choose = A(H,G',S').choose
   proc guess  = A(H,G',S').guess
 }.
-
+*)
 require StdOrder. import StdOrder.RealOrder.
+
 
 (** FIXME: This is not completely good because of limitations of fel, but gives confidence that a final version would go through, and gives hints as to useful features for fel to have
     e.g.: if !P is stable by the oracles (i.e. {!P} o {!P} for all oracles) and P is in the event, then P is a 'free' precondition to all oracle-based proof obligations **)
