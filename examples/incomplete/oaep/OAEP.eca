@@ -833,18 +833,69 @@ local module DecGA (H : AH) (G : AG) (S : APKE) = {
   proc guess  = A(H,G',S').guess
 }.
 
+op qDB : { int | 0 < qDB }  as gt0_qDB.
+op qGB : { int | 0 < qDB }  as gt0_qGB.
+
+local module RestrDecGA (H : AH) (G : AG) (S : APKE) = {
+  module G' = {
+    proc o(x : htag) = {
+      var g <- witness;
+
+      if (DecGA.qG < qGB) {
+        DecGA.qG <- DecGA.qG + 1;
+        g  <@ G.o(x);
+      }
+      return g;
+    }
+  }
+
+  module S' = {
+    proc dec(c : gtag * htag) = {
+      var p <- witness;
+
+      if (DecGA.qD < qDB) {
+        DecGA.qD <- DecGA.qD + 1;
+        p  <@ S.dec(c);
+      }
+      return p;
+    }
+  }
+
+  proc choose = A(H,G',S').choose
+  proc guess  = A(H,G',S').guess
+}.
+
+require StdOrder. import StdOrder.RealOrder.
+
 (** FIXME: This is not completely good because of limitations of fel, but gives confidence that a final version would go through, and gives hints as to useful features for fel to have
     e.g.: if !P is stable by the oracles (i.e. {!P} o {!P} for all oracles) and P is in the event, then P is a 'free' precondition to all oracle-based proof obligations **)
-local lemma prBad'_Game1_1 qD qG &m:
+local lemma prBad'_Game1_1 &m:
      DecGA.qG{m} = 0
   => DecGA.qD{m} = 0
-  => 0 < qD
-  => 0 < qG
-  =>    Pr[Game1_1(DecGA).main() @ &m: Game1_1.bad' /\ DecGA.qD <= qD /\ card (dom G.m) <= qD + qG]
-     <= qD%r * (qD + qG)%r * mu1 dhtag witness.
+  => Pr[Game1_1(DecGA).main() @ &m:
+          Game1_1.bad' /\ DecGA.qD <= qDB /\ DecGA.qG <= qGB]
+     <= qDB%r * (qDB + qGB)%r * mu1 dhtag witness.
 proof.
-move=> DecGA_qG0 DecGA_gD0 gt0_qD gt0_qG.
-fel 4 (DecGA.qD) (fun x, (qD + qG)%r * mu1 dhtag witness) qD Game1_1.bad' [DecGA(H, G, Game1_1(DecGA).S).S'.dec: (card (dom G.m) <= qD + qG); DecGA(H, G, Game1_1(DecGA).Sg).S'.dec: (card (dom G.m) <= qD + qG)]=> //=.
+move=> DecGA_qG0 DecGA_gD0.
+apply/(ler_trans Pr[Game1_1(RestrDecGA).main() @ &m:
+  Game1_1.bad' /\ DecGA.qD <= qDB /\ DecGA.qG <= qGB]).
++ byequiv (_ : ={glob Game1_1(DecGA)} ==>
+       DecGA.qD{1} <= qDB /\ DecGA.qG{1} <= qGB
+    => ={Game1_1.bad',DecGA.qD,DecGA.qG}) => //; last by smt().
+  proc.
+
+
+
+
+
+fel 4 (DecGA.qD)
+  (fun x, (qD + qG)%r * mu1 dhtag witness)
+  qD Game1_1.bad'
+  [DecGA(H, G, Game1_1(DecGA).S).S'.dec:
+    (card (dom G.m) <= qD + qG);
+   DecGA(H, G, Game1_1(DecGA).Sg).S'.dec:
+    (card (dom G.m) <= qD + qG)]=> //=.
+
 + rewrite StdBigop.Bigreal.BRA.big_const count_predT size_range /max gt0_qD /=.
   rewrite -StdRing.RField.mulrA (@StdRing.RField.mulrC qD%r).
   rewrite -StdRing.RField.intmulr /intmul -StdRing.RField.AddMonoid.iteropE.
@@ -855,7 +906,13 @@ fel 4 (DecGA.qD) (fun x, (qD + qG)%r * mu1 dhtag witness) qD Game1_1.bad' [DecGA
     by move: gt0_qG gt0_qD; rewrite -!lt_fromint; smt.
   by proc; call (pBad'_Game1_1_dec DecGA); auto.
 + by move=> c; proc; call (: true)=> //=; auto=> /#.
-+ admit. (* at the moment, bad can still be set after more than (qD+qG) entries in the ROM... EXCEPT for the fact that the lemma explicitly limits the number of entries to (qD+qG) *)
++ move=> b c.
+
+
+ admit. (* at the moment, bad can still be set after more than (qD+qG) entries in the ROM... EXCEPT for the fact that the lemma explicitly limits the number of entries to (qD+qG) *)
+
+
+
 + conseq (: _ : <= (mu dhtag (mem (dom G.m)))).
   + move=> &hr [#] _ _ _; rewrite mu_dhtag_mem StdRing.RField.mulrC -le_fromint.
     by move: gt0_qG gt0_qD; rewrite -!lt_fromint; smt.
