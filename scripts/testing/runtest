@@ -122,7 +122,7 @@ def _options():
 
     defaults = dict(args = '', exclude = '', okdirs = '', kodirs = '')
 
-    config = cp.SafeConfigParser(defaults)
+    config = cp.ConfigParser(defaults)
     config.read(args[0])
 
     def resolve_targets(names):
